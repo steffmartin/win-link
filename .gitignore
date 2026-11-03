@@ -31,7 +31,16 @@ wheels/
 *.egg
 venv/
 ENV/
-.venv
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.cover
+
+# uv
+uv.lock
 
 # C# / .NET
 bin/
