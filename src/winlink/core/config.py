@@ -59,6 +59,7 @@ class AppSettings(BaseSettings):
     auto_backup_before_undo: bool = True
     confirm_before_destructive: bool = True
     show_notifications: bool = True
+    warn_nested_junctions: bool = True
 
 
 def get_settings() -> AppSettings:

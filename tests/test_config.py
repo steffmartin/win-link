@@ -34,3 +34,4 @@ def test_operation_settings():
     assert settings.auto_backup_before_undo is True
     assert settings.confirm_before_destructive is True
     assert settings.show_notifications is True
+    assert settings.warn_nested_junctions is True

@@ -74,23 +74,23 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 
 ---
 
-## Fase 3: Camada de Domínio (Lógica de Negócio) 🔄
+## Fase 3: Camada de Domínio (Lógica de Negócio) ✅
 
-**Objetivo**: Implementar a lógica de manipulação de junções NTFS, sem interface gráfica.
+**Objetivo**: Implementar a lógica de manipulação de junções, sem interface gráfica.
 
-**Status**: PENDENTE - Será executada por outro agente
+**Status**: CONCLUÍDA
 
-**Nota**: Esta fase será realizada por um agente diferente. Consulte `HANDOFF.md` para informações completas sobre o estado atual do projeto e instruções para iniciar esta fase.
+**Data**: 2026-11-02
 
 ### Etapas
-- [ ] 3.1 Modelo de dados (dataclasses/pydantic)
+- [x] 3.1 Modelo de dados (dataclasses/pydantic)
   - Classe Junction para representar junções
   - Enum JunctionType (JUNCTION, SYMLINK, HARDLINK)
   - Enum JunctionStatus (ACTIVE, BROKEN, INACCESSIBLE)
   - Enum Creator (APP, EXISTING, MANUAL)
   - Modelos de configuração com pydantic
 
-- [ ] 3.2 Scanner de junções
+- [x] 3.2 Scanner de junções
   - Função para escanear diretórios recursivamente
   - Detecção de reparse points via pywin32
   - Identificação de tipo de link (junction vs symlink)
@@ -98,33 +98,33 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
   - Classificação de criador (comparando com histórico)
   - Escaneamento híbrido (rápido vs completo)
 
-- [ ] 3.3 Operações de junção (Windows API via pywin32)
-  - Criar junção NTFS (CreateSymbolicLink / DeviceIoControl)
+- [x] 3.3 Operações de junção (Windows API via pywin32)
+  - Criar junção (CreateSymbolicLink / DeviceIoControl)
   - Criar link simbólico de diretório
   - Criar link simbólico de arquivo
   - Criar hard link de arquivo
   - Remover junção/link
   - Verificar integridade do link
 
-- [ ] 3.4 Operações de arquivo
+- [x] 3.4 Operações de arquivo
   - Cópia com preservação de atributos (shutil.copy2 com metadados extendidos)
   - Movimentação de arquivos
   - Duplicação de arquivos
   - Detecção de arquivos em uso (try/except + pywin32)
   - Cálculo de tamanho e espaço necessário (os.walk + os.path.getsize)
 
-- [ ] 3.5 Gerenciamento de processos
+- [x] 3.5 Gerenciamento de processos
   - Lista de processos conhecidos que bloqueiam arquivos (psutil)
   - Função para encerrar processos (psutil)
   - Detecção de arquivos bloqueados
 
-- [ ] 3.6 Histórico de operações
+- [x] 3.6 Histórico de operações
   - Sistema de log de operações em JSON
   - Estrutura de registro de operação
   - Persistência do histórico
   - Função para desfazer operação (baseada no histórico)
 
-- [ ] 3.7 Validações
+- [x] 3.7 Validações
   - Validação de caminhos (pathlib)
   - Validação de permissões (os.access)
   - Validação de espaço em disco (shutil.disk_usage)

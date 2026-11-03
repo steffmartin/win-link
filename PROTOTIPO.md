@@ -134,6 +134,40 @@ Colunas:
 └────────────────────────────────────────────────────┘
 ```
 
+#### Diálogo de Prévia (com aviso de junções aninhadas)
+```
+┌────────────────────────────────────────────────────┐
+│ Prévia da Operação                  [X]          │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ O que será feito:                                  │
+│                                                    │
+│ ✓ Criar diretório: D:\Cache\minha_pasta           │
+│ ✓ Copiar arquivos de C:\Users\steff\minha_pasta   │
+│   para D:\Cache\minha_pasta (500 MB)              │
+│ ✓ Remover C:\Users\steff\minha_pasta              │
+│ ✓ Criar junção: C:\Users\steff\minha_pasta →      │
+│   D:\Cache\minha_pasta                            │
+│                                                    │
+│ Espaço necessário: 500 MB                          │
+│ Espaço disponível: 45.2 GB                        │
+│                                                    │
+│ ⚠️ Aviso: A pasta de origem contém 2 junções:    │
+│    • .cache → D:\Cache\.cache                      │
+│    • .cargo → D:\Cache\.cargo                      │
+│                                                    │
+│    Windows redirecionará corretamente, mas isso   │
+│    pode causar confusão. Considere usar as       │
+│    junções originais diretamente.                 │
+│                                                    │
+│ ⚠️ Certifique-se de fechar o VS Code antes de     │
+│    continuar.                                     │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│ [Cancelar]                 [Confirmar e Criar]    │
+└────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Diálogo: Desfazer Junção
@@ -258,6 +292,9 @@ Colunas:
 │ [✓] Pedir confirmação antes de operações          │
 │ [✓] Criar backup automático antes de desfazer      │
 │ [✓] Mostrar notificações de conclusão              │
+│ [✓] Avisar sobre junções aninhadas                 │
+│     (quando criar junção para pasta que já         │
+│      contém junções)                                │
 │                                                    │
 │ Logs                                               │
 │ ───────────────────────────────────────────────── │
@@ -282,7 +319,7 @@ Colunas:
 │                                                    │
 │ Informações Gerais                                 │
 │ ───────────────────────────────────────────────── │
-│ Tipo: Junção NTFS                                  │
+│ Tipo: Junção (Junction)                            │
 │ Status: ✓ Ativo                                    │
 │ Criador: App                                       │
 │ Data de criação: 01/11/2026 14:30                  │
@@ -311,6 +348,61 @@ Colunas:
 │ [Fechar]                     [Desfazer] [Editar]  │
 └────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Diálogo: Histórico de Operações
+
+### Layout
+
+```
+┌────────────────────────────────────────────────────┐
+│ Histórico de Operações                [X]          │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ Filtros:                                           │
+│ Tipo: [Todas ▼]  Data: [Todos ▼]  [Limpar]        │
+│                                                    │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ Data       │ Tipo      │ Detalhes   │ Ações    │ │ │
+│ ├────────────┼───────────┼────────────┼──────────┤ │ │
+│ │ 01/11/2026 │ Criar    │ .vscode →  │ [⚙️]    │ │ │
+│ │ 14:30      │ Junção   │ D:\Cache\  │          │ │ │
+│ │            │           │ .vscode    │          │ │ │
+│ ├────────────┼───────────┼────────────┼──────────┤ │ │
+│ │ 01/11/2026 │ Remover   │ .vscode    │ [⚙️]    │ │ │
+│ │ 15:45      │ Junção   │ (desfeito) │          │ │ │
+│ │            │           │            │          │ │ │
+│ ├────────────┼───────────┼────────────┼──────────┤ │ │
+│ │ 02/11/2026 │ Copiar    │ jfinancas  │ [⚙️]    │ │ │
+│ │ 10:20      │ Arquivos │ → Backup   │          │ │ │
+│ │            │           │            │          │ │ │
+│ └─────────────────────────────────────────────────┘ │
+│                                                    │
+│ Total: 45 operações  Últimos 30 dias               │
+│                                                    │
+├────────────────────────────────────────────────────┤
+│ [Fechar]           [Limpar Histórico]  [Exportar] │
+└────────────────────────────────────────────────────┘
+```
+
+### Componentes
+
+#### Filtros
+- **Tipo**: Todas, Criar, Remover, Recriar, Copiar, Mover, Excluir, Duplicar
+- **Data**: Todos, Hoje, Última semana, Último mês, Personalizado
+- **Limpar**: Remove todos os filtros
+
+#### Tabela de Operações
+Colunas:
+- **Data**: Data e hora da operação
+- **Tipo**: Badge colorido (Criar=verde, Remover=vermelho, Copiar=azul, etc.)
+- **Detalhes**: Descrição resumida da operação
+- **Ações**: Botão com menu (Desfazer, Ver detalhes, Copiar caminho)
+
+#### Ações da Barra
+- **Limpar Histórico**: Remove todas as operações (com confirmação)
+- **Exportar**: Exporta histórico para JSON/CSV
 
 ---
 
@@ -478,6 +570,32 @@ Usar ícones do **Segoe Fluent Icons** (padrão Windows 11):
 - Slide-in para diálogos
 - Progress bars animadas
 - Hover effects em botões
+
+---
+
+## Melhorias Implementadas na Fase 3
+
+### Atualizações no Protótipo (pós-implementação)
+
+1. **Aviso de Junções Aninhadas**
+   - Adicionado na seção de configurações: opção para avisar sobre junções aninhadas
+   - Adicionado novo estado no diálogo de prévia para mostrar warning quando origem contém junções
+   - Windows redireciona corretamente, mas o aviso ajuda a evitar confusão
+
+2. **Diálogo de Histórico de Operações**
+   - Novo diálogo para visualizar histórico completo de operações
+   - Filtros por tipo e data
+   - Opção de exportar histórico
+   - Integração com funcionalidade de undo
+
+3. **Correções de Terminologia**
+   - Removidas menções específicas a "NTFS" (junctions funcionam em outros sistemas de arquivos)
+   - Atualizado "Junção NTFS" para "Junção (Junction)"
+
+4. **Scan Inverso (Futuro)**
+   - Funcionalidade documentada em MELHORIAS.md
+   - Permitirá descobrir quais junções apontam para um determinado destino
+   - Não implementado na Fase 3, mas planejado para versões futuras
 
 ---
 

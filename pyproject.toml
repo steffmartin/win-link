@@ -1,7 +1,7 @@
 [project]
 name = "winlink"
 version = "0.1.0"
-description = "Gerenciador de junções NTFS para Windows 11"
+description = "Gerenciador de junções para Windows 11"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,6 +9,7 @@ dependencies = [
     "pywin32>=306",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.5.0",
+    "psutil>=7.2.2",
 ]
 
 [project.scripts]

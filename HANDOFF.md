@@ -1,15 +1,15 @@
-# Handoff - WinLink Fase 3
+# Handoff - WinLink Fase 4
 
 **Data**: 2026-11-02
-**Fase Concluída**: Fase 2 - Infraestrutura e Base do Projeto
-**Próxima Fase**: Fase 3 - Camada de Domínio (Lógica de Negócio)
+**Fase Concluída**: Fase 3 - Camada de Domínio (Lógica de Negócio)
+**Próxima Fase**: Fase 4 - Interface Gráfica (PyQt6)
 **Agente**: Devin
 
 ---
 
 ## Resumo do Projeto
 
-**WinLink** é um aplicativo Windows para gerenciamento de junções NTFS (NTFS Junctions) e links simbólicos. Permite criar, listar, gerenciar e desfazer links de diretórios e arquivos no sistema de arquivos NTFS com interface moderna compatível com Windows 11.
+**WinLink** é um aplicativo Windows para gerenciamento de junções (Junctions) e links simbólicos. Permite criar, listar, gerenciar e desfazer links de diretórios e arquivos com interface moderna compatível com Windows 11. Funciona em diferentes sistemas de arquivos suportados pelo Windows (não apenas NTFS).
 
 **Stack Tecnológico**: Python 3.12 + PyQt6
 
@@ -17,7 +17,7 @@
 
 ---
 
-## O Que Foi Feito (Fases 1-2)
+## O Que Foi Feito (Fases 1-3)
 
 ### Fase 1: Planejamento e Especificação ✅
 
@@ -88,68 +88,82 @@ winlink/
 - ✅ Linting com ruff sem erros
 - ✅ Formatação com black OK
 
+### Fase 3: Camada de Domínio ✅
+
+**Módulos implementados:**
+```
+src/winlink/core/
+├── models.py              # Modelos de dados (Junction, enums)
+├── scanner.py              # Scanner de junções
+├── operations.py          # Operações de junção
+├── file_ops.py            # Operações de arquivo
+├── process_manager.py     # Gerenciamento de processos
+├── history.py             # Histórico de operações
+└── validators.py          # Validações
+```
+
+**Testes:**
+- 137 testes passando, 2 skipped
+- Cobertura completa de todas as funções
+- Validação com dados reais: 32 junções detectadas
+
+**Melhorias implementadas:**
+- Scanner com fallback Python `os.readlink` quando Windows API falha
+- Criação de junções via `mklink` (mais confiável que Windows API direta)
+- Configuração `warn_nested_junctions` para avisar sobre junções aninhadas
+- Suporte para diferentes sistemas de arquivos (não apenas NTFS)
+
+**Validação:**
+- ✅ Todas as operações de junção funcionam via tests
+- ✅ Scanner detecta junções corretamente
+- ✅ Operações de arquivo são seguras e preservam metadados
+- ✅ Validações previnem operações perigosas
+- ✅ Histórico de operações funciona
+
 ---
 
-## Próxima Fase: Fase 3 - Camada de Domínio
+## Próxima Fase: Fase 4 - Interface Gráfica (PyQt6)
 
-**Objetivo**: Implementar a lógica de manipulação de junções NTFS, sem interface gráfica.
+**Objetivo**: Implementar a interface gráfica moderna compatível com Windows 11.
 
-### Etapas da Fase 3 (PLANO.md)
+### Etapas da Fase 4 (PLANO.md)
 
-- [ ] 3.1 Modelo de dados (dataclasses/pydantic)
-  - Classe Junction para representar junções
-  - Enum JunctionType (JUNCTION, SYMLINK, HARDLINK)
-  - Enum JunctionStatus (ACTIVE, BROKEN, INACCESSIBLE)
-  - Enum Creator (APP, EXISTING, MANUAL)
-  - Modelos de configuração com pydantic
+- [ ] 4.1 MainWindow e Layout Principal
+  - Barra de título com busca
+  - Barra de ferramentas (Home, Nova Junção, Configurações)
+  - Barra de filtros (Status, Criador)
+  - TreeView de junções com colunas
+  - Panel de detalhes
+  - Barra de status
 
-- [ ] 3.2 Scanner de junções
-  - Função para escanear diretórios recursivamente
-  - Detecção de reparse points via pywin32
-  - Identificação de tipo de link (junction vs symlink)
-  - Resolução de destino do link
-  - Classificação de criador (comparando com histórico)
-  - Escaneamento híbrido (rápido vs completo)
+- [ ] 4.2 Diálogos
+  - Diálogo de criação de junção
+  - Diálogo de prévia de operação
+  - Diálogo de desfazer junção
+  - Diálogo de progresso
+  - Diálogo de configurações
+  - Diálogo de propriedades
+  - Diálogo de histórico de operações
+  - Diálogo de sincronização
 
-- [ ] 3.3 Operações de junção (Windows API via pywin32)
-  - Criar junção NTFS (CreateSymbolicLink / DeviceIoControl)
-  - Criar link simbólico de diretório
-  - Criar link simbólico de arquivo
-  - Criar hard link de arquivo
-  - Remover junção/link
-  - Verificar integridade do link
+- [ ] 4.3 Integração com Camada de Domínio
+  - Scanner assíncrono (background worker)
+  - Validações antes de operações
+  - Histórico visível na UI
+  - Tratamento de erros e warnings
 
-- [ ] 3.4 Operações de arquivo
-  - Cópia com preservação de atributos (shutil.copy2 com metadados extendidos)
-  - Movimentação de arquivos
-  - Duplicação de arquivos
-  - Detecção de arquivos em uso (try/except + pywin32)
-  - Cálculo de tamanho e espaço necessário (os.walk + os.path.getsize)
+- [ ] 4.4 Design Windows 11
+  - Tema claro/escuro seguindo sistema
+  - Animações e transições
+  - Ícones modernos (Segoe Fluent Icons)
+  - Paleta de cores Fluent Design
 
-- [ ] 3.5 Gerenciamento de processos
-  - Lista de processos conhecidos que bloqueiam arquivos (psutil)
-  - Função para encerrar processos (psutil)
-  - Detecção de arquivos bloqueados
-
-- [ ] 3.6 Histórico de operações
-  - Sistema de log de operações em JSON
-  - Estrutura de registro de operação
-  - Persistência do histórico
-  - Função para desfazer operação (baseada no histórico)
-
-- [ ] 3.7 Validações
-  - Validação de caminhos (pathlib)
-  - Validação de permissões (os.access)
-  - Validação de espaço em disco (shutil.disk_usage)
-  - Validação de pré-condições (já é junção, destino existe, etc.)
-
-### Critérios de Conclusão da Fase 3
-- Todas as operações de junção funcionam via CLI/tests
-- Scanner detecta junções corretamente
-- Operações de arquivo são seguras e preservam metadados
-- Validações previnem operações perigosas
-- Histórico de operações funciona
-- Testes unitários cobrem todas as funções (pytest)
+### Critérios de Conclusão da Fase 4
+- Interface funcional com todas as ações do domínio
+- Scanner executando em background sem bloquear UI
+- Diálogos implementados conforme PROTOTIPO.md
+- Temas claro/escuro funcionando
+- Testes de UI passando (pytest-qt)
 
 ---
 
@@ -255,7 +269,7 @@ Essas devem aparecer como criadas "por fora do app" (status: EXISTENT).
 O script `D:\Cache\migrar_pastas.ps1` é a referência para o comportamento das junções:
 
 - Usa robocopy para copiar arquivos com preservação de atributos
-- Cria junção NTFS com `New-Item -ItemType Junction`
+- Cria junção com `New-Item -ItemType Junction`
 - Verifica se já é junção antes de criar
 - Para processos que bloqueiam arquivos (VS Code, Docker Desktop, etc.)
 
@@ -263,34 +277,33 @@ O script `D:\Cache\migrar_pastas.ps1` é a referência para o comportamento das 
 
 ## Notas para Fase 3
 
-### Dependências adicionais que podem ser necessárias
-- `psutil` - para gerenciamento de processos (já pode ser útil para 3.5)
-- Verificar se pywin32 tem tudo necessário para Windows API de junções
+### Dependências instaladas na Fase 3
+- `psutil` 7.2.2 - para gerenciamento de processos
 
-### Windows API para junções
-Pesquisar:
-- `CreateSymbolicLink` (CreateSymbolicLinkW)
-- `DeviceIoControl` com `FSCTL_SET_REPARSE_POINT`
-- `FSCTL_GET_REPARSE_POINT` para detectar junções
-- `FILE_FLAG_REPARSE_POINT` em atributos
+### Windows API para junções (implementado)
+- `CreateSymbolicLink` - usado via `mklink` (subprocess)
+- `DeviceIoControl` com `FSCTL_GET_REPARSE_POINT` - para detecção
+- `FSCTL_GET_REPARSE_POINT` - para detectar junções
+- `FILE_FLAG_REPARSE_POINT` - em atributos
+- Fallback: Python `os.readlink` quando Windows API falha
 
-### Testes unitários
-- Criar testes para cada função do domínio
-- Usar pytest
-- Para testes que tocam o sistema de arquivos, usar diretórios temporários
-- NÃO testar com junções reais do usuário
+### Testes unitários (Fase 3)
+- 137 testes passando, 2 skipped
+- Para testes que tocam o sistema de arquivos, usa diretórios temporários
+- NÃO testou com junções reais do usuário (regra de segurança)
 
-### Estrutura sugerida para Fase 3
+### Estrutura da Fase 3 (implementada)
 ```
 src/winlink/core/
 ├── __init__.py
 ├── config.py              # Já existe
-├── models.py              # NOVO: modelos de dados (Junction, enums)
-├── scanner.py              # NOVO: scanner de junções
-├── operations.py          # NOVO: operações de junção
-├── file_ops.py            # NOVO: operações de arquivo
-├── process_manager.py     # NOVO: gerenciamento de processos
-└── history.py             # NOVO: histórico de operações
+├── models.py              # ✓ Modelos de dados (Junction, enums)
+├── scanner.py              # ✓ Scanner de junções
+├── operations.py          # ✓ Operações de junção
+├── file_ops.py            # ✓ Operações de arquivo
+├── process_manager.py     # ✓ Gerenciamento de processos
+├── history.py             # ✓ Histórico de operações
+└── validators.py          # ✓ Validações
 ```
 
 ---
@@ -298,18 +311,19 @@ src/winlink/core/
 ## Status do Git
 
 Branch: `main`
-Último commit: `416767e` - Remover uv.lock do controle de versão
-Status: Limpo (nada pendente)
+Último commit: Pendente (fazer commit das mudanças da Fase 3)
+Status: Mudanças pendentes (arquivos da Fase 3)
 
 ---
 
 ## Próximos Passos
 
-1. Começar pela etapa 3.1 (Modelo de dados)
-2. Criar `src/winlink/core/models.py` com classes e enums
-3. Escrever testes para os modelos
-4. Prosseguir para 3.2 (Scanner)
-5. Continuar sequencialmente até 3.7
+1. Commitar mudanças da Fase 3
+2. Começar pela etapa 4.1 (MainWindow)
+3. Implementar layout principal conforme PROTOTIPO.md
+4. Criar diálogos principais
+5. Integrar com camada de domínio
+6. Implementar design Windows 11
 
 ---
 
