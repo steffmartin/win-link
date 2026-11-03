@@ -184,9 +184,9 @@ C:\Users\<usuario>\AppData\Roaming\WinLink\
 - ✅ Executável do aplicativo (`C:\Program Files\WinLink\`)
 - ✅ Atalhos (Desktop, Menu Iniciar)
 - ✅ Entrada no "Adicionar/Remover Programas"
-- ❓ **Configurações** (`%APPDATA%\WinLink\config.json`) - perguntar ao usuário
-- ❓ **Logs** (`%APPDATA%\WinLink\winlink.log`) - perguntar ao usuário
-- ❓ **Histórico** (`%APPDATA%\WinLink\history.json`) - perguntar ao usuário
+- ✅ **Configurações** (`%APPDATA%\WinLink\config.json`) - sempre remove
+- ✅ **Logs** (`%APPDATA%\WinLink\winlink.log`) - sempre remove
+- ❓ **Histórico** (`%APPDATA%\WinLink\history.json`) - perguntar ao usuário (manter ou apagar)
 
 **O que NÃO REMOVE:**
 - ❌ **Junções NTFS** - elas pertencem ao sistema de arquivos, não ao app
@@ -215,11 +215,15 @@ C:\Users\<usuario>\AppData\Roaming\WinLink\
 │                                                    │
 │ O desinstalador removerá os arquivos do programa. │
 │                                                    │
-│ Deseja remover também os dados do usuário?         │
+│ Os seguintes dados do usuário serão removidos:     │
 │                                                    │
-│ [✓] Remover configurações                          │
-│ [✓] Remover histórico de operações                │
-│ [✓] Remover logs                                   │
+│ [✓] Configurações (config.json)                   │
+│ [✓] Logs (winlink.log)                             │
+│                                                    │
+│ Deseja manter o histórico de operações?           │
+│                                                    │
+│ ○ Manter histórico (history.json)                  │
+│ ● Apagar histórico (history.json)                  │
 │                                                    │
 │ [ ] As junções NTFS NÃO serão removidas.           │
 │    Elas pertencem ao sistema de arquivos e        │
@@ -282,7 +286,9 @@ C:\Users\<usuario>\AppData\Roaming\WinLink\
 | Dados | JSON em %APPDATA% | Simples, portátil, padrão moderno |
 | Banco de dados | Não (JSON suficiente) | MVP não precisa de complexidade |
 | Registro | Não usar | Antigo, difícil de backup |
-| Desinstalador | Sim (Inno Setup) | Profissional, perguntar sobre dados |
+| Desinstalador | Sim (Inno Setup) | Profissional |
+| Remover configs/logs | Sim (sempre) | Limpeza completa |
+| Remover histórico | Perguntar usuário | Usuário decide manter/apagar |
 | Remover junções | NÃO | Pertencem ao usuário, não ao app |
 | Assinatura de código | Não (Fase 1) | Custo, não obrigatório |
 | Atualização automática | Não (Fase 1) | MVP, usuário reinstala |
@@ -311,3 +317,6 @@ A: Sim. Não há dependências de internet para funcionamento.
 
 **Q: O app requer permissões de administrador?**
 A: Para operações de leitura, não. Para criar/remover junções, sim (solicita elevação).
+
+**Q: O histórico de operações é removido ao desinstalar?**
+A: O desinstalador pergunta ao usuário. Pode escolher manter ou apagar o histórico. Configurações e logs são sempre removidos.

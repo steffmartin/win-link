@@ -254,8 +254,9 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
   - Criar instalador com Inno Setup
     - Adicionar atalhos (Desktop, Menu Iniciar)
     - Configurar desinstalador
+    - Desinstalador remove configs e logs (sempre)
+    - Desinstalador pergunta sobre histórico (manter ou apagar)
     - Desinstalador NÃO remove junções NTFS (elas pertencem ao usuário)
-    - Desinstalador pergunta se deve remover configurações/logs
   - Validar tamanho final do instalador (~100-200 MB)
 
 ### Critérios de Conclusão
