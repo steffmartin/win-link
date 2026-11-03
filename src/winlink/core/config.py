@@ -2,7 +2,6 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,7 +29,7 @@ class AppSettings(BaseSettings):
     theme_mode: str = "auto"  # auto, light, dark
 
     # Scan directories
-    scan_directories: List[str] = Field(
+    scan_directories: list[str] = Field(
         default_factory=lambda: [
             str(Path.home()),
             "D:\\Cache",

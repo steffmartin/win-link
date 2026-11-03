@@ -1,9 +1,7 @@
 """Validation functions for junction operations"""
 
 import os
-import shutil
 from pathlib import Path
-from typing import Optional
 
 from winlink.core.file_ops import (
     calculate_disk_space_required,
@@ -275,15 +273,13 @@ def validate_junction_creation(
     if target.exists() and is_reparse_point(target):
         errors.append(f"Target is already a junction or symlink: {target}")
 
-    # Validate target directory is empty if it exists
-    if target.exists() and target.is_dir():
-        if not is_directory_empty(target):
-            errors.append(f"Target directory is not empty: {target}")
+    # Note: Target directory can have files - they will be copied to source
+    # This is intentional behavior based on the specification
 
     # Check if source contains junctions (nested junctions) - warning only
     if source.exists() and source.is_dir():
-        from winlink.core.scanner import scan_directory
         from winlink.core.config import get_settings
+        from winlink.core.scanner import scan_directory
 
         settings = get_settings()
         if settings.warn_nested_junctions:

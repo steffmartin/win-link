@@ -3,7 +3,6 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from winlink.core.config import get_settings
 from winlink.core.models import OperationRecord, OperationType
@@ -15,7 +14,7 @@ logger = get_logger(__name__)
 class HistoryManager:
     """Manager for operation history"""
 
-    def __init__(self, history_file: Optional[Path] = None):
+    def __init__(self, history_file: Path | None = None):
         """
         Initialize history manager.
 
@@ -78,11 +77,11 @@ class HistoryManager:
     def add_operation(
         self,
         operation_type: OperationType,
-        source: Optional[Path] = None,
-        target: Optional[Path] = None,
+        source: Path | None = None,
+        target: Path | None = None,
         success: bool = True,
-        error_message: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        error_message: str | None = None,
+        metadata: dict | None = None,
     ) -> bool:
         """
         Add an operation to history.
@@ -125,7 +124,7 @@ class HistoryManager:
             logger.error(f"Error adding operation to history: {e}")
             return False
 
-    def get_history(self, limit: Optional[int] = None) -> list[OperationRecord]:
+    def get_history(self, limit: int | None = None) -> list[OperationRecord]:
         """
         Get operation history.
 
@@ -188,8 +187,8 @@ class HistoryManager:
         ]
 
     def get_last_operation(
-        self, operation_type: Optional[OperationType] = None
-    ) -> Optional[OperationRecord]:
+        self, operation_type: OperationType | None = None
+    ) -> OperationRecord | None:
         """
         Get the last operation.
 
@@ -229,7 +228,7 @@ class HistoryManager:
         history = self._load_history()
         return len(history)
 
-    def undo_last_operation(self) -> Optional[OperationRecord]:
+    def undo_last_operation(self) -> OperationRecord | None:
         """
         Get the last operation for undo.
 

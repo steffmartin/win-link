@@ -1,7 +1,6 @@
 """Process management for handling files in use"""
 
 from pathlib import Path
-from typing import Optional
 
 import psutil
 
@@ -199,7 +198,7 @@ def is_process_running(pid: int) -> bool:
         return False
 
 
-def get_process_info(pid: int) -> Optional[dict]:
+def get_process_info(pid: int) -> dict | None:
     """
     Get information about a process.
 

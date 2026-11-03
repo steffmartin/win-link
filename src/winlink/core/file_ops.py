@@ -3,7 +3,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from winlink.utils.logger import get_logger
 

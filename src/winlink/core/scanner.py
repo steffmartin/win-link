@@ -3,7 +3,6 @@
 import os
 import time
 from pathlib import Path
-from typing import Optional
 
 import win32api
 import win32con
@@ -35,7 +34,7 @@ def is_reparse_point(path: Path) -> bool:
         return False
 
 
-def get_reparse_target(path: Path) -> Optional[Path]:
+def get_reparse_target(path: Path) -> Path | None:
     """
     Get the target of a reparse point.
 
@@ -118,7 +117,7 @@ def get_reparse_target(path: Path) -> Optional[Path]:
     return None
 
 
-def get_junction_type(path: Path) -> Optional[JunctionType]:
+def get_junction_type(path: Path) -> JunctionType | None:
     """
     Determine the type of junction/link.
 
@@ -258,7 +257,7 @@ def classify_creator(junction: Junction, known_junctions: set[Path]) -> Creator:
 def scan_directory(
     path: Path,
     recursive: bool = True,
-    known_junctions: Optional[set[Path]] = None,
+    known_junctions: set[Path] | None = None,
 ) -> list[Junction]:
     """
     Scan a directory for junctions and symlinks.
@@ -346,7 +345,7 @@ def scan_directory(
 def scan_directories(
     directories: list[Path],
     recursive: bool = True,
-    known_junctions: Optional[set[Path]] = None,
+    known_junctions: set[Path] | None = None,
 ) -> ScanResult:
     """
     Scan multiple directories for junctions.

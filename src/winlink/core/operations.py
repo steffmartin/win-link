@@ -1,13 +1,10 @@
 """Operations for creating and managing junctions and links"""
 
 from pathlib import Path
-from typing import Optional
 
 import win32api
 import win32con
 import win32file
-import winioctlcon
-import winnt
 
 from winlink.core.models import Junction, JunctionStatus, JunctionType
 from winlink.utils.logger import get_logger

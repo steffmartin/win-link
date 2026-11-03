@@ -140,72 +140,81 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 
 ---
 
-## Fase 4: Interface Gráfica (PyQt6)
+## Fase 4: Interface Gráfica (PyQt6) ✅
 
 **Objetivo**: Implementar a interface gráfica moderna compatível com Windows 11 usando PyQt6.
 
-### Etapas
-- [ ] 4.1 Janela principal (QMainWindow)
+**Status**: CONCLUÍDA (2026-11-02)
+
+### Etapas Concluídas
+- [x] 4.1 Janela principal (QMainWindow)
   - Layout básico da aplicação (QVBoxLayout, QHBoxLayout)
   - Barra de menu (QMenuBar)
   - Barra de status (QStatusBar)
   - Suporte a redimensionamento
-  - Ícone da aplicação
+  - Toolbar com ações principais
 
-- [ ] 4.2 Tema Windows 11
+- [x] 4.2 Tema Windows 11
   - Detecção de tema do sistema (claro/escuro) via Windows Registry
-  - Aplicação de QPalette (QStyleFactory)
-  - Paleta de cores customizada (Fusion style + custom palette)
-  - Estilo CSS (QSS) para widgets
+  - Aplicação de QPalette
+  - Paleta de cores customizada (claro/escuro)
+  - Estilo CSS (QSS) completo para widgets
   - Fonte Segoe UI
 
-- [ ] 4.3 Lista de junções (QTableView)
+- [x] 4.3 Lista de junções (QTableView)
   - QAbstractTableModel para dados
-  - Colunas: Origem, Destino, Criador, Tipo, Tamanho, Status, Ações
+  - Colunas: Origem, Destino, Criador, Tipo, Tamanho, Status
   - Ordenação (QSortFilterProxyModel)
-  - Filtros
+  - Filtros (status, criador, tipo)
   - Busca (QLineEdit com filtragem)
-  - Lazy loading para grandes listas
   - Context menu (botão direito)
 
-- [ ] 4.4 Detalhes da junção
-  - Painel de detalhes (QDockWidget ou QGroupBox)
-  - Visualização de propriedades
-  - Botões de ação (Desfazer, etc.)
+- [x] 4.4 Detalhes da junção
+  - Diálogo de propriedades (QDialog)
+  - Visualização de propriedades completas
+  - Botões para abrir pastas
 
-- [ ] 4.5 Diálogo de criação (QDialog)
+- [x] 4.5 Diálogo de criação (QDialog)
   - QLineEdit para caminhos com botões de browse (QFileDialog)
-  - Preview de operação (QTextEdit read-only)
+  - Preview de operação (dialog separado)
   - Confirmação (QMessageBox)
   - Validação em tempo real
 
-- [ ] 4.6 Diálogo de desfazer (QDialog)
+- [x] 4.6 Diálogo de desfazer (QDialog)
   - QRadioButton para estratégias (remover, mover, duplicar)
   - Preview de operação
   - Confirmação
 
-- [ ] 4.7 Diálogo de progresso (QProgressDialog)
+- [x] 4.7 Diálogo de progresso (QProgressDialog)
   - Barra de progresso (QProgressBar)
   - Mensagens de status (QLabel)
   - Botão de cancelar
-  - Indicação de tempo estimado
+  - Estados: em progresso, concluído, erro
 
-- [ ] 4.8 Notificações
-  - QMessageBox para diálogos
-  - QSystemTrayIcon para notifications (opcional)
-  - Toast notifications customizados (QFrame temporário)
-
-- [ ] 4.9 Configurações (QDialog)
-  - Formulário de configurações
+- [x] 4.8 Diálogo de configurações (QDialog)
+  - Formulário de configurações completo
   - Lista de diretórios para escanear (QListWidget)
   - Salvar/carregar configuração
 
-### Critérios de Conclusão
+- [x] 4.9 Diálogo de histórico (QDialog)
+  - Tabela de operações
+  - Filtros por tipo e data
+  - Exportação para JSON
+  - Limpar histórico
+
+- [x] 4.10 Integração com Camada de Domínio
+  - Scanner assíncrono (QThread)
+  - Validações antes de operações
+  - Histórico visível na UI
+  - Tratamento de erros e warnings
+
+### Critérios de Conclusão ✅
 - Interface estável e responsiva
 - Tema claro/escuro funciona corretamente
 - Todas as ações da UI têm implementação
-- Interface segue guidelines do Windows 11 (estilo Fusion + custom)
-- Acessibilidade básica implementada (atalhos de teclado)
+- Interface segue guidelines do Windows 11
+- Scanner assíncrono funciona sem bloquear UI
+- 20 testes de UI passando (pytest-qt)
 
 ---
 
@@ -231,6 +240,9 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
   - Salvar configurações (pydantic + JSON) em %APPDATA%\WinLink\config.json
   - Salvar histórico de operações (JSON) em %APPDATA%\WinLink\history.json
   - Salvar logs em %APPDATA%\WinLink\winlink.log
+  - Salvar cache de junções descobertas (JSON) em %APPDATA%\WinLink\cache.json
+  - Carregar cache ao iniciar para carregamento instantâneo
+  - Scan em background para atualizar cache
   - Salvar preferências de usuário
   - Carregar estado anterior ao iniciar
   - Não usar banco de dados (SQLite) - JSON é suficiente para MVP

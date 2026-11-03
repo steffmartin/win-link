@@ -3,7 +3,6 @@
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
@@ -49,8 +48,8 @@ class Junction(BaseModel):
     junction_type: JunctionType = Field(description="Type of junction")
     status: JunctionStatus = Field(default=JunctionStatus.ACTIVE, description="Current status")
     creator: Creator = Field(default=Creator.EXISTING, description="Who created it")
-    created_at: Optional[datetime] = Field(default=None, description="When it was created")
-    size_bytes: Optional[int] = Field(default=None, description="Total size in bytes")
+    created_at: datetime | None = Field(default=None, description="When it was created")
+    size_bytes: int | None = Field(default=None, description="Total size in bytes")
     is_directory: bool = Field(default=True, description="Whether it's a directory")
 
     @field_serializer("source", "target")
@@ -58,7 +57,7 @@ class Junction(BaseModel):
         return str(value)
 
     @field_serializer("created_at")
-    def serialize_datetime(self, value: Optional[datetime]) -> Optional[str]:
+    def serialize_datetime(self, value: datetime | None) -> str | None:
         return value.isoformat() if value else None
 
 
@@ -78,15 +77,15 @@ class OperationRecord(BaseModel):
     """Record of an operation in the history"""
 
     operation_type: OperationType = Field(description="Type of operation")
-    source: Optional[Path] = Field(default=None, description="Source path involved")
-    target: Optional[Path] = Field(default=None, description="Target path involved")
+    source: Path | None = Field(default=None, description="Source path involved")
+    target: Path | None = Field(default=None, description="Target path involved")
     timestamp: datetime = Field(default_factory=datetime.now, description="When operation occurred")
     success: bool = Field(default=True, description="Whether operation succeeded")
-    error_message: Optional[str] = Field(default=None, description="Error message if failed")
+    error_message: str | None = Field(default=None, description="Error message if failed")
     metadata: dict = Field(default_factory=dict, description="Additional operation metadata")
 
     @field_serializer("source", "target")
-    def serialize_path(self, value: Optional[Path]) -> Optional[str]:
+    def serialize_path(self, value: Path | None) -> str | None:
         return str(value) if value else None
 
     @field_serializer("timestamp")

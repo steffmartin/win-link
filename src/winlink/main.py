@@ -3,11 +3,10 @@
 import sys
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
 
-from winlink.ui.main_window import MainWindow
-from winlink.utils.logger import setup_logger, get_logger
 from winlink.core.config import get_settings
+from winlink.ui.main_window import MainWindow
+from winlink.utils.logger import setup_logger
 
 
 def main():
