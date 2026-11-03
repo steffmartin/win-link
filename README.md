@@ -23,7 +23,21 @@ Muitos usuários Windows utilizam junções NTFS para mover pastas do perfil de 
 
 🚧 **Em Desenvolvimento**
 
-Atualmente na fase de planejamento e especificação. Veja o plano de desenvolvimento em [PLANO.md](PLANO.md).
+**Fase Atual**: Fase 3 - Camada de Domínio (lógica de negócio)
+
+**Concluído**:
+- ✅ Fase 1: Planejamento e especificação
+- ✅ Fase 2: Infraestrutura e base do projeto
+
+**Em Andamento**:
+- 🔄 Fase 3: Camada de domínio (será executada por outro agente)
+
+**Pendente**:
+- ⏳ Fase 4: Interface gráfica
+- ⏳ Fase 5: Integração e refinamento
+- ⏳ Fase 6: Documentação final
+
+Veja o plano de desenvolvimento em [PLANO.md](PLANO.md) e o handoff para a próxima fase em [HANDOFF.md](HANDOFF.md).
 
 ## Documentação
 

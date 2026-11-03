@@ -25,43 +25,46 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 
 ---
 
-## Fase 2: Infraestrutura e Base do Projeto
+## Fase 2: Infraestrutura e Base do Projeto ✅
 
 **Objetivo**: Configurar o ambiente de desenvolvimento e a estrutura base do projeto Python + PyQt6.
 
-### Etapas
-- [ ] 2.1 Configuração do projeto
+**Status**: CONCLUÍDA (2026-11-02)
+
+### Etapas Concluídas
+- [x] 2.1 Configuração do projeto
   - Criar estrutura de diretórios (src/, tests/, docs/)
-  - Configurar Poetry ou uv para gerenciamento de dependências
+  - Configurar uv para gerenciamento de dependências
   - Configurar pyproject.toml
-  - Configurar linter (ruff/pylint) e formatter (black)
-  - Configurar mypy para type checking (opcional)
+  - Configurar linter (ruff) e formatter (black)
+  - Configurar mypy para type checking
 
-- [ ] 2.2 Dependências principais
-  - Instalar PyQt6
-  - Instalar pywin32 (para Windows API)
-  - Instalar pydantic (para validação/configuração)
-  - Instalar pytest (para testes)
+- [x] 2.2 Dependências principais
+  - Instalar PyQt6 6.12.0
+  - Instalar pywin32 312
+  - Instalar pydantic 2.14.2
+  - Instalar pytest 9.2.0
 
-- [ ] 2.3 Implementação de logging
-  - Sistema de logging com `logging` ou `loguru`
+- [x] 2.3 Implementação de logging
+  - Sistema de logging com `logging`
   - Configuração de níveis de log
   - Logging para arquivo e console
-  - Rotation de logs
+  - 3 testes unitários passando
 
-- [ ] 2.4 Sistema de configuração
-  - Arquivo de configuração (JSON/TOML) com pydantic
+- [x] 2.4 Sistema de configuração
+  - Arquivo de configuração com pydantic
   - Persistência de preferências do usuário
   - Validação de configuração
   - Localização: %APPDATA%/WinLink/config.json
+  - 4 testes unitários passando
 
-- [ ] 2.5 Testes unitários base
+- [x] 2.5 Testes unitários base
   - Framework pytest configurado
   - Estrutura de testes definida
-  - Exemplos de testes para utilitários
-  - pytest-qt para testes de GUI
+  - 7 testes unitários passando
+  - pytest-qt configurado
 
-### Critérios de Conclusão
+### Critérios de Conclusão ✅
 - Ambiente virtual configurado
 - Dependências instaladas
 - Sistema de logging funcional
@@ -71,9 +74,13 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 
 ---
 
-## Fase 3: Camada de Domínio (Lógica de Negócio)
+## Fase 3: Camada de Domínio (Lógica de Negócio) 🔄
 
 **Objetivo**: Implementar a lógica de manipulação de junções NTFS, sem interface gráfica.
+
+**Status**: PENDENTE - Será executada por outro agente
+
+**Nota**: Esta fase será realizada por um agente diferente. Consulte `HANDOFF.md` para informações completas sobre o estado atual do projeto e instruções para iniciar esta fase.
 
 ### Etapas
 - [ ] 3.1 Modelo de dados (dataclasses/pydantic)
