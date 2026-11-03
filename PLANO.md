@@ -27,35 +27,47 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 
 ## Fase 2: Infraestrutura e Base do Projeto
 
-**Objetivo**: Configurar o ambiente de desenvolvimento e a estrutura base do projeto.
+**Objetivo**: Configurar o ambiente de desenvolvimento e a estrutura base do projeto Python + PyQt6.
 
 ### Etapas
 - [ ] 2.1 Configuração do projeto
-  - Criar estrutura de diretórios
-  - Configurar build system
-  - Configurar linter e formatters
-  - Configurar gitignore
+  - Criar estrutura de diretórios (src/, tests/, docs/)
+  - Configurar Poetry ou uv para gerenciamento de dependências
+  - Configurar pyproject.toml
+  - Configurar linter (ruff/pylint) e formatter (black)
+  - Configurar mypy para type checking (opcional)
 
-- [ ] 2.2 Implementação de logging
-  - Sistema de logging estruturado
+- [ ] 2.2 Dependências principais
+  - Instalar PyQt6
+  - Instalar pywin32 (para Windows API)
+  - Instalar pydantic (para validação/configuração)
+  - Instalar pytest (para testes)
+
+- [ ] 2.3 Implementação de logging
+  - Sistema de logging com `logging` ou `loguru`
   - Configuração de níveis de log
   - Logging para arquivo e console
+  - Rotation de logs
 
-- [ ] 2.3 Sistema de configuração
-  - Arquivo de configuração (JSON/TOML)
+- [ ] 2.4 Sistema de configuração
+  - Arquivo de configuração (JSON/TOML) com pydantic
   - Persistência de preferências do usuário
   - Validação de configuração
+  - Localização: %APPDATA%/WinLink/config.json
 
-- [ ] 2.4 Testes unitários base
-  - Framework de testes configurado
+- [ ] 2.5 Testes unitários base
+  - Framework pytest configurado
   - Estrutura de testes definida
   - Exemplos de testes para utilitários
+  - pytest-qt para testes de GUI
 
 ### Critérios de Conclusão
-- Projeto compila e roda sem erros
+- Ambiente virtual configurado
+- Dependências instaladas
 - Sistema de logging funcional
 - Configuração pode ser lida e escrita
 - Testes podem ser executados
+- Janela PyQt6 básica abre sem erros
 
 ---
 
@@ -64,162 +76,188 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
 **Objetivo**: Implementar a lógica de manipulação de junções NTFS, sem interface gráfica.
 
 ### Etapas
-- [ ] 3.1 Modelo de dados
-  - Estruturas para representar junções
-  - Enum de tipos (Junction, Symlink, HardLink)
-  - Enum de status (Ativo, Quebrado, Inacessível)
-  - Enum de criador (App, Existente, SO, Usuário)
+- [ ] 3.1 Modelo de dados (dataclasses/pydantic)
+  - Classe Junction para representar junções
+  - Enum JunctionType (JUNCTION, SYMLINK, HARDLINK)
+  - Enum JunctionStatus (ACTIVE, BROKEN, INACCESSIBLE)
+  - Enum Creator (APP, EXISTING, MANUAL)
+  - Modelos de configuração com pydantic
 
 - [ ] 3.2 Scanner de junções
-  - Função para escanear diretórios
-  - Detecção de reparse points
-  - Identificação de tipo de link
-  - Resolução de destino
-  - Classificação de criador
+  - Função para escanear diretórios recursivamente
+  - Detecção de reparse points via pywin32
+  - Identificação de tipo de link (junction vs symlink)
+  - Resolução de destino do link
+  - Classificação de criador (comparando com histórico)
+  - Escaneamento híbrido (rápido vs completo)
 
-- [ ] 3.3 Operações de junção
-  - Criar junção (NTFS Junction)
-  - Criar link simbólico (se suportado)
-  - Criar hard link (para arquivos)
-  - Remover junção
-  - Verificar integridade
+- [ ] 3.3 Operações de junção (Windows API via pywin32)
+  - Criar junção NTFS (CreateSymbolicLink / DeviceIoControl)
+  - Criar link simbólico de diretório
+  - Criar link simbólico de arquivo
+  - Criar hard link de arquivo
+  - Remover junção/link
+  - Verificar integridade do link
 
 - [ ] 3.4 Operações de arquivo
-  - Cópia com preservação de atributos (equivalente robocopy)
+  - Cópia com preservação de atributos (shutil.copy2 com metadados extendidos)
   - Movimentação de arquivos
   - Duplicação de arquivos
-  - Detecção de arquivos em uso
-  - Cálculo de tamanho e espaço necessário
+  - Detecção de arquivos em uso (try/except + pywin32)
+  - Cálculo de tamanho e espaço necessário (os.walk + os.path.getsize)
 
 - [ ] 3.5 Gerenciamento de processos
-  - Lista de processos conhecidos que bloqueiam arquivos
-  - Função para encerrar processos
+  - Lista de processos conhecidos que bloqueiam arquivos (psutil)
+  - Função para encerrar processos (psutil)
   - Detecção de arquivos bloqueados
 
-- [ ] 3.6 Validações
-  - Validação de caminhos
-  - Validação de permissões
-  - Validação de espaço em disco
-  - Validação de pré-condições
+- [ ] 3.6 Histórico de operações
+  - Sistema de log de operações em JSON
+  - Estrutura de registro de operação
+  - Persistência do histórico
+  - Função para desfazer operação (baseada no histórico)
+
+- [ ] 3.7 Validações
+  - Validação de caminhos (pathlib)
+  - Validação de permissões (os.access)
+  - Validação de espaço em disco (shutil.disk_usage)
+  - Validação de pré-condições (já é junção, destino existe, etc.)
 
 ### Critérios de Conclusão
 - Todas as operações de junção funcionam via CLI/tests
 - Scanner detecta junções corretamente
 - Operações de arquivo são seguras e preservam metadados
 - Validações previnem operações perigosas
-- Testes unitários cobrem todas as funções
+- Histórico de operações funciona
+- Testes unitários cobrem todas as funções (pytest)
 
 ---
 
-## Fase 4: Interface Gráfica
+## Fase 4: Interface Gráfica (PyQt6)
 
-**Objetivo**: Implementar a interface gráfica moderna compatível com Windows 11.
+**Objetivo**: Implementar a interface gráfica moderna compatível com Windows 11 usando PyQt6.
 
 ### Etapas
-- [ ] 4.1 Janela principal
-  - Layout básico da aplicação
-  - Barra de menu
-  - Barra de status
+- [ ] 4.1 Janela principal (QMainWindow)
+  - Layout básico da aplicação (QVBoxLayout, QHBoxLayout)
+  - Barra de menu (QMenuBar)
+  - Barra de status (QStatusBar)
   - Suporte a redimensionamento
+  - Ícone da aplicação
 
 - [ ] 4.2 Tema Windows 11
-  - Detecção de tema do sistema (claro/escuro)
-  - Aplicação de tema automático
-  - Paleta de cores Fluent Design
-  - Efeitos Mica/Acrylic (se aplicável)
+  - Detecção de tema do sistema (claro/escuro) via Windows Registry
+  - Aplicação de QPalette (QStyleFactory)
+  - Paleta de cores customizada (Fusion style + custom palette)
+  - Estilo CSS (QSS) para widgets
+  - Fonte Segoe UI
 
-- [ ] 4.3 Lista de junções
-  - TableView/DataGrid com colunas
-  - Ordenação
+- [ ] 4.3 Lista de junções (QTableView)
+  - QAbstractTableModel para dados
+  - Colunas: Origem, Destino, Criador, Tipo, Tamanho, Status, Ações
+  - Ordenação (QSortFilterProxyModel)
   - Filtros
-  - Busca
+  - Busca (QLineEdit com filtragem)
   - Lazy loading para grandes listas
+  - Context menu (botão direito)
 
 - [ ] 4.4 Detalhes da junção
-  - Painel de detalhes
+  - Painel de detalhes (QDockWidget ou QGroupBox)
   - Visualização de propriedades
-  - Botões de ação (Desfazer, Sincronizar, etc.)
+  - Botões de ação (Desfazer, etc.)
 
-- [ ] 4.5 Diálogo de criação
-  - Seleção de caminho de destino
-  - Seleção de caminho de origem
+- [ ] 4.5 Diálogo de criação (QDialog)
+  - QLineEdit para caminhos com botões de browse (QFileDialog)
+  - Preview de operação (QTextEdit read-only)
+  - Confirmação (QMessageBox)
+  - Validação em tempo real
+
+- [ ] 4.6 Diálogo de desfazer (QDialog)
+  - QRadioButton para estratégias (remover, mover, duplicar)
   - Preview de operação
   - Confirmação
 
-- [ ] 4.6 Diálogo de desfazer
-  - Seleção de estratégia (remover, mover, duplicar)
-  - Preview de operação
-  - Confirmação
-
-- [ ] 4.7 Diálogo de progresso
-  - Barra de progresso
-  - Mensagens de status
+- [ ] 4.7 Diálogo de progresso (QProgressDialog)
+  - Barra de progresso (QProgressBar)
+  - Mensagens de status (QLabel)
   - Botão de cancelar
   - Indicação de tempo estimado
 
 - [ ] 4.8 Notificações
-  - Toast notifications
-  - Diálogos de erro
-  - Diálogos de sucesso
-  - Diálogos de confirmação
+  - QMessageBox para diálogos
+  - QSystemTrayIcon para notifications (opcional)
+  - Toast notifications customizados (QFrame temporário)
+
+- [ ] 4.9 Configurações (QDialog)
+  - Formulário de configurações
+  - Lista de diretórios para escanear (QListWidget)
+  - Salvar/carregar configuração
 
 ### Critérios de Conclusão
 - Interface estável e responsiva
 - Tema claro/escuro funciona corretamente
 - Todas as ações da UI têm implementação
-- Interface segue guidelines do Windows 11
-- Acessibilidade básica implementada
+- Interface segue guidelines do Windows 11 (estilo Fusion + custom)
+- Acessibilidade básica implementada (atalhos de teclado)
 
 ---
 
 ## Fase 5: Integração e Refinamento
 
-**Objetivo**: Integrar camada de domínio com interface, polir funcionalidades e preparar para lançamento.
+**Objetivo**: Integrar camada de domínio com interface PyQt6, polir funcionalidades e preparar para lançamento.
 
 ### Etapas
 - [ ] 5.1 Integração UI ↔ Domínio
-  - Conectar botões a operações
-  - Atualizar lista após operações
-  - Gerenciar operações assíncronas
-  - Tratamento de erros na UI
+  - Conectar botões a operações do domínio
+  - Atualizar lista após operações (signals/slots)
+  - Gerenciar operações assíncronas (QThread)
+  - Tratamento de erros na UI (try/except com QMessageBox)
 
-- [ ] 5.2 Operações em segundo plano
-  - Thread pool para operações pesadas
+- [ ] 5.2 Operações em segundo plano (QThread)
+  - Worker threads para operações pesadas (cópia, movimentação)
+  - QThreadPool para gerenciar threads
+  - Signals para progresso (QProgressBar)
   - Cancelamento de operações
-  - Atualização de progresso
   - Não-bloqueio da UI
 
 - [ ] 5.3 Persistência
-  - Salvar configurações
-  - Salvar histórico de operações
+  - Salvar configurações (pydantic + JSON)
+  - Salvar histórico de operações (JSON)
   - Salvar preferências de usuário
-  - Carregar estado anterior
+  - Carregar estado anterior ao iniciar
 
-- [ ] 5.4 Validação em produção
-  - Testes com junções reais em pasta de teste
-  - Testes com pastas conhecidas do usuário
+- [ ] 5.4 Histórico de operações
+  - UI para visualizar histórico
+  - Opção de desfazer operação específica
+  - Filtragem de histórico por data/tipo
+  - Exportação de histórico
+
+- [ ] 5.5 Validação em produção
+  - Testes com junções reais em pasta de teste (D:\WinLink-Test)
+  - Testes com pastas conhecidas do usuário (D:\Cache, C:\Users\steff)
   - Testes de stress (muitas junções)
-  - Testes de casos de borda
+  - Testes de casos de borda (caminhos longos, caracteres especiais)
 
-- [ ] 5.5 Polimento
+- [ ] 5.6 Polimento
   - Tratamento de erros robusto
-  - Mensagens de erro amigáveis
-  - Atalhos de teclado
-  - Tooltips e ajuda contextual
-  - Otimizações de performance
+  - Mensagens de erro amigáveis (QMessageBox)
+  - Atalhos de teclado (QShortcut)
+  - Tooltips e ajuda contextual (QToolTip)
+  - Otimizações de performance (lazy loading, caching)
 
-- [ ] 5.6 Build e distribuição
-  - Configurar build de release
-  - Criar instalador (se aplicável)
-  - Assinar aplicativo (se aplicável)
-  - Testar instalação limpa
+- [ ] 5.7 Build e distribuição (PyInstaller)
+  - Configurar spec file do PyInstaller
+  - Criar executável standalone
+  - Testar executável em máquina limpa
+  - Criar instalador (Inno Setup ou NSIS, opcional)
 
 ### Critérios de Conclusão
 - Aplicativo funciona de ponta a ponta
-- Operações em segundo plano funcionam
+- Operações em segundo plano funcionam sem travar UI
+- Histórico de operações funcional
 - Validação com dados reais bem-sucedida
 - Build de distribuição funcional
-- Performance aceitável
+- Performance aceitável (< 3s para listagem, UI responsiva)
 
 ---
 

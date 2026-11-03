@@ -53,22 +53,22 @@
 
 ---
 
-#### Opção Alternativa 2: Python + PyQt/PySide
+#### Opção Escolhida: Python + PyQt6
 
 **Linguagem**: Python
-**Framework UI**: PyQt6 ou PySide6
+**Framework UI**: PyQt6
 
 **Justificativa**:
 - **Desenvolvimento rápido**: Python permite prototipagem rápida
 - **Qt**: Framework UI maduro e poderoso
-- **Familiaridade**: Se você já conhece Python
+- **Familiaridade**: Linguagem conhecida
 - **Bibliotecas**: Grande ecossistema de bibliotecas
+- **Distribuição**: PyInstaller/cx_Freeze para executáveis standalone
 
 **Desvantagens**:
-- Performance menor que Rust/C#
-- Distribuição mais complexa (Python runtime)
-- Look and feel pode não ser 100% nativo Windows 11
-- Gerenciamento de dependências mais complexo
+- Performance menor que Rust/C# (aceitável para este caso de uso)
+- Distribuição mais complexa (Python runtime incluído no executável)
+- Look and feel pode não ser 100% nativo Windows 11 (mas pode ser customizado)
 
 ---
 
@@ -90,168 +90,82 @@
 
 ---
 
-### Recomendação Final
+### Decisão Final
 
-**Rust + Tauri** é a opção recomendada porque:
-1. Você já tem experiência com projetos de análise/reverse engineering, sugerindo familiaridade com sistemas de baixo nível
-2. Performance e segurança são críticas para operações de sistema de arquivos
-3. Tamanho pequeno de binário é vantajoso para distribuição
-4. Ecosistema Rust para Windows está maduro (`windows-rs`)
-5. Futura portabilidade para Linux/macOS se necessário
-
-Se preferir desenvolvimento mais rápido e está disposto a aceitar dependência de .NET, **C# + WinUI 3** é uma excelente alternativa.
+**Python + PyQt6** foi escolhido para este projeto porque:
+1. Desenvolvimento rápido e iteração ágil
+2. Familiaridade com a linguagem
+3. Ecossistema maduro de bibliotecas para Windows
+4. PyQt6 oferece widgets modernos e suporte a temas nativos
+5. Facilidade de criação de executáveis com PyInstaller/cx_Freeze
+6. Adequado para aplicação desktop com foco em funcionalidade sobre performance extrema
 
 ---
 
 ## Bibliotecas Específicas por Categoria
 
 ### Manipulação de Sistema de Arquivos
-
-#### Rust
-- `std::fs`: API padrão (básico)
-- `windows-rs`: Windows API para junções NTFS
-- `ignore`: Para escanear diretórios eficientemente
-
-#### C#
-- `System.IO`: API padrão
-- `Microsoft.Win32`: Registry e APIs Windows
-- `Windows.Storage`: APIs modernas de armazenamento
-
-#### Python
-- `os`, `pathlib`: APIs padrão
-- `pywin32`: Windows API
-- `ctypes`: Para chamadas de sistema de baixo nível
-
----
+- `pathlib`: API moderna para caminhos
+- `os`, `shutil`: APIs padrão para operações de arquivo
+- `pywin32` (win32api, win32file, win32con): Windows API para junções NTFS
+- `ctypes`: Para chamadas de sistema de baixo nível se necessário
 
 ### Interface Gráfica
-
-#### Rust + Tauri
-- `tauri`: Framework principal
-- `tauri-plugin-window-state`: Persistência de janela
-- CSS para estilização (similar a web)
-
-#### C# + WinUI 3
-- `Microsoft.WindowsAppSDK`: SDK principal
-- `Microsoft.UI.Xaml`: Controles WinUI 3
-- XAML para declaração de UI
-
-#### Python + PyQt6
-- `PyQt6`: Bindings Qt6
-- Qt Designer para UI visual
-- QML ou Python para lógica
-
----
+- `PyQt6`: Bindings Qt6 - Framework principal
+- `PyQt6-Qt6`: Runtime Qt6
+- `PyQt6-WebEngine`: Se precisar de WebView (opcional)
+- `pyqt-fluent-widgets`: Widgets estilo Fluent Design (opcional, para look Windows 11)
 
 ### Logging
-
-#### Rust
-- `tracing`: Logging estruturado moderno
-- `tracing-subscriber`: Implementações de subscriber
-- `tracing-appender`: Para log em arquivo
-
-#### C#
-- `Serilog`: Logging estruturado
-- `NLog`: Alternativa popular
-- `Microsoft.Extensions.Logging`: Logging oficial .NET
-
-#### Python
 - `logging`: Biblioteca padrão
-- `structlog`: Logging estruturado
-
----
+- `loguru`: Alternativa mais moderna e simples (opcional)
 
 ### Serialização/Configuração
-
-#### Rust
-- `serde`: Framework de serialização
-- `serde_json`: Suporte JSON
-- `toml`: Suporte TOML
-- `config`: Biblioteca de configuração
-
-#### C#
-- `System.Text.Json`: JSON oficial
-- `Newtonsoft.Json`: Alternativa popular
-- `Microsoft.Extensions.Configuration`: Configuração
-
-#### Python
 - `json`: Biblioteca padrão
-- `toml`: Suporte TOML
-- `pydantic`: Validação de dados
-
----
+- `toml`: Suporte TOML (via `toml` package)
+- `pydantic`: Validação de dados e configurações
+- `pydantic-settings`: Gerenciamento de configurações
 
 ### Testes
-
-#### Rust
-- `cargo test`: Framework integrado
-- `rstest`: Para testes parametrizados
-- `mockall`: Para mocking
-
-#### C#
-- `xUnit`: Framework popular
-- `NUnit`: Alternativa
-- `Moq`: Para mocking
-
-#### Python
 - `pytest`: Framework popular
-- `unittest`: Biblioteca padrão
+- `pytest-qt`: Para testes de GUI PyQt
+- `pytest-cov`: Cobertura de código
 - `unittest.mock`: Para mocking
+
+### Operações em Segundo Plano
+- `QThread` e `QThreadPool` (PyQt6): Para operações assíncronas na UI
+- `concurrent.futures`: Para threading em geral
+
+### Build e Distribuição
+- `PyInstaller`: Para criar executável standalone
+- `cx_Freeze`: Alternativa para freeze
+- `Nuitka`: Compilador Python para executáveis nativos (opcional)
 
 ---
 
 ## Build e Distribuição
-
-### Rust + Tauri
-- `cargo build`: Build padrão
-- `cargo tauri build`: Build de release com bundler
-- Binário único sem dependências externas
-- Possibilidade de assinatura de código
-
-### C# + WinUI 3
-- Visual Studio ou `dotnet build`
-- MSIX para distribuição
-- Requires .NET runtime instalado ou self-contained
-
-### Python
-- `PyInstaller` ou `cx_Freeze` para executável
-- Inclui Python runtime
-- Executável maior
+- `PyInstaller`: Para criar executável standalone
+- `cx_Freeze`: Alternativa para freeze
+- `Nuitka`: Compilador Python para executáveis nativos (opcional)
+- Inclui Python runtime no executável
+- Executável único ou com dependências
 
 ---
 
 ## Ferramentas de Desenvolvimento
 
-### Comuns a Todas as Opções
+### Comuns
 - **Git**: Controle de versão
-- **VS Code**: Editor (com extensões específicas)
+- **VS Code**: Editor (com extensões Python)
 - **GitHub/GitLab**: Hospedagem
 
-### Rust Específico
-- **Rust Analyzer**: LSP para VS Code
-- **Cargo**: Package manager e build system
-- **rustfmt**: Formatter
-
-### C# Específico
-- **Visual Studio 2022**: IDE principal
-- **.NET CLI**: Linha de comando
-- **JetBrains Rider**: IDE alternativa
-
 ### Python Específico
-- **Poetry** ou **uv**: Gerenciamento de dependências
-- **black**: Formatter
-- **pylint**: Linter
+- **Poetry** ou **uv**: Gerenciamento de dependências e ambientes virtuais
+- **black**: Formatter de código
+- **pylint** ou **ruff**: Linter
+- **mypy**: Type checking (opcional)
+- **pyright**: Type checker alternativo (VS Code integration)
 
----
-
-## Decisão Pendente
-
-Por favor, escolha uma das opções de stack tecnológico ou proponha uma alternativa:
-
-1. **Rust + Tauri** (Recomendado)
-2. **C# + WinUI 3**
-3. **Python + PyQt6**
-4. **Go + Wails**
-5. Outra (especifique)
-
-Após sua escolha, atualizarei este documento com a decisão final e configurarei o projeto adequadamente.
+### PyQt6 Específico
+- **Qt Designer**: Editor visual de UI (incluído com PyQt6-tools)
+- **pyuic6**: Converter arquivos .ui para Python

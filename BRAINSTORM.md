@@ -1,197 +1,132 @@
-# Brainstorming e Dúvidas - WinLink
+# Brainstorming e Decisões - WinLink
 
-## Dúvidas para Esclarecimento
+## Decisões Tomadas
 
-### 1. Stack Tecnológico
-Qual stack tecnológico você prefere?
+### 1. Stack Tecnológico ✅
+**Decisão**: Python + PyQt6
 
-**Opções**:
-- **Rust + Tauri** (Recomendado): Performance, segurança, binário pequeno
-- **C# + WinUI 3**: Nativo Windows, desenvolvimento rápido, interface moderna oficial
-- **Python + PyQt6**: Desenvolvimento muito rápido, ecossistema grande
-- **Go + Wails**: Simples, single binary, similar ao Tauri
-
-**Minha recomendação**: Rust + Tauri, pois oferece o melhor equilíbrio de performance, segurança e portabilidade, e você já tem experiência com análise de sistemas de baixo nível.
+**Justificativa**: Desenvolvimento rápido, familiaridade com a linguagem, ecossistema maduro, PyQt6 oferece widgets modernos e suporte a temas nativos.
 
 ---
 
-### 2. Escopo de Arquivos vs Diretórios
+### 2. Escopo de Arquivos vs Diretórios ✅
+**Decisão**: Diretórios e arquivos desde o início
 
-A especificação menciona suporte a junção de arquivos, mas o Windows tem limitações:
-
-**Perguntas**:
-- É essencial suportar hard links de arquivos, ou podemos focar apenas em diretórios inicialmente?
-- Links simbólicos de arquivos são importantes, ou podemos focar em junctions de diretórios?
-
-**Minha sugestão**: Fase 1 foca em diretórios (caso de uso principal). Se sobrar tempo, adicionamos suporte a arquivos em Fase 2.
+**Justificativa**: Suporte completo a junctions de diretórios, hard links e symbolic links de arquivos. Embora hard links de arquivos tenham limitações (mesmo volume), symbolic links são mais flexíveis.
 
 ---
 
-### 3. Descoberta Automática de Junções
+### 3. Descoberta Automática de Junções ✅
+**Decisão**: Híbrida
 
-**Perguntas**:
-- Escanear todo o sistema pode ser demorado. Devemos:
-  - Escanear apenas diretórios específicos (ex: C:\Users, D:\Cache)?
-  - Permitir que o usuário configure quais diretórios escanear?
-  - Ter modo "escaneamento completo" opcional?
-
-**Minha sugestão**: Escaneamento padrão em diretórios configuráveis (C:\Users, D:\Cache), com opção de escaneamento completo manual.
+**Justificativa**: Escaneamento rápido em diretórios configuráveis (C:\Users, D:\Cache) por padrão, com opção de escaneamento completo manual. Isso oferece bom equilíbrio entre performance e completude.
 
 ---
 
-### 4. Classificação de "Criador"
+### 4. Funcionalidades Adicionais ✅
+**Decisão**: Histórico de operações
 
+**Justificativa**: Log de todas as operações com opção de desfazer, aumentando segurança e rastreabilidade. Isso será implementado como backup de metadados (não de arquivos completos, para economizar espaço).
+
+---
+
+## Dúvidas Pendentes (Para Refinamento Futuro)
+
+### Classificação de "Criador"
 A especificação define 4 categorias: App, Existente, SO, Usuário.
 
-**Perguntas**:
+**Pergunta**:
 - Como diferenciar "SO" de "Usuário"? Ambos podem ter criado manualmente.
 - Devemos tentar detectar via logs do Windows, ou é suficiente classificar tudo que não foi criado pelo app como "Existente"?
 
-**Minha sugestão**: Classificação simplificada:
+**Sugestão**: Classificação simplificada:
 - **App**: Criado pelo WinLink
 - **Existente**: Já existia antes do WinLink (detectado na primeira execução)
 - **Manual**: Criado após WinLink estar instalado (pode ser SO ou usuário)
 
 ---
 
-### 5. Integração com Script Existente
-
-**Perguntas**:
+### Integração com Script Existente
+**Pergunta**:
 - O WinLink deve importar configurações do script `migrar_pastas.ps1`?
 - Devemos manter compatibilidade para que ambos possam coexistir?
 - Ou o WinLink deve substituir completamente o script?
 
-**Minha sugestão**: Coexistência pacífica. WinLink detecta junções criadas pelo script como "Existente" e permite gerenciá-las.
+**Sugestão**: Coexistência pacífica. WinLink detecta junções criadas pelo script como "Existente" e permite gerenciá-las.
 
 ---
 
-### 6. Operações de Sincronização
-
+### Operações de Sincronização
 A especificação menciona sincronização entre origem e destino.
 
-**Perguntas**:
+**Pergunta**:
 - É realmente necessário? O caso de uso principal é apenas mover pastas para outro disco.
 - Se sim, qual estratégia padrão? Mais recente vence? Origem tem prioridade?
 - Isso pode ser uma funcionalidade avançada para fase posterior?
 
-**Minha sugestão**: Deixar para Fase 2. Fase 1 foca em criar/desfazer junções.
+**Sugestão**: Deixar para Fase 2. Fase 1 foca em criar/desfazer junções.
 
 ---
 
-### 7. Backup Automático
-
-A especificação menciona backup automático antes de operações destrutivas.
-
-**Perguntas**:
-- Onde armazenar backups? Pasta dedicada?
-- Por quanto tempo manter backups?
-- Limite de espaço para backups?
-
-**Minha sugestão**: Backup apenas de metadados (lista de operações), não de arquivos completos (muito espaço). Para desfazer, oferecemos opção de mover arquivos de volta.
-
----
-
-### 8. Elevação de Permissões
-
+### Elevação de Permissões
 Algumas operações requerem administrador.
 
-**Perguntas**:
+**Pergunta**:
 - O app deve solicitar elevação apenas quando necessário, ou deve sempre rodar como admin?
 - Devemos ter modo "leitura apenas" sem elevação?
 
-**Minha sugestão**: App roda sem elevação por padrão. Solicita elevação apenas quando usuário tenta operação que requer admin.
+**Sugestão**: App roda sem elevação por padrão. Solicita elevação apenas quando usuário tenta operação que requer admin.
 
 ---
 
-## Funcionalidades Adicionais Sugeridas
+## Funcionalidades Adicionais NÃO Selecionadas (Para Fase 2)
+
+As seguintes funcionalidades foram sugeridas mas não incluídas no MVP inicial. Podem ser consideradas para fases posteriores:
 
 ### 1. Sugestão de Pastas para Migrar
-**Descrição**: Analisar perfil do usuário e sugerir pastas que poderiam ser migradas (ex: pastas grandes em C:\Users).
-
-**Benefício**: Descoberta guiada para usuários que não sabem quais pastas migrar.
-
+**Descrição**: Analisar perfil do usuário e sugerir pastas que poderiam ser migradas.
 **Complexidade**: Média
-
----
+**Status**: Fase 2
 
 ### 2. Análise de Espaço
 **Descrição**: Mostrar quanto espaço seria economizado se determinadas pastas fossem migradas.
-
-**Benefício**: Ajuda usuário a decidir quais pastas migrar.
-
 **Complexidade**: Baixa
-
----
+**Status**: Fase 2
 
 ### 3. Perfis de Migração
 **Descrição**: Perfis predefinidos (ex: "Desenvolvedor", "Gamer", "Geral") que sugerem conjuntos de pastas para migrar.
-
-**Benefício**: Usuário menos técnico pode escolher perfil e aplicar.
-
 **Complexidade**: Média
-
----
-
-### 4. Histórico de Operações
-**Descrição**: Log de todas as operações realizadas com opção de desfazer.
-
-**Benefício**: Segurança e rastreabilidade.
-
-**Complexidade**: Média
-
----
+**Status**: Fase 2
 
 ### 5. Validação de Integridade Periódica
 **Descrição**: Verificar periodicamente se junções estão funcionais.
-
-**Benefício**: Detectar problemas proativamente.
-
 **Complexidade**: Média
-
----
+**Status**: Fase 2
 
 ### 6. Importação/Exportação de Configuração
 **Descrição**: Exportar lista de junções para arquivo JSON e importar em outro computador.
-
-**Benefício**: Backup e migração de configuração entre máquinas.
-
 **Complexidade**: Baixa
-
----
+**Status**: Fase 2
 
 ### 7. Integração com OneDrive
 **Descrição**: Reconhecer pastas OneDrive e ajustar comportamento (evitar conflitos de sincronização).
-
-**Benefício**: Evita problemas com sincronização do OneDrive.
-
 **Complexidade**: Alta
-
----
+**Status**: Fase 3 (avaliação de necessidade)
 
 ### 8. Visualização de Árvore
 **Descrição**: Visualização em árvore das junções, mostrando hierarquia.
-
-**Benefício**: Melhor entendimento de estrutura complexa.
-
 **Complexidade**: Média
-
----
+**Status**: Fase 2
 
 ### 9. Suporte a Batch
 **Descrição**: Criar múltiplas junções de uma vez (ex: selecionar 10 pastas e migrar todas).
-
-**Benefício**: Eficiência para operações em massa.
-
 **Complexidade**: Baixa
-
----
+**Status**: Fase 2
 
 ### 10. Linha de Comando (CLI)
 **Descrição**: Versão CLI do app para automação e scripts.
-
-**Benefício**: Integração com scripts existentes e automação.
-
 **Complexidade**: Média
+**Status**: Fase 2 (se houver demanda)
 
 ---
 
@@ -200,7 +135,9 @@ Algumas operações requerem administrador.
 ### 1. Hard Links Apenas no Mesmo Volume
 Hard links só funcionam no mesmo volume físico. Isso limita o caso de uso para arquivos.
 
-**Impacto**: Baixo - caso de uso principal é diretórios entre volumes.
+**Impacto**: Baixo - caso de uso principal é diretórios entre volumes. Para arquivos, symbolic links podem ser usados entre volumes.
+
+**Mitigação**: Documentar limitação e usar symbolic links quando necessário.
 
 ---
 
@@ -209,7 +146,7 @@ No Windows, criar links simbólicos pode requerer "Developer Mode" ou permissõe
 
 **Impacto**: Médio - pode limitar funcionalidade para usuários comuns.
 
-**Mitigação**: Detectar disponibilidade e desabilitar funcionalidade se não disponível.
+**Mitigação**: Detectar disponibilidade e desabilitar funcionalidade se não disponível. Oferecer instruções para habilitar.
 
 ---
 
@@ -227,40 +164,43 @@ Pastas OneDrive e algumas pastas do sistema têm comportamento especial.
 
 **Impacto**: Médio - pode causar problemas se não tratado corretamente.
 
-**Mitigação**: Detectar pastas especiais e avisar usuário ou limitar operações.
+**Mitigação**: Detectar pastas especiais e avisar usuário ou limitar operações. Integração específica com OneDrive deixada para Fase 3.
 
 ---
 
-## Decisões Pendentes
+## Resumo do Escopo MVP (Fase 1)
 
-Por favor, responda às seguintes perguntas para que eu possa ajustar o plano:
+### Incluído
+- ✅ Listagem de junções (escaneamento híbrido)
+- ✅ Criação de junções (diretórios e arquivos)
+- ✅ Desfazer junções (com opções de mover/duplicar)
+- ✅ Histórico de operações (metadados)
+- ✅ Interface Windows 11 (tema claro/escuro)
+- ✅ Detecção de arquivos em uso
+- ✅ Validações de segurança
 
-1. **Stack tecnológico**: Qual você prefere? (Rust + Tauri, C# + WinUI 3, Python + PyQt6, Go + Wails, ou outro?)
+### Deixado para Fase 2
+- ⏳ Sincronização entre origem e destino
+- ⏳ Sugestão de pastas para migrar
+- ⏳ Análise de espaço
+- ⏳ Batch de múltiplas junções
+- ⏳ Visualização em árvore
+- ⏳ Validação de integridade periódica
+- ⏳ Importação/Exportação de configuração
+- ⏳ CLI
 
-2. **Escopo inicial**: Focar apenas em diretórios (Fase 1) ou incluir arquivos desde o início?
-
-3. **Descoberta automática**: Escanear apenas diretórios configuráveis ou sistema completo?
-
-4. **Classificação de criador**: Classificação simplificada (App/Existente/Manual) ou detalhada (App/Existente/SO/Usuário)?
-
-5. **Sincronização**: Incluir na Fase 1 ou deixar para Fase 2?
-
-6. **Backup**: Backup de metadados ou backup completo de arquivos?
-
-7. **Elevação**: Solicitar sob demanda ou sempre rodar como admin?
-
-8. **Funcionalidades adicionais**: Quais das sugeridas você gostaria de incluir? (Pode marcar múltiplas)
-
-9. **Protótipo visual**: O design proposto está OK ou você quer alterações?
-
-10. **Prioridade**: Qual funcionalidade é mais importante para você?
+### Deixado para Fase 3 (Avaliação)
+- ⏳ Integração específica com OneDrive
+- ⏳ Perfis de migração
 
 ---
 
 ## Próximos Passos
 
-Após suas respostas:
-1. Ajustarei especificação e plano conforme suas escolhas
-2. Atualizarei TECNOLOGIAS.md com a decisão final
-3. Farei commit inicial do projeto
-4. Iniciarei Fase 2 (Infraestrutura)
+1. ✅ Commit inicial com documentação completa
+2. Iniciar Fase 2: Infraestrutura do projeto
+   - Configurar Poetry/uv para gerenciamento de dependências
+   - Criar estrutura de diretórios
+   - Configurar linter e formatter
+   - Implementar sistema de logging
+   - Implementar sistema de configuração
