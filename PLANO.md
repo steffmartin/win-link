@@ -221,10 +221,12 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
   - Não-bloqueio da UI
 
 - [ ] 5.3 Persistência
-  - Salvar configurações (pydantic + JSON)
-  - Salvar histórico de operações (JSON)
+  - Salvar configurações (pydantic + JSON) em %APPDATA%\WinLink\config.json
+  - Salvar histórico de operações (JSON) em %APPDATA%\WinLink\history.json
+  - Salvar logs em %APPDATA%\WinLink\winlink.log
   - Salvar preferências de usuário
   - Carregar estado anterior ao iniciar
+  - Não usar banco de dados (SQLite) - JSON é suficiente para MVP
 
 - [ ] 5.4 Histórico de operações
   - UI para visualizar histórico
@@ -245,11 +247,16 @@ Este documento define as fases e etapas do desenvolvimento do WinLink, do planej
   - Tooltips e ajuda contextual (QToolTip)
   - Otimizações de performance (lazy loading, caching)
 
-- [ ] 5.7 Build e distribuição (PyInstaller)
+- [ ] 5.7 Build e distribuição (PyInstaller + Inno Setup)
   - Configurar spec file do PyInstaller
-  - Criar executável standalone
-  - Testar executável em máquina limpa
-  - Criar instalador (Inno Setup ou NSIS, opcional)
+  - Criar executável standalone (inclui Python runtime e dependências)
+  - Testar executável em máquina limpa (sem Python instalado)
+  - Criar instalador com Inno Setup
+    - Adicionar atalhos (Desktop, Menu Iniciar)
+    - Configurar desinstalador
+    - Desinstalador NÃO remove junções NTFS (elas pertencem ao usuário)
+    - Desinstalador pergunta se deve remover configurações/logs
+  - Validar tamanho final do instalador (~100-200 MB)
 
 ### Critérios de Conclusão
 - Aplicativo funciona de ponta a ponta
