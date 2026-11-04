@@ -9,26 +9,26 @@
 | 3 | Domínio de links e operações de arquivos | Base entregue; não inclui todas as ideias históricas |
 | 4 | Interface PyQt6 atual | Entregue |
 | 5 | Integração, segurança, cache e distribuição | Implementação entregue; homologação externa pendente |
-| 6 | Redesign, prototipagem e melhorias | Protótipo visual aprovado e cobertura acrescida; implementação local é o próximo trabalho |
-| 7 | Documentação final e lançamento | Pendente |
+| 6 | Redesign, prototipagem e melhorias | Implementação PyQt6 e melhorias entregues; validação local aprovada |
+| 7 | Documentação final e lançamento | Guia, capturas, notas e pacotes preparados; homologação e publicação pendentes |
 
 ## Fase 6 — implementação local do design aprovado
 
 O estudo/protótipo externo foi revisado localmente. Não refazer o diagnóstico nem substituir a direção visual aprovada. Referências: [guia de implementação](../guias/IMPLEMENTACAO-UI.md), [demo](../../prototypes/ui/README.md), [especificação](../produto/ESPECIFICACAO.md) e [melhorias](MELHORIAS.md).
 
-### 6.6 Redesign e melhorias aprovadas — próxima etapa
+### 6.6 Redesign e melhorias aprovadas — implementados
 
-- [ ] Portar o shell de navegação, componentes, tokens, temas, estados e microcopy para PyQt6.
-- [ ] Manter toda a cobertura da lista, criação, prévia, progresso, reversão, propriedades, histórico e configurações detalhada no guia.
-- [ ] Reutilizar serviços Python, validação de identidade, cópia, cancelamento e recuperação; não transportar as simulações React.
-- [ ] Implementar tipo de link padrão persistente e migração compatível das configurações antigas.
-- [ ] Implementar restaurar padrões e descartar rascunho; restaurar prepara campos e exige salvar.
-- [ ] Ampliar histórico com resultado, datas manuais, detalhes e indicação de criação já desfeita; manter operação, períodos rápidos, total e verificação real antes de desfazer.
-- [ ] Distinguir symlinks de arquivo/diretório na apresentação e filtros sem criar tipo novo no domínio.
-- [ ] Acrescentar troca rápida de tema preservando modo automático.
-- [ ] Acrescentar reversão pelas propriedades com as mesmas confirmações e proteções.
-- [ ] Conectar Explorer, seletores, logs, notificações e preferências aos serviços reais. Retirar controles de cenário, exemplos e temporizadores da interface de produção.
-- [ ] Validar os fluxos e a migração de dados/preferências em diretórios de teste isolados.
+- [x] Portar o shell de navegação, componentes, tokens, temas, estados e microcopy para PyQt6.
+- [x] Manter toda a cobertura da lista, criação, prévia, progresso, reversão, propriedades, histórico e configurações detalhada no guia.
+- [x] Reutilizar serviços Python, validação de identidade, cópia, cancelamento e recuperação; não transportar as simulações React.
+- [x] Implementar tipo de link padrão persistente e migração compatível das configurações antigas.
+- [x] Implementar restaurar padrões e descartar rascunho; restaurar prepara campos e exige salvar.
+- [x] Ampliar histórico com resultado, datas manuais, detalhes e indicação de criação já desfeita; manter operação, períodos rápidos, total e verificação real antes de desfazer.
+- [x] Distinguir symlinks de arquivo/diretório na apresentação e filtros sem criar tipo novo no domínio.
+- [x] Acrescentar troca rápida de tema preservando modo automático.
+- [x] Acrescentar reversão pelas propriedades com as mesmas confirmações e proteções.
+- [x] Conectar Explorer, seletores, logs, notificações e preferências aos serviços reais. Retirar controles de cenário, exemplos e temporizadores da interface de produção.
+- [x] Validar os fluxos e a migração de dados/preferências em diretórios de teste isolados.
 
 ### Critérios para concluir a implementação
 
@@ -44,10 +44,14 @@ O build atual não é assinado. Evidências e limites: [validação](../validaca
 
 ## Fase 7 — documentação final e lançamento
 
-- [ ] Atualizar guia de instalação/uso e capturas a partir do aplicativo real após o redesign.
-- [ ] Documentar backup, reversão, permissões, recuperação, desinstalação e limites.
+- [x] Atualizar guia de instalação/uso e capturas a partir do aplicativo real após o redesign.
+- [x] Documentar backup, reversão, permissões, recuperação, desinstalação e limites.
 - [ ] Fechar homologação externa e revisar distribuição/offline e compatibilidade.
-- [ ] Definir licença, versão e notas de lançamento.
+- [x] Definir licença MIT (decisão do mantenedor em 04/11/2026), manter versão 0.1.0 e preparar notas de versão.
 - [ ] Publicar somente após os critérios técnicos e a revisão do usuário.
 
 Ideias não aprovadas para esta entrega permanecem em [MELHORIAS.md](MELHORIAS.md), separadas da etapa 6.6.
+
+## Checkpoint vigente — 04/11/2026, 17:49; validação final após o checkpoint
+
+Implementação local da etapa 6.6 entregue; testes e evidências atuais em [REDESIGN.md](../validacao/REDESIGN.md). As caixas de homologação externa permanecem abertas: este host Windows 11 tem Python instalado, não oferece Windows Sandbox e negou a criação real dos dois tipos de symlink com WinError 1314. O trabalho local não substitui esses testes nem autoriza anunciar lançamento homologado.

@@ -1,8 +1,8 @@
 # Melhorias — escopo aprovado e evolução
 
-## Aprovadas para a próxima implementação (etapa 6.6)
+## Implementadas na etapa 6.6
 
-O usuário autorizou manter estas novidades no protótipo e implementá-las nas próximas fases do aplicativo. Ainda não estão entregues no PyQt6:
+O usuário autorizou manter estas novidades no protótipo e implementá-las nas próximas fases do aplicativo. Entregues no PyQt6; evidências em [REDESIGN.md](../validacao/REDESIGN.md):
 
 1. Preferência persistente de tipo de link padrão, compatível com configuração antiga.
 2. Restaurar padrões e descartar alterações nas configurações; restaurar não salva automaticamente.

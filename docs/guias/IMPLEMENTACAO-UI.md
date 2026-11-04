@@ -1,6 +1,6 @@
 # Implementação do protótipo no WinLink
 
-Este é o guia vigente para portar o protótipo React para o aplicativo Python/PyQt6. A direção visual foi aprovada pelo usuário; a cobertura da interface existente e as melhorias propostas foram incorporadas à demo. O redesign ainda não foi implementado no aplicativo real.
+Este é o guia vigente para portar o protótipo React para o aplicativo Python/PyQt6. A direção visual foi aprovada pelo usuário; a cobertura da interface existente e as melhorias propostas foram incorporadas à demo. O redesign foi implementado no aplicativo real. Consulte [uso](USO.md) e [validação atual](../validacao/REDESIGN.md). Este documento conserva o contrato da referência visual.
 
 ## Referências e ponto de retomada
 
@@ -10,7 +10,7 @@ Este é o guia vigente para portar o protótipo React para o aplicativo Python/P
 - [Melhorias aprovadas e ideias fora do escopo](../planejamento/MELHORIAS.md).
 - [Distribuição](../arquitetura/DISTRIBUICAO.md) e [evidências/pendências da fase 5](../validacao/FASE5.md).
 
-Retomar pela etapa 6.6; não refazer estudos nem buscar versões anteriores do protótipo. O protótipo e a demo ficam em `prototypes/ui`, sem nomes de agente ou número de versão no caminho. Consulte a [estrutura do projeto](../arquitetura/ESTRUTURA.md) antes de acrescentar arquivos.
+A etapa 6.6 foi portada para PyQt6; não refazer estudos nem buscar versões anteriores do protótipo. O protótipo e a demo ficam em `prototypes/ui`, sem nomes de agente ou número de versão no caminho. Consulte a [estrutura do projeto](../arquitetura/ESTRUTURA.md) antes de acrescentar arquivos.
 
 ## Fonte de verdade
 
@@ -44,7 +44,7 @@ O aplicativo atual usa três tipos de domínio: JUNCTION, SYMLINK e HARDLINK. Os
 
 ## Melhorias novas aprovadas
 
-Implementar na etapa 6.6: tipo de link padrão persistente, restaurar padrões/descartar rascunho, filtro do histórico por resultado e datas manuais, distinção de symlinks arquivo/diretório nos filtros, troca rápida de tema, detalhes/estado explícito de criação desfeita e reversão pelas propriedades. Estas capacidades não devem ser anunciadas como já implementadas no PyQt6. [Backlog detalhado](../planejamento/MELHORIAS.md).
+Implementado na etapa 6.6: tipo de link padrão persistente, restaurar padrões/descartar rascunho, filtro do histórico por resultado e datas manuais, distinção de symlinks arquivo/diretório nos filtros, troca rápida de tema, detalhes/estado explícito de criação desfeita e reversão pelas propriedades. Estas capacidades agora estão implementadas no PyQt6. [Backlog detalhado](../planejamento/MELHORIAS.md).
 
 ## Aparência e componentes
 

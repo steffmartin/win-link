@@ -4,7 +4,9 @@ Aplicativo Windows em Python/PyQt6 para descobrir, criar e desfazer junctions, l
 
 ## Estado e próxima etapa
 
-A implementação da fase 5 está entregue, com homologação externa pendente. O protótipo de redesign tem direção visual aprovada e cobertura das funcionalidades atuais. **A próxima etapa é implementá-lo no aplicativo real**, junto às melhorias aprovadas da etapa 6.6. O React é referência de interface e usa dados fictícios.
+O design aprovado foi implementado no aplicativo Python/PyQt6, com navegação lateral, cartões/visão compacta, criação, propriedades, histórico e configurações. As melhorias da etapa 6.6 estão implementadas. O React continua sendo apenas referência visual.
+
+**Ainda não é um lançamento homologado:** Windows limpo sem Python, Windows 10 e sucesso real de symlinks com permissões apropriadas continuam pendentes. Consulte a [validação atual](docs/validacao/REDESIGN.md), o [guia de uso](docs/guias/USO.md) e as [notas de versão](docs/produto/NOTAS-DE-VERSAO.md).
 
 Comece pelo [guia de implementação](docs/guias/IMPLEMENTACAO-UI.md) e pelo [plano](docs/planejamento/PLANO.md).
 
@@ -48,4 +50,4 @@ A demo React roda em http://127.0.0.1:5174/; consulte seus comandos no README da
 
 Após gerar o build, distribuir a pasta portátil inteira `dist/WinLink`, incluindo `_internal`. Instalador: `dist/WinLink-Setup-0.1.0.exe`. Não distribuir builds anteriores à correção de coleta de DLLs descrita no relatório da fase 5. Homologação em Windows limpo/Windows 10 e permissões de symlinks permanece pendente.
 
-Licença: pendente de definição.
+Licença [MIT](LICENSE), escolhida pelo mantenedor.

@@ -18,7 +18,7 @@ uv sync --extra dev --extra build
 .venv\Scripts\python.exe scripts\validate_distribution.py 'C:\caminho\Inno Setup 6\ISCC.exe'
 ```
 
-O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; preserva os resultados de teste para inspeção. Relatório: `docs/validacao/phase5-distribution.json`.
+O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; preserva os resultados de teste para inspeção. Relatório atual: `docs/validacao/redesign-distribution.json`. O relatório `phase5-distribution.json` preserva a execução histórica anterior ao redesign. Capturas, testes e limites atuais: [redesign](../validacao/REDESIGN.md).
 
 O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar ICU/UCRT externos vindos do PATH. O primeiro build anterior à correção falhou ao importar QtWidgets; não distribuí-lo. Evidências históricas e hashes do build validado: [fase 5](../validacao/FASE5.md).
 

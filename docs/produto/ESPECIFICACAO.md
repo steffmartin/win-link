@@ -39,6 +39,6 @@ Dois temas mais modo automático, teclado/foco, labels, mensagens em português,
 
 ## Próxima entrega e limites
 
-O redesign mantém esse escopo e incorpora as novidades autorizadas em [MELHORIAS.md](../planejamento/MELHORIAS.md). Aparência, cobertura e mapeamento estão no [guia de implementação](../guias/IMPLEMENTACAO-UI.md). RF-08 (editar/reconstruir/sincronizar), importação, templates, monitoramento periódico, terminação de processos e elevação automática são propostas históricas fora da entrega atual, não funcionalidades omitidas por acidente do redesign.
+O redesign implementado mantém esse escopo e incorpora as novidades autorizadas em [MELHORIAS.md](../planejamento/MELHORIAS.md). Aparência, cobertura e mapeamento estão no [guia de implementação](../guias/IMPLEMENTACAO-UI.md). RF-08 (editar/reconstruir/sincronizar), importação, templates, monitoramento periódico, terminação de processos e elevação automática são propostas históricas fora da entrega atual, não funcionalidades omitidas por acidente do redesign.
 
 Windows 11 foi usado na validação local; Windows limpo, Windows 10 e sucesso real de symlinks com permissões apropriadas ainda precisam de homologação. Ver [evidências](../validacao/FASE5.md). Não anunciar lançamento aprovado antes de fechá-las.

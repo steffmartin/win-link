@@ -1,0 +1,19 @@
+{
+  "source_commit": "8b8ab1988a8bb53ce381d9834896fb2bb629ed4e",
+  "version": "0.1.0",
+  "signed": false,
+  "artifacts": [
+    {
+      "path": "dist/WinLink/WinLink.exe",
+      "bytes": 5410464,
+      "sha256": "99d76b40d52084a6e1c17e608db58f3a5c650894eef10d54c70161a9583c98a6"
+    },
+    {
+      "path": "dist/WinLink-Setup-0.1.0.exe",
+      "bytes": 30649206,
+      "sha256": "ccd2929299af3e72ff363ba2905354bf4784337c73b40122134975d376fa25d7"
+    }
+  ],
+  "portable_license_included": true,
+  "portable_distribution": "Distribute the entire dist/WinLink folder, including _internal."
+}

@@ -1,0 +1,20 @@
+{
+  "host": "Windows-11-10.0.26300-SP0",
+  "sandbox_executable": false,
+  "clean_windows": "unavailable",
+  "windows10": "unavailable",
+  "symlinks": {
+    "directory": {
+      "created": false,
+      "winerror": 1314,
+      "error": "[WinError 1314] O cliente n\u00e3o tem o privil\u00e9gio necess\u00e1rio: 'C:\\\\Users\\\\steff\\\\AppData\\\\Local\\\\Temp\\\\winlink-permissions-6hnx7i58\\\\data' -> 'C:\\\\Users\\\\steff\\\\AppData\\\\Local\\\\Temp\\\\winlink-permissions-6hnx7i58\\\\link-directory'"
+    },
+    "file": {
+      "created": false,
+      "winerror": 1314,
+      "error": "[WinError 1314] O cliente n\u00e3o tem o privil\u00e9gio necess\u00e1rio: 'C:\\\\Users\\\\steff\\\\AppData\\\\Local\\\\Temp\\\\winlink-permissions-6hnx7i58\\\\file' -> 'C:\\\\Users\\\\steff\\\\AppData\\\\Local\\\\Temp\\\\winlink-permissions-6hnx7i58\\\\link-file'"
+    }
+  },
+  "originals_preserved": true,
+  "hyperv": "Get-VM denied: current account lacks authorization"
+}
