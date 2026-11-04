@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QTableView,
+    QTextEdit,
     QVBoxLayout,
 )
 
@@ -185,7 +186,7 @@ class HistoryDialog(AnimatedDialog):
         self.type_combo = QComboBox()
         self.type_combo.addItem("Todas")
         for op_type in OperationType:
-            self.type_combo.addItem(op_type.value)
+            self.type_combo.addItem(HistoryTableModel()._get_type_display(op_type), op_type)
         self.type_combo.currentTextChanged.connect(self.on_filter_changed)
         filter_layout.addWidget(self.type_combo)
 
@@ -228,6 +229,12 @@ class HistoryDialog(AnimatedDialog):
         self.table_view.setModel(self.table_model)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.horizontalHeader().setStretchLastSection(True)
+        for column, width in enumerate((165, 170, 340, 200)):
+            self.table_view.setColumnWidth(column, width)
+        self.table_view.setWordWrap(False)
+        self.table_view.setAlternatingRowColors(True)
+        self.table_view.verticalHeader().hide()
+        self.table_view.verticalHeader().setDefaultSectionSize(42)
         layout.addWidget(self.table_view)
 
         # Total label
@@ -270,13 +277,21 @@ class HistoryDialog(AnimatedDialog):
         if record:
             import json
 
-            QMessageBox.information(
-                self,
-                "Detalhes da operação",
+            dialog = AnimatedDialog(self)
+            dialog.setWindowTitle("Detalhes da operação")
+            layout = QVBoxLayout(dialog)
+            details = QTextEdit()
+            details.setReadOnly(True)
+            details.setPlainText(
                 self.table_model._get_tooltip_data(record)
                 + "\n"
-                + json.dumps(record.metadata, ensure_ascii=False, indent=2),
+                + json.dumps(record.metadata, ensure_ascii=False, indent=2)
             )
+            layout.addWidget(details)
+            close = QPushButton("Fechar")
+            close.clicked.connect(dialog.accept)
+            layout.addWidget(close)
+            dialog.exec()
 
     def undo_selected(self):
         from winlink.core.models import Creator, Junction, JunctionType
@@ -337,11 +352,11 @@ class HistoryDialog(AnimatedDialog):
 
     def on_filter_changed(self):
         """Handle filter change"""
-        type_text = self.type_combo.currentText()
+        type_text = self.type_combo.currentData()
         date_text = self.date_combo.currentText()
 
         # Parse type filter
-        if type_text == "Todas":
+        if type_text is None:
             self._filter_type = None
         else:
             try:

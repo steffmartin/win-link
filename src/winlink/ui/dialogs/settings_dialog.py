@@ -54,7 +54,8 @@ class SettingsDialog(AnimatedDialog):
         theme_layout = QHBoxLayout()
         theme_label = QLabel("Tema:")
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["auto", "light", "dark"])
+        for label, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
+            self.theme_combo.addItem(label, mode)
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
         theme_layout.addStretch()
@@ -75,7 +76,7 @@ class SettingsDialog(AnimatedDialog):
         layout.addWidget(general_group)
 
         # Scan directories section
-        scan_group = QGroupBox("Diretórios para Escanear")
+        scan_group = QGroupBox("Diretórios de descoberta")
         scan_layout = QVBoxLayout()
 
         self.scan_list = QListWidget()
@@ -178,7 +179,7 @@ class SettingsDialog(AnimatedDialog):
             self.default_type_combo.findData(settings.default_link_type)
         )
         # Theme
-        theme_index = self.theme_combo.findText(settings.theme_mode)
+        theme_index = self.theme_combo.findData(settings.theme_mode)
         if theme_index >= 0:
             self.theme_combo.setCurrentIndex(theme_index)
 
@@ -247,7 +248,7 @@ class SettingsDialog(AnimatedDialog):
         candidate = self.settings.model_copy(deep=True)
         # Update settings
         candidate.default_link_type = self.default_type_combo.currentData()
-        candidate.theme_mode = self.theme_combo.currentText()
+        candidate.theme_mode = self.theme_combo.currentData()
         candidate.scan_directories = self._scan_directories
         candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()
         candidate.auto_backup_before_undo = self.backup_checkbox.isChecked()

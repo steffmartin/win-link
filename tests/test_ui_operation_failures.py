@@ -210,7 +210,7 @@ def test_settings_dialog_saves_and_reloads(qtbot, monkeypatch, tmp_path):
     settings = AppSettings(scan_directories=[str(tmp_path)])
     dialog = SettingsDialog(settings)
     qtbot.addWidget(dialog)
-    dialog.theme_combo.setCurrentText("dark")
+    dialog.theme_combo.setCurrentIndex(dialog.theme_combo.findData("dark"))
     dialog.warn_nested_checkbox.setChecked(False)
     dialog.save_settings()
     loaded = get_settings()
@@ -230,7 +230,7 @@ def test_history_dialog_filters_and_clears(qtbot, tmp_path):
     dialog = HistoryDialog(manager)
     qtbot.addWidget(dialog)
     assert dialog.table_model.rowCount() == 2
-    dialog.type_combo.setCurrentText(OperationType.CREATE_JUNCTION.value)
+    dialog.type_combo.setCurrentIndex(dialog.type_combo.findData(OperationType.CREATE_JUNCTION))
     assert dialog.table_model.rowCount() == 1
     dialog.clear_filters()
     assert dialog.table_model.rowCount() == 2
@@ -368,7 +368,7 @@ def test_settings_save_failure_preserves_active_preferences(qtbot, monkeypatch, 
     settings = AppSettings(theme_mode="light", scan_directories=[str(tmp_path)])
     dialog = settings_dialog.SettingsDialog(settings)
     qtbot.addWidget(dialog)
-    dialog.theme_combo.setCurrentText("dark")
+    dialog.theme_combo.setCurrentIndex(dialog.theme_combo.findData("dark"))
 
     def fail(candidate):
         raise PermissionError("locked")

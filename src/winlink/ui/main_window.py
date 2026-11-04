@@ -373,6 +373,7 @@ class MainWindow(QMainWindow):
     def change_theme(self):
         from winlink.core.config import save_settings
 
+        previous_mode = self.settings.theme_mode
         candidate = self.settings.model_copy(deep=True)
         candidate.theme_mode = self.quick_theme.currentData()
         try:
@@ -381,6 +382,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Tema não salvo", str(exc))
             return
         self.settings.theme_mode = candidate.theme_mode
+        if self.settings_page.theme_combo.currentData() == previous_mode:
+            self.settings_page.theme_combo.setCurrentIndex(
+                self.settings_page.theme_combo.findData(candidate.theme_mode)
+            )
         self.apply_theme()
 
     def open_selected_properties(self, index):
@@ -442,6 +447,8 @@ class MainWindow(QMainWindow):
             self._scan_pending = True
             return
         self._scan_pending = False
+        if hasattr(self, "history_page"):
+            self.history_page.load_history()
         self.status_bar.showMessage("Escaneando junções...")
         # Convert scan directories to Path objects
         directories = [Path(d) for d in self.settings.scan_directories]
@@ -900,7 +907,20 @@ class MainWindow(QMainWindow):
     def show_properties(self, junction: Junction):
         """Show junction properties dialog"""
         dialog = PropertiesDialog(junction, self, history_manager=self.history_manager)
-        dialog.undo_requested.connect(self.undo_junction)
+
+        def undo_from_properties(selected):
+            import os
+
+            self.undo_junction(selected)
+            remaining = (
+                (selected.target.is_junction() or selected.target.is_symlink())
+                if selected.is_directory
+                else os.path.lexists(selected.target)
+            )
+            if not remaining:
+                dialog.accept()
+
+        dialog.undo_requested.connect(undo_from_properties)
         dialog.exec()
 
     def undo_junction(self, junction: Junction):
@@ -931,9 +951,17 @@ class MainWindow(QMainWindow):
 
                 def perform(context):
                     context.check_cancelled()
-                    from winlink.core.operations import verify_junction_integrity
+                    from winlink.core.operations import (
+                        verify_directory_link_reference,
+                        verify_junction_integrity,
+                    )
 
-                    if not verify_junction_integrity(junction):
+                    intact = (
+                        verify_directory_link_reference(junction)
+                        if strategy == UndoStrategy.REMOVE_ONLY
+                        else verify_junction_integrity(junction)
+                    )
+                    if not intact:
                         raise OSError(
                             "O link foi alterado ou está inacessível. Atualize a lista antes de desfazer."
                         )

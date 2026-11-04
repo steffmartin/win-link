@@ -338,34 +338,8 @@ class ThemeManager(QObject):
             spacing: 6px;
         }}
 
-        QCheckBox::indicator {{
-            width: 18px;
-            height: 18px;
-            border: 1px solid {border};
-            border-radius: 3px;
-            background-color: {surface};
-        }}
-
-        QCheckBox::indicator:checked {{
-            background-color: {primary};
-            border: 1px solid {primary};
-        }}
-
         QRadioButton {{
             spacing: 6px;
-        }}
-
-        QRadioButton::indicator {{
-            width: 18px;
-            height: 18px;
-            border: 2px solid {border};
-            border-radius: 9px;
-            background-color: {surface};
-        }}
-
-        QRadioButton::indicator:checked {{
-            background-color: {primary};
-            border: 2px solid {primary};
         }}
 
         QProgressBar {{

@@ -68,11 +68,11 @@ def test_settings_restore_discard_and_save_are_transactional(qtbot, tmp_path):
     dialog = SettingsDialog(settings)
     qtbot.addWidget(dialog)
     dialog.restore_defaults()
-    assert dialog.theme_combo.currentText() == "auto"
+    assert dialog.theme_combo.currentData() == "auto"
     assert settings_path().read_bytes() == original
     assert settings.theme_mode == "dark"
     dialog.discard_changes()
-    assert dialog.theme_combo.currentText() == "dark"
+    assert dialog.theme_combo.currentData() == "dark"
     dialog.restore_defaults()
     dialog.save_settings()
     assert get_settings().theme_mode == "auto"
@@ -88,7 +88,7 @@ def test_settings_save_failure_keeps_existing_data(qtbot, monkeypatch, tmp_path)
     original = settings_path().read_bytes()
     dialog = SettingsDialog(settings)
     qtbot.addWidget(dialog)
-    dialog.theme_combo.setCurrentText("light")
+    dialog.theme_combo.setCurrentIndex(dialog.theme_combo.findData("light"))
     monkeypatch.setattr(settings_dialog, "save_settings", Mock(side_effect=OSError("denied")))
     monkeypatch.setattr(QMessageBox, "critical", Mock())
     dialog.save_settings()
@@ -291,3 +291,77 @@ def test_progress_escape_requests_cooperative_cancel(qtbot):
     assert dialog.status_label.text().startswith("Cancelado")
     qtbot.keyClick(dialog, Qt.Key.Key_Escape)
     assert not dialog.isVisible()
+
+
+def test_new_creation_page_runs_real_preview_and_junction(window, qtbot, monkeypatch, tmp_path):
+    from winlink.ui.dialogs.preview_dialog import PreviewDialog
+    from winlink.ui.dialogs.progress_dialog import ProgressDialog
+    from PyQt6.QtWidgets import QApplication
+
+    source, target = tmp_path / "data", tmp_path / "new-link"
+    source.mkdir()
+    (source / "important.txt").write_text("preserve")
+    for name in ["warning", "information", "critical"]:
+        monkeypatch.setattr(QMessageBox, name, Mock(return_value=QMessageBox.StandardButton.Yes))
+    window.navigate(1)
+    page = window.create_page
+    page.source_edit.setText(str(source))
+    page.target_edit.setText(str(target))
+    timer = QTimer()
+
+    def confirm():
+        dialog = QApplication.activeModalWidget()
+        if isinstance(dialog, PreviewDialog) and dialog.confirm_btn.isEnabled():
+            timer.stop()
+            dialog.confirm_btn.click()
+
+    timer.timeout.connect(confirm)
+    timer.start(10)
+    try:
+        page.create_btn.click()
+        assert target.is_junction()
+        assert (target / "important.txt").read_text() == "preserve"
+        assert window.history_manager.get_history()[0].success
+        assert window.history_manager.get_history()[0].metadata["link_identity"]
+    finally:
+        timer.stop()
+        for widget in window.findChildren(ProgressDialog):
+            widget.set_operation_finished(True)
+            widget.close()
+        if target.is_junction():
+            target.rmdir()
+
+
+def test_broken_directory_remove_only_checks_reference(tmp_path):
+    from winlink.core.operations import create_junction, verify_directory_link_reference
+
+    source, target, moved = tmp_path / "source", tmp_path / "link", tmp_path / "moved"
+    source.mkdir()
+    (source / "keep.txt").write_text("keep")
+    assert create_junction(source, target)
+    junction = Junction(source=source, target=target, junction_type=JunctionType.JUNCTION)
+    try:
+        source.rename(moved)
+        assert verify_directory_link_reference(junction)
+        changed = Junction(
+            source=tmp_path / "different", target=target, junction_type=JunctionType.JUNCTION
+        )
+        assert not verify_directory_link_reference(changed)
+        assert (moved / "keep.txt").read_text() == "keep"
+    finally:
+        target.rmdir()
+
+
+def test_properties_reversal_request_preserves_selection_until_confirmed(qtbot, tmp_path):
+    from winlink.ui.dialogs.properties_dialog import PropertiesDialog
+
+    data = tmp_path / "data"
+    data.mkdir()
+    junction = Junction(source=data, target=tmp_path / "link", junction_type=JunctionType.JUNCTION)
+    dialog = PropertiesDialog(junction)
+    qtbot.addWidget(dialog)
+    dialog.show()
+    with qtbot.waitSignal(dialog.undo_requested):
+        dialog.undo_btn.click()
+    assert dialog.isVisible()
+    assert dialog.junction == junction

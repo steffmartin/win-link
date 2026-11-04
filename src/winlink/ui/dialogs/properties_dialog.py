@@ -135,7 +135,6 @@ class PropertiesDialog(AnimatedDialog):
 
     def request_undo(self):
         if not getattr(self, "_calculating", False):
-            self.accept()
             self.undo_requested.emit(self.junction)
 
     def recalculate(self):

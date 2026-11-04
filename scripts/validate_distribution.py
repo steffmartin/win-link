@@ -111,7 +111,7 @@ if len(sys.argv) > 1:
     }
 results["clean_machine"] = "not tested; host has Python installed"
 (ROOT / "docs" / "validacao").mkdir(parents=True, exist_ok=True)
-(ROOT / "docs" / "validacao" / "phase5-distribution.json").write_text(
+(ROOT / "docs" / "validacao" / "redesign-distribution.json").write_text(
     json.dumps(results, indent=2), encoding="utf-8"
 )
 print(json.dumps(results, indent=2))

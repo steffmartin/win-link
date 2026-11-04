@@ -261,3 +261,34 @@ def recreate_junction(junction: Junction) -> bool:
     except Exception as e:
         logger.error(f"Error recreating junction {junction.target}: {e}")
         return False
+
+
+def verify_directory_link_reference(junction: Junction) -> bool:
+    """Verify a directory reparse reference even when its data location is missing.
+
+    Removing only the link must never require deleting or probing its data tree.
+    Copy/move restoration still requires the stricter live integrity check.
+    """
+    try:
+        if not junction.is_directory:
+            return False
+        if junction.junction_type == JunctionType.JUNCTION:
+            if not junction.target.is_junction():
+                return False
+        elif junction.junction_type == JunctionType.SYMLINK:
+            if not junction.target.is_symlink():
+                return False
+        else:
+            return False
+        reference = os.readlink(junction.target)
+        if reference.startswith("\\\\?\\UNC\\"):
+            reference = "\\\\" + reference[8:]
+        elif reference.startswith(("\\\\?\\", "\\??\\")):
+            reference = reference[4:]
+        if not os.path.isabs(reference):
+            reference = str(junction.target.parent / reference)
+        return os.path.normcase(os.path.abspath(reference)) == os.path.normcase(
+            os.path.abspath(junction.source)
+        )
+    except OSError:
+        return False
