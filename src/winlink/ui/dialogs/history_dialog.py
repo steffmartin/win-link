@@ -2,10 +2,10 @@
 
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
-    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -17,11 +17,14 @@ from PyQt6.QtWidgets import (
 
 from winlink.core.history import HistoryManager
 from winlink.core.models import OperationRecord, OperationType
+from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
 
 
 class HistoryTableModel(QAbstractTableModel):
     """Model for displaying operation history"""
+
+    _operations: list[OperationRecord]
 
     COLUMNS = ["Data", "Tipo", "Detalhes"]
 
@@ -31,10 +34,14 @@ class HistoryTableModel(QAbstractTableModel):
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of rows"""
+        if parent.isValid():
+            return 0
         return len(self._operations)
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of columns"""
+        if parent.isValid():
+            return 0
         return len(self.COLUMNS)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -45,7 +52,7 @@ class HistoryTableModel(QAbstractTableModel):
         if index.row() >= len(self._operations):
             return None
 
-        operation = self._operations[index.row()]
+        operation = self._operations[int(index.row())]
         column = index.column()
 
         if role == Qt.ItemDataRole.DisplayRole:
@@ -57,7 +64,9 @@ class HistoryTableModel(QAbstractTableModel):
 
         return None
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
+    def headerData(
+        self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
+    ):
         """Return header data"""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             if section < len(self.COLUMNS):
@@ -86,10 +95,10 @@ class HistoryTableModel(QAbstractTableModel):
             tooltip += f"Erro: {operation.error_message}"
         return tooltip
 
-    def _get_foreground_color(self, operation: OperationRecord) -> str | None:
+    def _get_foreground_color(self, operation: OperationRecord) -> QColor | None:
         """Get foreground color based on operation type"""
         if not operation.success:
-            return "#C42B1A"  # Red for failed operations
+            return QColor("#C42B1A")
         return None
 
     def _get_type_display(self, operation_type: OperationType) -> str:
@@ -127,11 +136,13 @@ class HistoryTableModel(QAbstractTableModel):
         """Get operation at a given index"""
         if not index.isValid() or index.row() >= len(self._operations):
             return None
-        return self._operations[index.row()]
+        return self._operations[int(index.row())]
 
 
-class HistoryDialog(QDialog):
+class HistoryDialog(AnimatedDialog):
     """Dialog for displaying operation history"""
+
+    undo_requested = pyqtSignal(object)
 
     def __init__(self, history_manager: HistoryManager, parent=None):
         super().__init__(parent)
@@ -207,11 +218,53 @@ class HistoryDialog(QDialog):
         self.export_btn = QPushButton("Exportar")
         self.export_btn.clicked.connect(self.export_history)
 
+        self.undo_btn = QPushButton("Desfazer selecionada")
+        self.undo_btn.setToolTip(
+            "Desfazer a criação selecionada após verificar se o link ainda é o mesmo"
+        )
+        self.undo_btn.clicked.connect(self.undo_selected)
+        button_layout.addWidget(self.undo_btn)
         button_layout.addWidget(self.close_btn)
         button_layout.addWidget(self.clear_history_btn)
         button_layout.addWidget(self.export_btn)
 
         layout.addLayout(button_layout)
+
+    def undo_selected(self):
+        from winlink.core.models import Creator, Junction, JunctionType
+        from winlink.core.operations import verify_junction_integrity
+
+        record = self.table_model.get_operation(self.table_view.currentIndex())
+        types = {
+            OperationType.CREATE_JUNCTION: JunctionType.JUNCTION,
+            OperationType.CREATE_SYMLINK: JunctionType.SYMLINK,
+            OperationType.CREATE_HARDLINK: JunctionType.HARDLINK,
+        }
+        if (
+            not record
+            or not record.success
+            or record.operation_type not in types
+            or not record.source
+            or not record.target
+        ):
+            QMessageBox.warning(
+                self, "Histórico", "Selecione uma criação bem-sucedida para desfazer."
+            )
+            return
+        junction = Junction(
+            source=record.source,
+            target=record.target,
+            junction_type=types[record.operation_type],
+            creator=Creator.APP,
+            is_directory=record.source.is_dir(),
+        )
+        if not verify_junction_integrity(junction):
+            QMessageBox.warning(
+                self, "Histórico", "O link foi removido ou alterado. Atualize a lista."
+            )
+            return
+        self.accept()
+        self.undo_requested.emit(junction)
 
     def load_history(self):
         """Load history from manager"""
@@ -278,7 +331,9 @@ class HistoryDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            self.history_manager.clear_history()
+            if not self.history_manager.clear_history():
+                QMessageBox.critical(self, "Erro", "Não foi possível limpar o histórico.")
+                return
             self.load_history()
             QMessageBox.information(self, "Sucesso", "Histórico limpo com sucesso.")
 

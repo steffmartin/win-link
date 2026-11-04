@@ -14,6 +14,7 @@ from winlink.core.scanner import (
     classify_creator,
     get_junction_type,
     get_reparse_target,
+    is_hard_link,
     is_reparse_point,
     scan_directory,
     scan_directories,
@@ -46,18 +47,63 @@ def test_is_reparse_point_error():
         assert result is False
 
 
+def test_is_hard_link_with_multiple_links():
+    """Test is_hard_link with file that has multiple hard links (st_nlink > 1)"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a file
+        file_path = Path(tmpdir) / "test.txt"
+        file_path.write_text("test content")
+
+        # Mock stat to return st_nlink > 1
+        with patch.object(Path, "stat") as mock_stat:
+            mock_stat_result = MagicMock()
+            mock_stat_result.st_nlink = 2
+            mock_stat.return_value = mock_stat_result
+            result = is_hard_link(file_path)
+            assert result is True
+
+
+def test_is_hard_link_with_single_link():
+    """Test is_hard_link with file that has only one hard link (st_nlink = 1)"""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create a file
+        file_path = Path(tmpdir) / "test.txt"
+        file_path.write_text("test content")
+
+        # Mock stat to return st_nlink = 1
+        with patch.object(Path, "stat") as mock_stat:
+            mock_stat_result = MagicMock()
+            mock_stat_result.st_nlink = 1
+            mock_stat.return_value = mock_stat_result
+            result = is_hard_link(file_path)
+            assert result is False
+
+
+def test_is_hard_link_error():
+    """Test is_hard_link with error"""
+    with patch.object(Path, "stat") as mock_stat:
+        mock_stat.side_effect = Exception("Access denied")
+        result = is_hard_link(Path("C:/test/error.txt"))
+        assert result is False
+
+
 def test_get_junction_type_junction():
     """Test get_junction_type for a junction (mount point)"""
-    # This test requires complex mocking of Windows API structures
-    # Skipping for now - will be tested with integration tests using real junctions
-    pytest.skip("Complex Windows API mocking - will test with real junctions")
+    _assert_reparse_type(0xA0000003, JunctionType.JUNCTION)
 
 
 def test_get_junction_type_symlink():
     """Test get_junction_type for a symlink"""
-    # This test requires complex mocking of Windows API structures
-    # Skipping for now - will be tested with integration tests using real junctions
-    pytest.skip("Complex Windows API mocking - will test with real junctions")
+    _assert_reparse_type(0xA000000C, JunctionType.SYMLINK)
+
+
+def _assert_reparse_type(tag, expected):
+    buffer = tag.to_bytes(4, "little") + bytes(4)
+    with patch("winlink.core.scanner.win32file.CreateFileW", return_value=123), patch(
+        "winlink.core.scanner.win32file.DeviceIoControl", return_value=buffer
+    ), patch("winlink.core.scanner.win32file.CloseHandle") as close:
+        assert get_junction_type(Path("C:/test/link")) == expected
+        close.assert_called_once_with(123)
 
 
 def test_get_junction_type_error():
@@ -211,7 +257,7 @@ def test_scan_directory_file():
 
 def test_scan_directories_empty_list():
     """Test scan_directories with empty list"""
-    result = scan_directories([])
+    result = scan_directories([], use_cache=False)
     assert len(result.junctions) == 0
     assert len(result.scanned_directories) == 0
     assert result.scan_duration_seconds >= 0
@@ -219,8 +265,73 @@ def test_scan_directories_empty_list():
 
 def test_scan_directories_with_error():
     """Test scan_directories with error"""
-    result = scan_directories([Path("C:/nonexistent/path")])
+    result = scan_directories([Path("C:/nonexistent/path")], use_cache=False)
     assert len(result.junctions) == 0
     # The scan_directory function logs a warning but doesn't add to errors list
     # The errors list is for errors during scan, not for non-existent paths
     # So we just verify it returns empty junctions
+
+
+def test_readlink_relative_target_is_relative_to_link(tmp_path):
+    from winlink.core.scanner import get_reparse_target
+    with patch("os.readlink", return_value="..\\data"):
+        result = get_reparse_target(tmp_path / "links" / "shortcut")
+    assert result.resolve() == (tmp_path / "data").resolve()
+
+
+def test_readlink_unc_prefix_is_preserved(tmp_path):
+    from winlink.core.scanner import get_reparse_target
+    with patch("os.readlink", return_value="\\\\?\\UNC\\server\\share\\data"):
+        assert str(get_reparse_target(tmp_path / "link")) == "\\\\server\\share\\data"
+
+
+def test_binary_junction_target_uses_path_buffer_offset(tmp_path):
+    import struct
+    import winnt
+    from winlink.core.scanner import get_reparse_target
+    text = r"\??\D:\storage".encode("utf-16le")
+    payload = struct.pack("<IHHHHHH", winnt.IO_REPARSE_TAG_MOUNT_POINT & 0xFFFFFFFF, len(text) + 8, 0, 0, len(text), 0, 0) + text
+    with patch("os.readlink", side_effect=OSError), patch(
+        "winlink.core.scanner.win32file.CreateFileW", return_value=123
+    ), patch("winlink.core.scanner.win32file.DeviceIoControl", return_value=payload), patch(
+        "winlink.core.scanner.win32file.CloseHandle"
+    ):
+        assert get_reparse_target(tmp_path / "link") == Path(r"D:\storage")
+
+
+def test_scan_broken_directory_junction_keeps_directory_type(tmp_path):
+    from winlink.core.operations import create_junction, remove_junction
+    storage, root = tmp_path / "storage", tmp_path / "root"
+    storage.mkdir()
+    root.mkdir()
+    link = root / "link"
+    assert create_junction(storage, link)
+    storage.rmdir()
+    try:
+        results = scan_directory(root)
+        assert len(results) == 1
+        assert results[0].is_directory
+        assert results[0].status == JunctionStatus.BROKEN
+    finally:
+        assert remove_junction(link)
+
+
+def test_file_status_check_does_not_read_entire_file(tmp_path):
+    source = tmp_path / "data"
+    source.write_bytes(b"content")
+    junction = Junction(source=source, target=source, junction_type=JunctionType.SYMLINK, is_directory=False)
+    with patch.object(Path, "read_bytes", side_effect=AssertionError("unbounded read")):
+        assert check_junction_status(junction) == JunctionStatus.ACTIVE
+
+
+@pytest.mark.parametrize("buffer", [bytes.fromhex("030000a000000000"), bytes.fromhex("030000a0000000000000640000000000")])
+def test_reparse_target_rejects_truncated_buffers(tmp_path, buffer):
+    with patch("os.readlink", side_effect=OSError), patch("winlink.core.scanner.win32file.CreateFileW", return_value=123), patch("winlink.core.scanner.win32file.DeviceIoControl", return_value=buffer), patch("winlink.core.scanner.win32file.CloseHandle") as close:
+        assert get_reparse_target(tmp_path / "link") is None
+        close.assert_called_once_with(123)
+
+
+def test_status_permission_failure_is_inaccessible(tmp_path):
+    junction = Junction(source=tmp_path, target=tmp_path, junction_type=JunctionType.JUNCTION)
+    with patch.object(Path, "stat", side_effect=PermissionError("denied")):
+        assert check_junction_status(junction) == JunctionStatus.INACCESSIBLE

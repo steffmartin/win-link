@@ -10,6 +10,7 @@ import win32file
 import winioctlcon
 import winnt
 
+from winlink.core.cache import CacheManager
 from winlink.core.models import Creator, Junction, JunctionStatus, JunctionType, ScanResult
 from winlink.utils.logger import get_logger
 
@@ -34,6 +35,24 @@ def is_reparse_point(path: Path) -> bool:
         return False
 
 
+def is_hard_link(path: Path) -> bool:
+    """
+    Check if a path is a hard link (has multiple hard link references).
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a hard link (st_nlink > 1), False otherwise
+    """
+    try:
+        stat = path.stat()
+        return stat.st_nlink > 1
+    except Exception as e:
+        logger.warning(f"Failed to check hard link for {path}: {e}")
+        return False
+
+
 def get_reparse_target(path: Path) -> Path | None:
     """
     Get the target of a reparse point.
@@ -50,9 +69,12 @@ def get_reparse_target(path: Path) -> Path | None:
 
         target_str = os.readlink(path)
         # Remove \\?\ prefix if present
-        if target_str.startswith("\\\\?\\"):
+        if target_str.startswith("\\\\?\\UNC\\"):
+            target_str = "\\\\" + target_str[8:]
+        elif target_str.startswith("\\\\?\\"):
             target_str = target_str[4:]
-        return Path(target_str)
+        target = Path(target_str)
+        return target if target.is_absolute() else path.parent / target
     except (OSError, NotImplementedError, AttributeError):
         pass
 
@@ -84,28 +106,49 @@ def get_reparse_target(path: Path) -> Path | None:
             reparse_tag = int.from_bytes(buffer[0:4], byteorder="little")
 
             # Junction tag
-            if reparse_tag == winnt.IO_REPARSE_TAG_MOUNT_POINT:
+            if reparse_tag == (winnt.IO_REPARSE_TAG_MOUNT_POINT & 0xFFFFFFFF):
                 # Mount point (junction)
-                offset = int.from_bytes(buffer[8:12], byteorder="little")
-                length = int.from_bytes(buffer[12:16], byteorder="little")
-                target_bytes = buffer[offset : offset + length]
+                offset = int.from_bytes(buffer[8:10], byteorder="little")
+                length = int.from_bytes(buffer[10:12], byteorder="little")
+                if (
+                    len(buffer) < 16
+                    or not length
+                    or offset % 2
+                    or length % 2
+                    or 16 + offset + length > len(buffer)
+                ):
+                    return None
+                target_bytes = buffer[16 + offset : 16 + offset + length]
                 target = target_bytes.decode("utf-16le").rstrip("\x00")
                 # Remove leading \??\
                 if target.startswith("\\??\\"):
                     target = target[4:]
+                if target.startswith("UNC\\"):
+                    target = "\\\\" + target[4:]
                 return Path(target)
 
             # Symlink tag
-            elif reparse_tag == winnt.IO_REPARSE_TAG_SYMBOLIC_LINK:
+            elif reparse_tag == 0xA000000C:
                 # Symbolic link
-                offset = int.from_bytes(buffer[16:20], byteorder="little")
-                length = int.from_bytes(buffer[20:24], byteorder="little")
-                target_bytes = buffer[offset : offset + length]
+                offset = int.from_bytes(buffer[8:10], byteorder="little")
+                length = int.from_bytes(buffer[10:12], byteorder="little")
+                if (
+                    len(buffer) < 20
+                    or not length
+                    or offset % 2
+                    or length % 2
+                    or 20 + offset + length > len(buffer)
+                ):
+                    return None
+                target_bytes = buffer[20 + offset : 20 + offset + length]
                 target = target_bytes.decode("utf-16le").rstrip("\x00")
                 # Remove leading \??\
                 if target.startswith("\\??\\"):
                     target = target[4:]
-                return Path(target)
+                if target.startswith("UNC\\"):
+                    target = "\\\\" + target[4:]
+                resolved = Path(target)
+                return resolved if resolved.is_absolute() else path.parent / resolved
 
         finally:
             win32file.CloseHandle(handle)
@@ -153,9 +196,9 @@ def get_junction_type(path: Path) -> JunctionType | None:
 
             reparse_tag = int.from_bytes(buffer[0:4], byteorder="little")
 
-            if reparse_tag == winnt.IO_REPARSE_TAG_MOUNT_POINT:
+            if reparse_tag == (winnt.IO_REPARSE_TAG_MOUNT_POINT & 0xFFFFFFFF):
                 return JunctionType.JUNCTION
-            elif reparse_tag == winnt.IO_REPARSE_TAG_SYMBOLIC_LINK:
+            elif reparse_tag == 0xA000000C:
                 return JunctionType.SYMLINK
 
         finally:
@@ -168,11 +211,11 @@ def get_junction_type(path: Path) -> JunctionType | None:
     try:
         import os
 
-        target = os.readlink(path)
+        os.readlink(path)
         # If we can read it with os.readlink, it's likely a symlink
         # NTFS junctions are also readable via os.readlink on modern Windows
         # We can differentiate by checking if it's a directory vs file
-        if path.is_dir():
+        if path.is_junction():
             return JunctionType.JUNCTION
         else:
             return JunctionType.SYMLINK
@@ -194,7 +237,13 @@ def calculate_directory_size(path: Path) -> int:
     """
     total_size = 0
     try:
-        for dirpath, dirnames, filenames in os.walk(path):
+        for dirpath, directories, filenames in os.walk(path):
+            directories[:] = [
+                name
+                for name in directories
+                if not (Path(dirpath) / name).is_junction()
+                and not (Path(dirpath) / name).is_symlink()
+            ]
             for filename in filenames:
                 filepath = Path(dirpath) / filename
                 try:
@@ -217,21 +266,23 @@ def check_junction_status(junction: Junction) -> JunctionStatus:
     Returns:
         JunctionStatus
     """
-    # Check if target exists
-    if not junction.target.exists():
+    try:
+        junction.target.stat()
+        junction.source.stat()
+    except FileNotFoundError:
         return JunctionStatus.BROKEN
-
-    # Check if source exists
-    if not junction.source.exists():
-        return JunctionStatus.BROKEN
+    except OSError:
+        return JunctionStatus.INACCESSIBLE
 
     # Check if accessible
     try:
         # Try to access the target
         if junction.is_directory:
-            list(junction.target.iterdir())
+            with os.scandir(junction.target) as entries:
+                next(entries, None)
         else:
-            junction.target.read_bytes()
+            with junction.target.open("rb") as stream:
+                stream.read(1)
     except (PermissionError, OSError):
         return JunctionStatus.INACCESSIBLE
 
@@ -260,7 +311,7 @@ def scan_directory(
     known_junctions: set[Path] | None = None,
 ) -> list[Junction]:
     """
-    Scan a directory for junctions and symlinks.
+    Scan a directory for junctions, symlinks, and hard links.
 
     Args:
         path: Directory to scan
@@ -273,7 +324,7 @@ def scan_directory(
     if known_junctions is None:
         known_junctions = set()
 
-    junctions = []
+    junctions: list[Junction] = []
 
     if not path.exists() or not path.is_dir():
         logger.warning(f"Path does not exist or is not a directory: {path}")
@@ -295,7 +346,9 @@ def scan_directory(
                         continue
 
                     # Determine if it's a directory
-                    is_directory = item.is_dir()
+                    is_directory = bool(
+                        win32api.GetFileAttributes(str(item)) & win32con.FILE_ATTRIBUTE_DIRECTORY
+                    )
 
                     # Create junction object
                     junction = Junction(
@@ -313,9 +366,8 @@ def scan_directory(
 
                     # Calculate size if active
                     if junction.status == JunctionStatus.ACTIVE and junction.source.exists():
-                        if junction.is_directory:
-                            junction.size_bytes = calculate_directory_size(junction.source)
-                        else:
+                        # Directory totals are calculated lazily in Properties.
+                        if not junction.is_directory:
                             try:
                                 junction.size_bytes = junction.source.stat().st_size
                             except (OSError, PermissionError):
@@ -323,6 +375,46 @@ def scan_directory(
 
                     junctions.append(junction)
                     logger.info(f"Found junction: {item} -> {target}")
+
+                # Check for hard links (files only)
+                elif item.is_file() and is_hard_link(item):
+                    # All hard link names are peers. Keep another name as the
+                    # source so removing the selected name can preserve a peer.
+                    try:
+                        stat = item.stat()
+                        is_directory = False
+
+                        # Create junction object for hard link
+                        junction = Junction(
+                            source=next(
+                                (
+                                    Path(item.anchor) / name.lstrip("\\/")
+                                    for name in win32file.FindFileNames(str(item))
+                                    if Path(item.anchor) / name.lstrip("\\/") != item
+                                ),
+                                item,
+                            ),
+                            target=item,
+                            junction_type=JunctionType.HARDLINK,
+                            is_directory=is_directory,
+                        )
+
+                        # Check status
+                        junction.status = check_junction_status(junction)
+
+                        # Classify creator
+                        junction.creator = classify_creator(junction, known_junctions)
+
+                        # Calculate size
+                        try:
+                            junction.size_bytes = stat.st_size
+                        except (OSError, PermissionError):
+                            pass
+
+                        junctions.append(junction)
+                        logger.info(f"Found hard link: {item} (nlink={stat.st_nlink})")
+                    except Exception as e:
+                        logger.warning(f"Error processing hard link {item}: {e}")
 
                 # Recursively scan subdirectories
                 elif recursive and item.is_dir():
@@ -346,31 +438,55 @@ def scan_directories(
     directories: list[Path],
     recursive: bool = True,
     known_junctions: set[Path] | None = None,
+    use_cache: bool = False,
+    cache_max_age_seconds: float = 3600,
 ) -> ScanResult:
     """
-    Scan multiple directories for junctions.
+    Scan multiple directories for junctions, symlinks, and hard links.
 
     Args:
         directories: List of directories to scan
         recursive: Whether to scan recursively
         known_junctions: Set of junction paths known to be created by the app
+        use_cache: Whether to use cached results if available
+        cache_max_age_seconds: Maximum age of cache in seconds to consider valid
 
     Returns:
         ScanResult with found junctions and metadata
     """
     start_time = time.time()
-    all_junctions = []
+    all_junctions: list[Junction] = []
     scanned_dirs = []
     errors = []
 
     if known_junctions is None:
         known_junctions = set()
 
+    cache_manager = CacheManager()
+    if use_cache:
+        cached = cache_manager.load()
+        if (
+            cached
+            and recursive
+            and cached.scan_directories == [str(d) for d in directories]
+            and cache_manager.is_cache_valid(cache_max_age_seconds)
+        ):
+            junctions = cached.to_junctions()
+            for junction in junctions:
+                junction.creator = classify_creator(junction, known_junctions)
+            return ScanResult(
+                junctions=junctions,
+                scanned_directories=directories,
+                scan_duration_seconds=time.time() - start_time,
+            )
+
+    # Perform actual scan
     for directory in directories:
         logger.info(f"Scanning directory: {directory}")
         try:
             junctions = scan_directory(directory, recursive, known_junctions)
-            all_junctions.extend(junctions)
+            existing = {j.target for j in all_junctions}
+            all_junctions.extend(j for j in junctions if j.target not in existing)
             scanned_dirs.append(directory)
         except Exception as e:
             error_msg = f"Error scanning {directory}: {e}"
@@ -387,5 +503,10 @@ def scan_directories(
     )
 
     logger.info(f"Scan complete: found {len(all_junctions)} junctions in {duration:.2f}s")
+
+    # Save to cache
+    if use_cache and recursive and not errors:
+        cache_manager = CacheManager()
+        cache_manager.save(result)
 
     return result

@@ -247,3 +247,25 @@ def test_history_max_entries():
             # Should have kept the most recent 5
             assert history[0].metadata["index"] == 9
             assert history[4].metadata["index"] == 5
+
+
+def test_failed_history_replace_preserves_previous_records(tmp_path, monkeypatch):
+    from pathlib import Path
+    manager = HistoryManager(tmp_path / "history.json")
+    assert manager.add_operation(OperationType.CREATE_JUNCTION)
+    original = manager.history_file.read_bytes()
+    def fail_replace(self, target):
+        raise PermissionError("locked")
+    monkeypatch.setattr(Path, "replace", fail_replace)
+    assert not manager.add_operation(OperationType.REMOVE_JUNCTION)
+    assert manager.history_file.read_bytes() == original
+
+
+def test_add_operation_does_not_overwrite_corrupt_history(tmp_path):
+    path = tmp_path / "history.json"
+    original = '{"partial":'
+    path.write_text(original)
+    manager = HistoryManager(path)
+    assert manager.get_history() == []
+    assert not manager.add_operation(OperationType.CREATE_JUNCTION)
+    assert path.read_text() == original

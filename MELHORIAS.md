@@ -1,83 +1,31 @@
-# Melhorias Futuras - WinLink
+# Melhorias — escopo aprovado e evolução
 
-## Prioridade Alta
+## Aprovadas para a próxima implementação (etapa 6.6)
 
-### 1. Scan Inverso (Reverse Scan)
-**Descrição**: Permitir escanear para descobrir quais junções apontam para um determinado destino.
+O usuário autorizou manter estas novidades no protótipo e implementá-las nas próximas fases do aplicativo. Ainda não estão entregues no PyQt6:
 
-**Caso de uso**: Usuário quer saber todas as junções que apontam para `D:\Cache` para entender a dependência.
+1. Preferência persistente de tipo de link padrão, compatível com configuração antiga.
+2. Restaurar padrões e descartar alterações nas configurações; restaurar não salva automaticamente.
+3. Filtro do histórico por resultado e intervalo manual de datas, além de operação/períodos existentes.
+4. Distinção de symlink de arquivo/diretório na apresentação e nos filtros.
+5. Alternância rápida de tema no cabeçalho, mantendo modo Seguir sistema.
+6. Detalhes e indicação explícita de criação já desfeita, sem permitir repetir reversão.
+7. Acesso à reversão pelas propriedades, preservando confirmações e verificação de identidade.
 
-**Implementação sugerida**:
-- Criar função `scan_reverse(destination: Path)` que escaneia diretórios comuns e encontre junções cujo `source` seja o destino especificado
-- Adicionar opção na UI para "Encontrar junções que apontam para..."
-- Possível otimização: criar um índice de junções para consultas rápidas
+Detalhamento visual/técnico: [guia de implementação](docs/IMPLEMENTACAO-UI.md). Critérios e ordem: [plano](PLANO.md).
 
-**Complexidade**: Média
+## Fora do escopo atual — ideias a avaliar
 
----
+Estas propostas foram preservadas dos estudos históricos para não perder decisões, mas **não são funcionalidades entregues nem tarefas aprovadas para a etapa 6.6**:
 
-## Prioridade Média
+- Scan inverso: encontrar links que apontam para determinado local de dados.
+- Importar/exportar configuração de links (distinto da exportação do histórico), importar scripts e adicionar link conhecido manualmente.
+- Alterar destino, reconstruir links e sincronizar árvores com política de conflitos a definir.
+- Monitoramento automático/periódico e invalidação de cache por eventos.
+- Encerrar processos automaticamente e elevação automática por operação.
+- Sugestões/análise de espaço, templates e perfis de migração.
+- Visualização em árvore, operações em lote e CLI de automação.
+- Integração com OneDrive/pastas especiais e compressão de destinos.
+- Menu do Explorer, iniciar com Windows, tradução para inglês e atualizações automáticas.
 
-### 2. Cache de Scan
-**Descrição**: Manter cache dos resultados de scan para evitar escaneamentos repetidos.
-
-**Caso de uso**: Usuário abre o app frequentemente e não quer esperar o scan a cada vez.
-
-**Implementação sugerida**:
-- Salvar último resultado de scan em JSON
-- Detectar mudanças (fs watchers) para invalidar cache
-- Opção para forçar scan completo
-
-**Complexidade**: Média
-
----
-
-### 3. Exportar/Importar Configuração de Junções
-**Descrição**: Permitir exportar lista de junções para backup ou migrar para outra máquina.
-
-**Caso de uso**: Usuário quer manter backup das junções configuradas ou migrar para novo computador.
-
-**Implementação sugerida**:
-- Exportar para JSON/CSV
-- Importar com validação
-- Suporte para seleção parcial
-
-**Complexidade**: Baixa
-
----
-
-## Prioridade Baixa
-
-### 4. Integração com OneDrive
-**Descrição**: Detectar e gerenciar junções envolvendo pastas OneDrive.
-
-**Caso de uso**: Usuário usa OneDrive e quer evitar conflitos.
-
-**Implementação sugerida**:
-- Detectar pastas OneDrive
-- Alertar sobre conflitos potenciais
-- Modo de compatibilidade
-
-**Complexidade**: Alta
-
----
-
-### 5. Compressão de Destinos
-**Descrição**: Comprimir destinos para economizar espaço.
-
-**Caso de uso**: Junções para diretórios raramente usados podem ser compactados.
-
-**Implementação sugerida**:
-- Opção para compactar origem
-- Descompactação sob demanda
-- Integração com Windows Compact
-
-**Complexidade**: Alta
-
----
-
-## Observações
-
-- Todas as melhorias devem manter a regra de não modificar junções sem confirmação explícita
-- Testes devem usar pastas de teste dedicadas
-- Priorizar usabilidade e segurança
+Cache de descoberta, histórico JSON e suporte a arquivos já existem; não tratá-los como novidades pendentes. As versões antigas usavam “Fase 2/3” também como gerações do produto; não reutilizar essa numeração para priorizar o plano atual.

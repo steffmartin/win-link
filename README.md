@@ -1,69 +1,47 @@
-# WinLink - Gerenciador de Junções NTFS
+# WinLink
 
-Aplicativo Windows para gerenciamento de junções NTFS (NTFS Junctions) e links simbólicos. Permite criar, listar, gerenciar e desfazer links de diretórios e arquivos no sistema de arquivos NTFS com interface moderna compatível com Windows 11.
+Aplicativo Windows em Python/PyQt6 para descobrir, criar e desfazer junctions, links simbólicos de diretório/arquivo e hard links, com prévia, confirmação e preservação dos dados.
 
-## Visão Geral
+## Estado e próxima etapa
 
-WinLink é uma interface gráfica para o conceito de junções NTFS, que permite que diretórios apontem para outros diretórios de forma transparente para o sistema operacional e a maioria das aplicações. É inspirado no script `migrar_pastas.ps1` existente, mas com funcionalidades expandidas e uma interface amigável.
+A implementação da fase 5 está entregue, com homologação externa pendente. O protótipo de redesign tem direção visual aprovada e cobertura das funcionalidades atuais. **A próxima etapa é implementá-lo no aplicativo real**, junto às melhorias aprovadas da etapa 6.6. O React é referência de interface e usa dados fictícios.
 
-## Funcionalidades Principais
+Comece pelo [guia de implementação](docs/IMPLEMENTACAO-UI.md) e pelo [plano](PLANO.md).
 
-- **Listagem Automática**: Descobre e lista todas as junções NTFS e links simbólicos do sistema
-- **Criação de Junções**: Cria novas junções preservando arquivos existentes
-- **Gerenciamento**: Permite desfazer, modificar e sincronizar junções
-- **Suporte a Arquivos**: Suporte a hard links e symbolic links para arquivos (se suportado pelo Windows)
-- **Interface Moderna**: Tema claro/escuro automático, design compatível com Windows 11
-- **Segurança**: Validações, backups automáticos e proteção contra perda de dados
+## Documentação essencial
 
-## Motivação
+| Documento | Finalidade |
+|---|---|
+| [Plano](PLANO.md) | Fases, próximo trabalho e critérios de conclusão |
+| [Especificação](ESPECIFICACAO.md) | Funcionalidades atuais e regras de preservação |
+| [Implementação da UI](docs/IMPLEMENTACAO-UI.md) | Design, cobertura e mapeamento React → PyQt6 |
+| [Melhorias](MELHORIAS.md) | Novidades aprovadas e ideias fora do escopo |
+| [Demo](prototypes/agente-externo-v1/README.md) | Como executar o protótipo final e seus testes |
+| [Distribuição](docs/ARQUITETURA-DISTRIBUICAO.md) | Build, instalação e dados do aplicativo |
+| [Validação da fase 5](docs/validacao/FASE5.md) | Evidências preservadas e homologação pendente |
 
-Muitos usuários Windows utilizam junções NTFS para mover pastas do perfil de usuário para outros discos (ex: `D:\Cache`), economizando espaço no SSD principal. O processo atual usando scripts PowerShell pode ser intimidador para usuários menos técnicos. WinLink torna esse processo acessível através de uma interface gráfica intuitiva.
+## Desenvolvimento
 
-## Status do Projeto
+Windows, Python 3.12+ e uv:
 
-🚧 **Em Desenvolvimento**
+```powershell
+uv sync --extra dev --extra build
+.venv\Scripts\python.exe -m winlink.main
+```
 
-**Fase Atual**: Fase 3 - Camada de Domínio (lógica de negócio)
+Alternativa para abrir o aplicativo: `iniciar-winlink.bat`.
 
-**Concluído**:
-- ✅ Fase 1: Planejamento e especificação
-- ✅ Fase 2: Infraestrutura e base do projeto
+```powershell
+.venv\Scripts\python.exe -m pytest -q
+.venv\Scripts\python.exe -m ruff check src resources
+.venv\Scripts\python.exe -m black --check src resources
+.venv\Scripts\python.exe -m mypy src
+```
 
-**Em Andamento**:
-- 🔄 Fase 3: Camada de domínio (será executada por outro agente)
+A demo React roda em http://127.0.0.1:5174/; consulte seus comandos no README da demo. Não confundir o servidor web com o aplicativo real.
 
-**Pendente**:
-- ⏳ Fase 4: Interface gráfica
-- ⏳ Fase 5: Integração e refinamento
-- ⏳ Fase 6: Documentação final
+## Distribuição
 
-Veja o plano de desenvolvimento em [PLANO.md](PLANO.md) e o handoff para a próxima fase em [HANDOFF.md](HANDOFF.md).
+Portátil: distribuir a pasta inteira `dist/WinLink`, incluindo `_internal`. Instalador: `dist/WinLink-Setup-0.1.0.exe`. Não distribuir builds anteriores à correção de coleta de DLLs descrita no relatório da fase 5. Homologação em Windows limpo/Windows 10 e permissões de symlinks permanece pendente.
 
-## Documentação
-
-- [Especificação do Sistema](ESPECIFICACAO.md) - Requisitos funcionais e não-funcionais detalhados
-- [Plano de Desenvolvimento](PLANO.md) - Fases e etapas do projeto
-- [Tecnologias](TECNOLOGIAS.md) - Stack tecnológico e justificativas
-- [Protótipo de Interface](PROTOTIPO.md) - Mockups e wireframes da interface
-
-## Instalação
-
-*Em desenvolvimento*
-
-## Uso
-
-*Em desenvolvimento*
-
-## Contribuindo
-
-Este é um projeto pessoal. Consulte o [PLANO.md](PLANO.md) para entender o roadmap.
-
-## Licença
-
-*Pendente de definição*
-
-## Referências
-
-- Script de referência: `D:\Cache\migrar_pastas.ps1`
-- Documentação NTFS Junctions da Microsoft
-- Windows 11 Design Guidelines
+Licença: pendente de definição.

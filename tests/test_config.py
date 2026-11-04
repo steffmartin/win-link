@@ -35,3 +35,30 @@ def test_operation_settings():
     assert settings.confirm_before_destructive is True
     assert settings.show_notifications is True
     assert settings.warn_nested_junctions is True
+
+
+def test_settings_persist_and_reload(monkeypatch, tmp_path):
+    from winlink.core.config import save_settings
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    settings = AppSettings(theme_mode="dark", scan_directories=[str(tmp_path)])
+    save_settings(settings)
+    loaded = get_settings()
+    assert loaded.theme_mode == "dark"
+    assert loaded.scan_directories == [str(tmp_path)]
+
+
+def test_invalid_settings_file_is_preserved(monkeypatch, tmp_path):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    path = tmp_path / "WinLink" / "config.json"
+    path.parent.mkdir()
+    path.write_text("broken")
+    assert isinstance(get_settings(), AppSettings)
+    assert path.read_text() == "broken"
+
+
+def test_invalid_configuration_values_are_rejected():
+    import pytest
+    from pydantic import ValidationError
+    for values in [{"theme_mode": "unknown"}, {"log_level": "invalid"}, {"max_history_entries": 0}]:
+        with pytest.raises(ValidationError):
+            AppSettings(**values)

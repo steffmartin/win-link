@@ -1,13 +1,13 @@
 """Data models for WinLink junction management"""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_serializer
 
 
-class JunctionType(str, Enum):
+class JunctionType(StrEnum):
     """Type of junction/link"""
 
     JUNCTION = "JUNCTION"
@@ -15,7 +15,7 @@ class JunctionType(str, Enum):
     HARDLINK = "HARDLINK"
 
 
-class JunctionStatus(str, Enum):
+class JunctionStatus(StrEnum):
     """Status of a junction"""
 
     ACTIVE = "ACTIVE"
@@ -23,7 +23,7 @@ class JunctionStatus(str, Enum):
     INACCESSIBLE = "INACCESSIBLE"
 
 
-class Creator(str, Enum):
+class Creator(StrEnum):
     """Who created the junction"""
 
     APP = "APP"
@@ -31,7 +31,7 @@ class Creator(str, Enum):
     MANUAL = "MANUAL"
 
 
-class UndoStrategy(str, Enum):
+class UndoStrategy(StrEnum):
     """Strategy for undoing a junction"""
 
     REMOVE_ONLY = "REMOVE_ONLY"
@@ -61,7 +61,7 @@ class Junction(BaseModel):
         return value.isoformat() if value else None
 
 
-class OperationType(str, Enum):
+class OperationType(StrEnum):
     """Type of operation performed"""
 
     CREATE_JUNCTION = "CREATE_JUNCTION"

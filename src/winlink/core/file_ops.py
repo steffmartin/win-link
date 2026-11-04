@@ -2,6 +2,7 @@
 
 import os
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 from winlink.utils.logger import get_logger
@@ -13,6 +14,7 @@ def copy_directory_with_metadata(
     source: Path,
     destination: Path,
     preserve_attributes: bool = True,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> bool:
     """
     Copy a directory with all metadata preserved.
@@ -26,12 +28,93 @@ def copy_directory_with_metadata(
         True if successful, False otherwise
     """
     try:
-        # Use shutil.copytree for directory copy
-        if preserve_attributes:
-            # shutil.copytree preserves metadata by default
-            shutil.copytree(source, destination, dirs_exist_ok=True)
-        else:
-            shutil.copytree(source, destination, dirs_exist_ok=True, copy_function=shutil.copy)
+        source_resolved, destination_resolved = source.resolve(), destination.resolve()
+        if (
+            source_resolved == destination_resolved
+            or source_resolved in destination_resolved.parents
+            or destination_resolved in source_resolved.parents
+        ):
+            logger.error("Cannot copy overlapping directory trees")
+            return False
+        if destination.is_symlink() or destination.is_junction():
+            raise OSError("A pasta de destino da cópia foi substituída por um link")
+        # Inspect all collisions before copytree can overwrite any existing data.
+        if destination.exists():
+            for root, directories, filenames in os.walk(source):
+                relative = Path(root).relative_to(source)
+                for name in filenames:
+                    existing = destination / relative / name
+                    if os.path.lexists(existing):
+                        logger.error(f"Copy conflict; destination already exists: {existing}")
+                        return False
+                for name in directories:
+                    existing = destination / relative / name
+                    if os.path.lexists(existing) and (
+                        not existing.is_dir() or existing.is_symlink() or existing.is_junction()
+                    ):
+                        logger.error(f"Copy directory conflict: {existing}")
+                        return False
+                directories[:] = [
+                    name
+                    for name in directories
+                    if not (Path(root) / name).is_junction()
+                    and not (Path(root) / name).is_symlink()
+                ]
+
+        def copy_checked(src, dst):
+            if check_cancelled is not None:
+                check_cancelled()
+            from uuid import uuid4
+
+            destination_path = Path(dst)
+            temporary = destination_path.with_name(f".{destination_path.name}.{uuid4().hex}.tmp")
+            try:
+                if check_cancelled is not None and Path(src).stat().st_size > 8 * 1024 * 1024:
+                    with open(src, "rb") as reader, temporary.open("xb") as writer:
+                        while chunk := reader.read(1024 * 1024):
+                            check_cancelled()
+                            writer.write(chunk)
+                    if preserve_attributes:
+                        shutil.copystat(src, temporary)
+                else:
+                    copy = shutil.copy2 if preserve_attributes else shutil.copy
+                    copy(src, temporary)
+                if check_cancelled is not None:
+                    check_cancelled()
+                # Windows rename refuses to replace a file created during the copy.
+                temporary.rename(destination_path)
+                return str(destination_path)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+
+        if check_cancelled is not None:
+            check_cancelled()
+
+        def preserve_junctions(root, names):
+            from winlink.core.operations import create_junction
+
+            ignored = []
+            for name in names:
+                entry = Path(root) / name
+                if entry.is_junction():
+                    if check_cancelled is not None:
+                        check_cancelled()
+                    copied_link = destination / entry.relative_to(source)
+                    copied_link.parent.mkdir(parents=True, exist_ok=True)
+                    if not create_junction(Path(os.readlink(entry)), copied_link):
+                        raise OSError(f"Cannot preserve junction: {entry}")
+                    ignored.append(name)
+            return ignored
+
+        shutil.copytree(
+            source,
+            destination,
+            dirs_exist_ok=True,
+            copy_function=copy_checked,
+            symlinks=True,
+            ignore=preserve_junctions,
+        )
 
         logger.info(f"Copied directory: {source} -> {destination}")
         return True
@@ -174,9 +257,20 @@ def is_file_in_use(file_path: Path) -> bool:
         True if file is in use, False otherwise
     """
     try:
-        # Try to open the file in exclusive mode
-        with open(file_path, "rb") as f:
-            pass
+        import win32file
+
+        if not file_path.exists():
+            return False
+        handle = win32file.CreateFile(
+            str(file_path),
+            win32file.GENERIC_READ,
+            0,
+            None,
+            win32file.OPEN_EXISTING,
+            win32file.FILE_ATTRIBUTE_NORMAL,
+            None,
+        )
+        handle.Close()
         return False
     except PermissionError:
         # File is likely in use
@@ -201,7 +295,13 @@ def calculate_directory_size_recursive(path: Path) -> int:
     """
     total_size = 0
     try:
-        for dirpath, dirnames, filenames in os.walk(path):
+        for dirpath, directories, filenames in os.walk(path):
+            directories[:] = [
+                name
+                for name in directories
+                if not (Path(dirpath) / name).is_junction()
+                and not (Path(dirpath) / name).is_symlink()
+            ]
             for filename in filenames:
                 filepath = Path(dirpath) / filename
                 try:
@@ -338,3 +438,28 @@ def is_directory_empty(path: Path) -> bool:
     except Exception as e:
         logger.warning(f"Error checking if directory {path} is empty: {e}")
         return False
+
+
+def tree_signature(path: Path) -> dict[str, tuple[int, int, int, int]]:
+    """Capture identities and modification times without following directory links."""
+    entries = {}
+
+    def record(entry):
+        stat = entry.lstat()
+        entries[str(entry.relative_to(path))] = (
+            stat.st_dev,
+            stat.st_ino,
+            stat.st_size,
+            stat.st_mtime_ns,
+        )
+
+    record(path)
+    for root, directories, files in os.walk(path):
+        for name in directories + files:
+            record(Path(root) / name)
+        directories[:] = [
+            name
+            for name in directories
+            if not (Path(root) / name).is_junction() and not (Path(root) / name).is_symlink()
+        ]
+    return entries

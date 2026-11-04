@@ -77,8 +77,6 @@ def get_processes_using_directory(directory: Path) -> list[dict]:
     processes = []
 
     try:
-        directory_str = str(directory).lower()
-
         for proc in psutil.process_iter(["pid", "name", "exe"]):
             try:
                 # Get all open files for the process
@@ -191,7 +189,7 @@ def is_process_running(pid: int) -> bool:
     """
     try:
         proc = psutil.Process(pid)
-        return proc.is_running()
+        return bool(proc.is_running())
     except psutil.NoSuchProcess:
         return False
     except Exception:

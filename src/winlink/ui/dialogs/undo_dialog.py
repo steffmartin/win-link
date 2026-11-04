@@ -5,7 +5,6 @@ from pathlib import Path
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -14,10 +13,11 @@ from PyQt6.QtWidgets import (
 )
 
 from winlink.core.models import UndoStrategy
+from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
 
 
-class UndoDialog(QDialog):
+class UndoDialog(AnimatedDialog):
     """Dialog for undoing a junction"""
 
     def __init__(self, source: Path, target: Path, parent=None):
@@ -65,7 +65,7 @@ class UndoDialog(QDialog):
         remove_only_desc = QLabel(
             "A junção será removida, deixando uma pasta vazia no destino. Os arquivos permanecem na origem."
         )
-        remove_only_desc.setStyleSheet("color: #5C5C5C; font-size: 12px; margin-left: 20px;")
+        remove_only_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         layout.addWidget(remove_only_desc)
 
         # Move back option
@@ -80,7 +80,7 @@ class UndoDialog(QDialog):
         move_back_desc = QLabel(
             "Os arquivos serão movidos da origem para o destino, e a junção será removida."
         )
-        move_back_desc.setStyleSheet("color: #5C5C5C; font-size: 12px; margin-left: 20px;")
+        move_back_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         layout.addWidget(move_back_desc)
 
         # Duplicate option
@@ -94,7 +94,7 @@ class UndoDialog(QDialog):
         duplicate_desc = QLabel(
             "Os arquivos serão copiados da origem para o destino. A junção será removida. A origem permanece com os arquivos."
         )
-        duplicate_desc.setStyleSheet("color: #5C5C5C; font-size: 12px; margin-left: 20px;")
+        duplicate_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         layout.addWidget(duplicate_desc)
 
         # Keep source checkbox
@@ -140,7 +140,7 @@ class UndoDialog(QDialog):
 
     def get_keep_source(self) -> bool:
         """Get whether to keep source as backup"""
-        return self.keep_source_checkbox.isChecked()
+        return bool(self.keep_source_checkbox.isChecked())
 
     def accept(self):
         """Override accept to validate before closing"""
@@ -151,5 +151,7 @@ class UndoDialog(QDialog):
             # Not applicable for remove_only
             self.keep_source_checkbox.setChecked(False)
 
-        self.logger.info(f"Undoing junction {self.target} -> {self.source} with strategy {strategy}")
+        self.logger.info(
+            f"Undoing junction {self.target} -> {self.source} with strategy {strategy}"
+        )
         super().accept()

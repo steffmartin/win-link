@@ -1,6 +1,5 @@
 """Table model for displaying junctions in QTableView"""
 
-
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt6.QtGui import QColor
 
@@ -9,6 +8,8 @@ from winlink.core.models import Creator, Junction, JunctionStatus, JunctionType
 
 class JunctionTableModel(QAbstractTableModel):
     """Model for displaying junctions in a table view"""
+
+    _junctions: list[Junction]
 
     COLUMNS = [
         "Origem",
@@ -25,10 +26,14 @@ class JunctionTableModel(QAbstractTableModel):
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of rows"""
+        if parent.isValid():
+            return 0
         return len(self._junctions)
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of columns"""
+        if parent.isValid():
+            return 0
         return len(self.COLUMNS)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
@@ -39,7 +44,7 @@ class JunctionTableModel(QAbstractTableModel):
         if index.row() >= len(self._junctions):
             return None
 
-        junction = self._junctions[index.row()]
+        junction = self._junctions[int(index.row())]
         column = index.column()
 
         if role == Qt.ItemDataRole.DisplayRole:
@@ -53,7 +58,9 @@ class JunctionTableModel(QAbstractTableModel):
 
         return None
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
+    def headerData(
+        self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
+    ):
         """Return header data"""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             if section < len(self.COLUMNS):
@@ -141,7 +148,7 @@ class JunctionTableModel(QAbstractTableModel):
             return "🔒 Inacessível"
         return status.value
 
-    def _format_size(self, size_bytes: int | None) -> str:
+    def _format_size(self, size_bytes: float | None) -> str:
         """Format size in human-readable format"""
         if size_bytes is None:
             return "N/A"
@@ -175,7 +182,7 @@ class JunctionTableModel(QAbstractTableModel):
         """
         if not index.isValid() or index.row() >= len(self._junctions):
             return None
-        return self._junctions[index.row()]
+        return self._junctions[int(index.row())]
 
     def clear(self) -> None:
         """Clear all junctions"""
@@ -219,5 +226,7 @@ class JunctionTableModel(QAbstractTableModel):
         if not index.isValid() or index.row() >= len(self._junctions):
             return
 
-        self._junctions[index.row()] = junction
-        self.dataChanged.emit(index, index)
+        self._junctions[int(index.row())] = junction
+        self.dataChanged.emit(
+            self.index(index.row(), 0), self.index(index.row(), len(self.COLUMNS) - 1)
+        )

@@ -24,6 +24,9 @@ dev = [
     "black>=24.8.0",
     "mypy>=1.11.0",
 ]
+build = [
+    "pyinstaller>=6.22.3",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -47,6 +50,7 @@ target-version = ["py312"]
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
+check_untyped_defs = true
 warn_unused_configs = true
 ignore_missing_imports = true
 
@@ -56,3 +60,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 qt_api = "pyqt6"
+
+# Upstream Qt 6.12 stubs contain invalid positional-only vararg signatures.
+# Keep application checks enabled; treat Qt imports as external untyped APIs.
+[[tool.mypy.overrides]]
+module = ["PyQt6.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true

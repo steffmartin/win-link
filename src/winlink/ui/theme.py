@@ -149,7 +149,7 @@ class ThemeManager(QObject):
 
         # Convert QColor to hex strings
         def to_hex(color: QColor) -> str:
-            return color.name()
+            return str(color.name())
 
         bg = to_hex(colors["background"])
         surface = to_hex(colors["surface"])
@@ -160,9 +160,6 @@ class ThemeManager(QObject):
         text = to_hex(colors["text"])
         text_secondary = to_hex(colors["text_secondary"])
         border = to_hex(colors["border"])
-        success = to_hex(colors["success"])
-        warning = to_hex(colors["warning"])
-        error = to_hex(colors["error"])
 
         stylesheet = f"""
         QMainWindow {{
@@ -445,9 +442,9 @@ class ThemeManager(QObject):
     @property
     def current_theme(self) -> str:
         """Get current theme name"""
-        return self._current_theme
+        return str(self._current_theme)
 
     @property
     def mode(self) -> str:
         """Get theme mode (auto/light/dark)"""
-        return self._mode
+        return str(self._mode)

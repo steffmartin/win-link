@@ -37,7 +37,7 @@ class HistoryManager:
         except Exception as e:
             logger.error(f"Error creating history file {self.history_file}: {e}")
 
-    def _load_history(self) -> list[dict]:
+    def _load_history(self, strict: bool = False) -> list[dict]:
         """
         Load history from file.
 
@@ -49,12 +49,19 @@ class HistoryManager:
                 return []
 
             content = self.history_file.read_text(encoding="utf-8")
-            return json.loads(content)
+            history = json.loads(content)
+            if not isinstance(history, list):
+                raise ValueError("History must contain a JSON array")
+            return history
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding history file: {e}")
+            if strict:
+                raise
             return []
         except Exception as e:
             logger.error(f"Error loading history: {e}")
+            if strict:
+                raise
             return []
 
     def _save_history(self, history: list[dict]) -> bool:
@@ -68,7 +75,9 @@ class HistoryManager:
             True if successful, False otherwise
         """
         try:
-            self.history_file.write_text(json.dumps(history, indent=2), encoding="utf-8")
+            temporary = self.history_file.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(history, indent=2), encoding="utf-8")
+            temporary.replace(self.history_file)
             return True
         except Exception as e:
             logger.error(f"Error saving history: {e}")
@@ -99,7 +108,7 @@ class HistoryManager:
         """
         try:
             settings = get_settings()
-            history = self._load_history()
+            history = self._load_history(strict=True)
 
             # Create operation record
             record = OperationRecord(
@@ -180,11 +189,7 @@ class HistoryManager:
             List of operation records
         """
         history = self.get_history()
-        return [
-            record
-            for record in history
-            if start_date <= record.timestamp <= end_date
-        ]
+        return [record for record in history if start_date <= record.timestamp <= end_date]
 
     def get_last_operation(
         self, operation_type: OperationType | None = None

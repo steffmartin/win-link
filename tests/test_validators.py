@@ -1,6 +1,7 @@
 """Tests for validation functions"""
 
 import tempfile
+import pytest
 from pathlib import Path
 
 from winlink.core.models import Junction, JunctionType, ValidationResult
@@ -266,7 +267,7 @@ def test_validate_junction_creation_target_not_empty():
         result = validate_junction_creation(source, target, JunctionType.JUNCTION)
         # Target can have files - they will be copied to source (not an error)
         assert result.is_valid is True
-        assert len(result.errors) > 0
+        assert result.errors == []
 
 
 def test_validate_junction_creation_hardlink_directory():
@@ -365,3 +366,66 @@ def test_validate_undo_operation_invalid_strategy():
         result = validate_undo_operation(junction, "INVALID_STRATEGY")
         assert result.is_valid is False
         assert len(result.errors) > 0
+
+
+@pytest.mark.parametrize("relationship", ["same", "source_inside", "target_inside"])
+def test_creation_rejects_overlapping_paths(tmp_path, relationship):
+    source = tmp_path / "data"
+    source.mkdir()
+    if relationship == "same":
+        target = source
+    elif relationship == "source_inside":
+        target = tmp_path
+    else:
+        target = source / "nested"
+    result = validate_junction_creation(source, target, JunctionType.JUNCTION)
+    assert not result.is_valid
+    assert any("non-overlapping" in error for error in result.errors)
+
+
+def test_creation_checks_space_where_files_will_be_copied(tmp_path, monkeypatch):
+    from winlink.core import validators
+    from winlink.core.models import ValidationResult
+    source = tmp_path / "new" / "storage"
+    target = tmp_path / "old"
+    target.mkdir()
+    (target / "payload").write_bytes(b"12345")
+    calls = []
+    def check(path, required):
+        calls.append((path, required))
+        return ValidationResult(is_valid=False, errors=["not enough space"])
+    monkeypatch.setattr(validators, "validate_disk_space", check)
+    result = validate_junction_creation(source, target, JunctionType.JUNCTION)
+    assert calls == [(tmp_path, 5)]
+    assert not result.is_valid
+
+
+@pytest.mark.parametrize("file_side", ["source", "target"])
+def test_junction_creation_rejects_files(tmp_path, file_side):
+    source, target = tmp_path / "source", tmp_path / "target"
+    for name, path in [("source", source), ("target", target)]:
+        if name == file_side:
+            path.write_text("do not delete")
+        else:
+            path.mkdir()
+    result = validate_junction_creation(source, target, JunctionType.JUNCTION)
+    assert not result.is_valid
+    assert (source if file_side == "source" else target).read_text() == "do not delete"
+
+
+def test_broken_junction_validation_uses_link_existence(tmp_path):
+    from unittest.mock import patch
+    from winlink.core.models import Junction
+    from winlink.core.validators import validate_junction_removal
+    junction = Junction(source=tmp_path / "missing", target=tmp_path / "broken", junction_type=JunctionType.JUNCTION)
+    with patch("winlink.core.validators.os.path.lexists", return_value=True), patch(
+        "winlink.core.validators.is_reparse_point", return_value=True
+    ):
+        assert validate_junction_removal(junction).is_valid
+        assert not validate_junction_creation(junction.source, junction.target, JunctionType.JUNCTION).is_valid
+
+
+def test_creation_rejects_volume_root(tmp_path):
+    result = validate_junction_creation(Path(tmp_path.anchor), tmp_path / "link", JunctionType.JUNCTION)
+    assert not result.is_valid
+    assert any("Volume roots" in error for error in result.errors)

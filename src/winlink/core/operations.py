@@ -1,5 +1,6 @@
 """Operations for creating and managing junctions and links"""
 
+import os
 from pathlib import Path
 
 import win32api
@@ -48,7 +49,7 @@ def create_symbolic_link(
             flags,
         )
 
-        if result:
+        if result is None or result:
             logger.info(f"Created symbolic link: {link} -> {target}")
             return True
         else:
@@ -86,7 +87,7 @@ def create_hard_link(
             None,
         )
 
-        if result:
+        if result is None or result:
             logger.info(f"Created hard link: {link} -> {target}")
             return True
         else:
@@ -113,34 +114,27 @@ def create_junction(
     Returns:
         True if successful, False otherwise
     """
-    # Try using Python's junction function first (mklink via subprocess)
     try:
-        import subprocess
+        import _winapi
 
         # Remove existing directory if it exists
-        if link.exists():
+        if os.path.lexists(link):
+            if link.is_symlink() or link.is_junction():
+                logger.error(f"Cannot replace an existing link: {link}")
+                return False
             if link.is_dir():
                 if any(link.iterdir()):
                     logger.error(f"Cannot create junction: {link} is not empty")
                     return False
                 link.rmdir()
             else:
-                link.unlink()
+                logger.error(f"Cannot replace an existing file: {link}")
+                return False
 
-        # Use mklink command
-        result = subprocess.run(
-            ["mklink", "/J", str(link), str(target)],
-            shell=True,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode == 0:
-            logger.info(f"Created junction: {link} -> {target}")
-            return True
-        else:
-            logger.error(f"mklink failed: {result.stderr}")
-            return False
+        link.parent.mkdir(parents=True, exist_ok=True)
+        _winapi.CreateJunction(str(target.absolute()), str(link.absolute()))
+        logger.info(f"Created junction: {link} -> {target}")
+        return True
 
     except Exception as e:
         logger.error(f"Error creating junction {link} -> {target}: {e}")
@@ -158,7 +152,7 @@ def remove_junction(link: Path) -> bool:
         True if successful, False otherwise
     """
     try:
-        if not link.exists():
+        if not os.path.lexists(link):
             logger.warning(f"Cannot remove junction: {link} does not exist")
             return False
 
@@ -169,7 +163,7 @@ def remove_junction(link: Path) -> bool:
             return False
 
         # Remove the directory
-        if link.is_dir():
+        if attrs & win32con.FILE_ATTRIBUTE_DIRECTORY:
             link.rmdir()
         else:
             link.unlink()
@@ -193,6 +187,14 @@ def verify_junction_integrity(junction: Junction) -> bool:
         True if junction is intact, False otherwise
     """
     try:
+        if junction.junction_type == JunctionType.HARDLINK:
+            intact = (
+                junction.source.is_file()
+                and junction.target.is_file()
+                and junction.source.samefile(junction.target)
+            )
+            junction.status = JunctionStatus.ACTIVE if intact else JunctionStatus.BROKEN
+            return intact
         # Check if target exists
         if not junction.target.exists():
             logger.warning(f"Junction target does not exist: {junction.target}")
@@ -212,6 +214,9 @@ def verify_junction_integrity(junction: Junction) -> bool:
             junction.status = JunctionStatus.BROKEN
             return False
 
+        if not junction.source.samefile(junction.target):
+            junction.status = JunctionStatus.BROKEN
+            return False
         # Update status
         junction.status = JunctionStatus.ACTIVE
         return True
@@ -233,9 +238,14 @@ def recreate_junction(junction: Junction) -> bool:
         True if successful, False otherwise
     """
     try:
+        if junction.junction_type == JunctionType.HARDLINK:
+            if os.path.lexists(junction.target):
+                return verify_junction_integrity(junction)
+            return create_hard_link(junction.source, junction.target)
         # Remove existing junction if it exists
-        if junction.target.exists():
-            remove_junction(junction.target)
+        if os.path.lexists(junction.target):
+            if not remove_junction(junction.target):
+                return False
 
         # Recreate based on type
         if junction.junction_type == JunctionType.JUNCTION:

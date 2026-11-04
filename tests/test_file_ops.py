@@ -298,3 +298,81 @@ def test_is_directory_empty_false():
 
         result = is_directory_empty(directory)
         assert result is False
+
+
+def test_directory_copy_conflict_preserves_both_versions(tmp_path):
+    source, destination = tmp_path / "source", tmp_path / "destination"
+    source.mkdir()
+    destination.mkdir()
+    (source / "data").write_text("incoming")
+    (destination / "data").write_text("existing")
+    assert not copy_directory_with_metadata(source, destination)
+    assert (source / "data").read_text() == "incoming"
+    assert (destination / "data").read_text() == "existing"
+
+
+def test_copy_rejects_destination_inside_source(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "data").write_text("keep")
+    assert not copy_directory_with_metadata(source, source / "nested")
+    assert not (source / "nested").exists()
+
+
+def test_directory_copy_checks_cancellation_between_files(tmp_path):
+    source, destination = tmp_path / "source", tmp_path / "destination"
+    source.mkdir()
+    for number in range(3):
+        (source / str(number)).write_text("preserve")
+    checks = []
+    def check():
+        checks.append(True)
+        if len(checks) == 3:
+            raise RuntimeError("cancelled")
+    assert not copy_directory_with_metadata(source, destination, check_cancelled=check)
+    assert len(list(source.iterdir())) == 3
+    # Cancellation may happen before publishing the first completed copy.
+    assert len(list(destination.iterdir())) <= 1
+    assert not list(destination.glob("*.tmp"))
+
+
+def test_copy_preserves_nested_junction_without_following_it(tmp_path):
+    from winlink.core.operations import create_junction, remove_junction
+    source, destination = tmp_path / "source", tmp_path / "destination"
+    source.mkdir()
+    # A cycle must be preserved as a link rather than recursively copied.
+    nested = source / "cycle"
+    assert create_junction(source, nested)
+    try:
+        assert copy_directory_with_metadata(source, destination)
+        assert (destination / "cycle").is_junction()
+    finally:
+        if (destination / "cycle").is_junction():
+            assert remove_junction(destination / "cycle")
+        assert remove_junction(nested)
+
+
+def test_size_calculation_does_not_follow_junction_cycle(tmp_path):
+    from winlink.core.operations import create_junction, remove_junction
+    from winlink.core.scanner import calculate_directory_size
+    from winlink.core.file_ops import calculate_directory_size_recursive
+    (tmp_path / "payload").write_bytes(b"12345")
+    cycle = tmp_path / "cycle"
+    assert create_junction(tmp_path, cycle)
+    try:
+        assert calculate_directory_size(tmp_path) == 5
+        assert calculate_directory_size_recursive(tmp_path) == 5
+    finally:
+        assert remove_junction(cycle)
+
+
+def test_is_file_in_use_detects_windows_shared_handle(tmp_path):
+    import win32file
+    path = tmp_path / "locked"
+    path.write_text("payload")
+    handle = win32file.CreateFile(str(path), win32file.GENERIC_READ, win32file.FILE_SHARE_READ, None, win32file.OPEN_EXISTING, 0, None)
+    try:
+        assert is_file_in_use(path)
+    finally:
+        handle.Close()
+    assert not is_file_in_use(path)

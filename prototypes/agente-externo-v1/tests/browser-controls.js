@@ -1,0 +1,11 @@
+async page => {
+ const check=(v,m)=>{if(!v)throw Error(m)};
+ await page.goto('http://127.0.0.1:5174/');
+ await page.getByRole('button',{name:'Filtros',exact:true}).click();await page.getByRole('dialog').getByRole('combobox',{name:'Status',exact:true}).selectOption('Quebrado');await page.getByRole('button',{name:'Aplicar filtros'}).click();check(await page.getByRole('heading',{level:4}).count()===1,'Filtro');
+ await page.getByRole('button',{name:'Filtros',exact:true}).click();await page.keyboard.press('Escape');check((await page.evaluate(()=>document.activeElement.textContent)).includes('Filtros'),'Retorno foco');
+ await page.getByRole('button',{name:'Configurações',exact:true}).click();await page.getByRole('combobox',{name:'Tema',exact:true}).selectOption('light');await page.getByRole('button',{name:'Salvar Alterações'}).click();await page.getByRole('button',{name:'OK, Fechar'}).click();await page.reload();check(!await page.locator('html').evaluate(e=>e.classList.contains('dark')),'Persistência');
+ await page.getByRole('button',{name:'Histórico',exact:true}).click();await page.getByRole('combobox',{name:'Resultado',exact:true}).selectOption('erro');check(await page.getByText('Nenhum registro encontrado.').count()===1,'Filtro histórico');await page.getByRole('button',{name:'Limpar filtros'}).click();
+ const dl=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar',exact:true}).click();check((await dl).suggestedFilename().endsWith('.json'),'Download');
+ await page.getByRole('button',{name:'Limpar',exact:true}).click();await page.getByRole('button',{name:'Cancelar',exact:true}).click();check(await page.getByText('Criação',{exact:true}).count()===1,'Limpeza cancelada');await page.getByRole('button',{name:'Limpar',exact:true}).click();await page.getByRole('button',{name:'Confirmar limpeza'}).click();check(await page.getByText('Nenhum registro encontrado.').count()===1,'Limpeza');
+ await page.evaluate(()=>localStorage.removeItem('winlink-demo-preferences'));await page.reload();return {passed:true,groups:['filtros','foco/Escape','preferências persistentes','download','limpeza confirmada']};
+}

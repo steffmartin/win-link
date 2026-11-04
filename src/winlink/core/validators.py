@@ -25,8 +25,8 @@ def validate_path(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Check if path is empty
     if not path or str(path).strip() == "" or str(path) == ".":
@@ -68,8 +68,8 @@ def validate_path_exists(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if not path.exists():
         errors.append(f"Path does not exist: {path}")
@@ -89,8 +89,8 @@ def validate_path_not_exists(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if path.exists():
         errors.append(f"Path already exists: {path}")
@@ -111,8 +111,8 @@ def validate_permissions(path: Path, write: bool = False) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if not path.exists():
         errors.append(f"Path does not exist: {path}")
@@ -143,8 +143,8 @@ def validate_disk_space(path: Path, required_bytes: int) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     available = get_available_disk_space(path)
 
@@ -172,10 +172,10 @@ def validate_is_junction(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
-    if not path.exists():
+    if not os.path.lexists(path):
         errors.append(f"Path does not exist: {path}")
         return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
@@ -197,10 +197,10 @@ def validate_is_not_junction(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
-    if path.exists() and is_reparse_point(path):
+    if os.path.lexists(path) and is_reparse_point(path):
         errors.append(f"Path is already a junction or symlink: {path}")
         return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
@@ -218,8 +218,8 @@ def validate_directory_empty(path: Path) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     if not path.exists():
         errors.append(f"Directory does not exist: {path}")
@@ -253,8 +253,8 @@ def validate_junction_creation(
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Validate paths
     path_result = validate_path(source)
@@ -265,12 +265,61 @@ def validate_junction_creation(
     errors.extend(path_result.errors)
     warnings.extend(path_result.warnings)
 
+    # Compare resolved paths so aliases and parent components cannot bypass safety checks.
+    try:
+        resolved_source = source.resolve()
+        resolved_target = target.resolve()
+        if resolved_source == resolved_source.parent or resolved_target == resolved_target.parent:
+            errors.append("Volume roots cannot be used for migration operations")
+        if (
+            resolved_source == resolved_target
+            or resolved_source in resolved_target.parents
+            or resolved_target in resolved_source.parents
+        ):
+            errors.append("Source and target must be distinct, non-overlapping paths")
+    except (OSError, RuntimeError) as exc:
+        errors.append(f"Cannot resolve paths safely: {exc}")
+
+    if not source.is_absolute() or not target.is_absolute():
+        errors.append("Source and target must be absolute paths")
+    if source == source.parent or target == target.parent:
+        errors.append("Volume roots cannot be used for migration operations")
+
+    if errors:
+        return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
+
+    # File links never replace existing user files.
+    if junction_type == JunctionType.HARDLINK or (
+        junction_type == JunctionType.SYMLINK and source.is_file()
+    ):
+        if not source.is_file():
+            errors.append("Hard links e symlinks de arquivo exigem um arquivo de origem existente")
+        if os.path.lexists(target):
+            errors.append("O caminho do link já existe; escolha um novo nome")
+        parent = target.parent
+        while not parent.exists() and parent != parent.parent:
+            parent = parent.parent
+        if junction_type == JunctionType.HARDLINK and source.exists():
+            if source.stat().st_dev != parent.stat().st_dev:
+                errors.append("Hard links devem estar no mesmo volume")
+        return ValidationResult(is_valid=not errors, errors=errors, warnings=warnings)
+
+    if junction_type == JunctionType.SYMLINK and target.exists() and not target.is_dir():
+        errors.append("Para migrar um diretório, o destino deve ser uma pasta")
+
     # Validate source exists
+    if junction_type == JunctionType.JUNCTION:
+        if source.exists() and not source.is_dir():
+            errors.append("Junction source must be a directory")
+        if target.exists() and not target.is_dir():
+            errors.append("Junction target must be a directory")
+        if errors:
+            return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
     if not source.exists():
         warnings.append(f"Source does not exist and will be created: {source}")
 
     # Validate target is not already a junction
-    if target.exists() and is_reparse_point(target):
+    if os.path.lexists(target) and is_reparse_point(target):
         errors.append(f"Target is already a junction or symlink: {target}")
 
     # Note: Target directory can have files - they will be copied to source
@@ -294,9 +343,12 @@ def validate_junction_creation(
                 )
 
     # Check disk space
-    if source.exists():
-        required = calculate_disk_space_required(source)
-        space_result = validate_disk_space(target.parent, required)
+    if target.exists():
+        required = calculate_disk_space_required(target)
+        disk_path = source
+        while not disk_path.exists() and disk_path != disk_path.parent:
+            disk_path = disk_path.parent
+        space_result = validate_disk_space(disk_path, required)
         errors.extend(space_result.errors)
         warnings.extend(space_result.warnings)
 
@@ -323,15 +375,15 @@ def validate_junction_removal(junction: Junction) -> ValidationResult:
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Validate target exists
-    if not junction.target.exists():
+    if not os.path.lexists(junction.target):
         errors.append(f"Junction target does not exist: {junction.target}")
 
     # Validate it's actually a junction
-    if junction.target.exists() and not is_reparse_point(junction.target):
+    if os.path.lexists(junction.target) and not is_reparse_point(junction.target):
         errors.append(f"Target is not a junction or symlink: {junction.target}")
 
     # Check for files in use
@@ -357,8 +409,8 @@ def validate_undo_operation(
     Returns:
         ValidationResult
     """
-    errors = []
-    warnings = []
+    errors: list[str] = []
+    warnings: list[str] = []
 
     # Validate junction exists
     if not junction.target.exists():

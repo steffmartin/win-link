@@ -1,9 +1,11 @@
 """Proxy model for filtering and sorting junctions"""
 
+from typing import cast
 
 from PyQt6.QtCore import QModelIndex, QSortFilterProxyModel
 
 from winlink.core.models import Creator, JunctionStatus, JunctionType
+from winlink.ui.junction_model import JunctionTableModel
 
 
 class JunctionFilterProxyModel(QSortFilterProxyModel):
@@ -75,7 +77,7 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         Returns:
             True if row should be included, False otherwise
         """
-        source_model = self.sourceModel()
+        source_model = cast(JunctionTableModel, self.sourceModel())
         if not source_model:
             return False
 
@@ -117,7 +119,7 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         Returns:
             True if left < right
         """
-        source_model = self.sourceModel()
+        source_model = cast(JunctionTableModel, self.sourceModel())
         if not source_model:
             return False
 

@@ -1,13 +1,16 @@
 """Configuration management for WinLink"""
 
-from enum import Enum
+import json
+import os
+from enum import StrEnum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class ScanDirectory(str, Enum):
+class ScanDirectory(StrEnum):
     """Predefined scan directories"""
 
     USER_PROFILE = "USER_PROFILE"
@@ -26,7 +29,7 @@ class AppSettings(BaseSettings):
     )
 
     # Theme
-    theme_mode: str = "auto"  # auto, light, dark
+    theme_mode: Literal["auto", "light", "dark"] = "auto"
 
     # Scan directories
     scan_directories: list[str] = Field(
@@ -37,16 +40,12 @@ class AppSettings(BaseSettings):
     )
 
     # History
-    max_history_entries: int = 1000
-    history_file: Path = Field(
-        default_factory=lambda: Path.home() / "AppData" / "Roaming" / "WinLink" / "history.json"
-    )
+    max_history_entries: int = Field(default=1000, ge=1)
+    history_file: Path = Field(default_factory=lambda: settings_path().with_name("history.json"))
 
     # Logging
-    log_level: str = "INFO"
-    log_file: Path = Field(
-        default_factory=lambda: Path.home() / "AppData" / "Roaming" / "WinLink" / "winlink.log"
-    )
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    log_file: Path = Field(default_factory=lambda: settings_path().with_name("winlink.log"))
     log_to_console: bool = True
 
     # UI
@@ -61,6 +60,29 @@ class AppSettings(BaseSettings):
     warn_nested_junctions: bool = True
 
 
+def settings_path() -> Path:
+    """Return the per-user configuration location."""
+    return (
+        Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        / "WinLink"
+        / "config.json"
+    )
+
+
+def get_appdata_path() -> Path:
+    """Return the APPDATA directory for WinLink."""
+    return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")) / "WinLink"
+
+
+def save_settings(settings: AppSettings, path: Path | None = None) -> None:
+    """Persist settings atomically; propagate errors to the caller."""
+    path = path or settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(settings.model_dump_json(indent=2), encoding="utf-8")
+    temporary.replace(path)
+
+
 def get_settings() -> AppSettings:
     """
     Get application settings instance.
@@ -68,4 +90,11 @@ def get_settings() -> AppSettings:
     Returns:
         AppSettings instance
     """
+    path = settings_path()
+    if path.exists():
+        try:
+            return AppSettings(**json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError, TypeError):
+            # Preserve invalid files for diagnosis and allow the application to start.
+            pass
     return AppSettings()

@@ -5,7 +5,6 @@ from pathlib import Path
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDialog,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
@@ -16,11 +15,12 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from winlink.core.config import AppSettings
+from winlink.core.config import AppSettings, save_settings
+from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
 
 
-class SettingsDialog(QDialog):
+class SettingsDialog(AnimatedDialog):
     """Dialog for application settings"""
 
     def __init__(self, settings: AppSettings, parent=None):
@@ -94,7 +94,11 @@ class SettingsDialog(QDialog):
         ops_group = QGroupBox("Operações")
         ops_layout = QVBoxLayout()
 
-        self.confirm_checkbox = QCheckBox("Pedir confirmação antes de operações")
+        self.confirm_checkbox = QCheckBox("Confirmar operações destrutivas (obrigatório)")
+        self.confirm_checkbox.setEnabled(False)
+        self.confirm_checkbox.setToolTip(
+            "A prévia e a confirmação protegem os arquivos e permanecem obrigatórias."
+        )
         ops_layout.addWidget(self.confirm_checkbox)
 
         self.backup_checkbox = QCheckBox("Criar backup automático antes de desfazer")
@@ -104,10 +108,8 @@ class SettingsDialog(QDialog):
         ops_layout.addWidget(self.notify_checkbox)
 
         self.warn_nested_checkbox = QCheckBox("Avisar sobre junções aninhadas")
-        warn_nested_desc = QLabel(
-            "(quando criar junção para pasta que já contém junções)"
-        )
-        warn_nested_desc.setStyleSheet("color: #5C5C5C; font-size: 12px; margin-left: 20px;")
+        warn_nested_desc = QLabel("(quando criar junção para pasta que já contém junções)")
+        warn_nested_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         ops_layout.addWidget(self.warn_nested_checkbox)
         ops_layout.addWidget(warn_nested_desc)
 
@@ -121,7 +123,7 @@ class SettingsDialog(QDialog):
         log_level_layout = QHBoxLayout()
         log_level_label = QLabel("Nível:")
         self.log_level_combo = QComboBox()
-        self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
+        self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
         log_level_layout.addWidget(log_level_label)
         log_level_layout.addWidget(self.log_level_combo)
         log_level_layout.addStretch()
@@ -164,7 +166,7 @@ class SettingsDialog(QDialog):
             self.scan_list.addItem(directory)
 
         # Operations
-        self.confirm_checkbox.setChecked(self.settings.confirm_before_destructive)
+        self.confirm_checkbox.setChecked(True)
         self.backup_checkbox.setChecked(self.settings.auto_backup_before_undo)
         self.notify_checkbox.setChecked(self.settings.show_notifications)
         self.warn_nested_checkbox.setChecked(self.settings.warn_nested_junctions)
@@ -176,9 +178,7 @@ class SettingsDialog(QDialog):
 
     def add_scan_directory(self):
         """Add a scan directory"""
-        directory = QFileDialog.getExistingDirectory(
-            self, "Selecionar Diretório", str(Path.home())
-        )
+        directory = QFileDialog.getExistingDirectory(self, "Selecionar Diretório", str(Path.home()))
         if directory:
             self._scan_directories.append(directory)
             self.scan_list.addItem(directory)
@@ -214,17 +214,28 @@ class SettingsDialog(QDialog):
         """Save settings"""
         # Validate
         if not self._scan_directories:
-            QMessageBox.warning(self, "Aviso", "Pelo menos um diretório de escaneamento deve ser configurado.")
+            QMessageBox.warning(
+                self, "Aviso", "Pelo menos um diretório de escaneamento deve ser configurado."
+            )
             return
 
+        candidate = self.settings.model_copy(deep=True)
         # Update settings
-        self.settings.theme_mode = self.theme_combo.currentText()
-        self.settings.scan_directories = self._scan_directories
-        self.settings.confirm_before_destructive = self.confirm_checkbox.isChecked()
-        self.settings.auto_backup_before_undo = self.backup_checkbox.isChecked()
-        self.settings.show_notifications = self.notify_checkbox.isChecked()
-        self.settings.warn_nested_junctions = self.warn_nested_checkbox.isChecked()
-        self.settings.log_level = self.log_level_combo.currentText()
+        candidate.theme_mode = self.theme_combo.currentText()
+        candidate.scan_directories = self._scan_directories
+        candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()
+        candidate.auto_backup_before_undo = self.backup_checkbox.isChecked()
+        candidate.show_notifications = self.notify_checkbox.isChecked()
+        candidate.warn_nested_junctions = self.warn_nested_checkbox.isChecked()
+        candidate.log_level = self.log_level_combo.currentText()
+
+        try:
+            save_settings(candidate)
+        except OSError as exc:
+            QMessageBox.critical(self, "Erro", f"Não foi possível salvar configurações: {exc}")
+            return
+        for name in type(self.settings).model_fields:
+            setattr(self.settings, name, getattr(candidate, name))
 
         self.logger.info("Settings saved")
         self.accept()

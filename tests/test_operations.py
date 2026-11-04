@@ -100,19 +100,10 @@ def test_create_hard_link_failure():
             assert result is False
 
 
-def test_create_junction_target_not_exists():
-    """Test creating junction when target doesn't exist (should create it)"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-        target = tmppath / "target"
-        link = tmppath / "link"
-
-        # Mock subprocess.run for mklink
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0)
-
-            result = create_junction(target, link)
-            assert result is True
+def test_create_junction_target_not_exists(tmp_path):
+    """Low-level creation rejects missing storage; the UI creates it first."""
+    assert not create_junction(tmp_path / "missing", tmp_path / "link")
+    assert not (tmp_path / "link").exists()
 
 
 def test_create_junction_link_not_empty():
@@ -175,7 +166,7 @@ def test_remove_junction_success():
 
         with patch("winlink.core.operations.win32api.GetFileAttributes") as mock_attrs:
             # Mock as reparse point
-            mock_attrs.return_value = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
+            mock_attrs.return_value = 0x410  # REPARSE_POINT | DIRECTORY
 
             result = remove_junction(link)
             assert result is True
@@ -189,7 +180,7 @@ def test_verify_junction_integrity_active():
         target = tmppath / "target"
 
         source.mkdir()
-        target.mkdir()
+        assert create_junction(source, target)
 
         junction = Junction(
             source=source,
@@ -199,11 +190,13 @@ def test_verify_junction_integrity_active():
 
         with patch("winlink.core.operations.win32api.GetFileAttributes") as mock_attrs:
             # Mock as reparse point
-            mock_attrs.return_value = 0x400  # FILE_ATTRIBUTE_REPARSE_POINT
+            mock_attrs.return_value = 0x410  # REPARSE_POINT | DIRECTORY
 
             result = verify_junction_integrity(junction)
             assert result is True
             assert junction.status == JunctionStatus.ACTIVE
+
+        assert remove_junction(target)
 
 
 def test_verify_junction_integrity_broken_target():
@@ -305,30 +298,113 @@ def test_recreate_junction_symlink():
             mock_create.assert_called_once_with(source, target, True)
 
 
-def test_recreate_junction_hardlink():
-    """Test recreating a hard link"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-        source = tmppath / "source.txt"
-        target = tmppath / "target.txt"
+def test_recreate_junction_hardlink(tmp_path):
+    source, target = tmp_path / "source", tmp_path / "link"
+    source.write_text("preserve")
+    junction = Junction(source=source, target=target, junction_type=JunctionType.HARDLINK, is_directory=False)
+    assert recreate_junction(junction)
+    assert source.samefile(target)
+    assert recreate_junction(junction)
+    target.unlink()
+    target.write_text("unrelated data")
+    assert not recreate_junction(junction)
+    assert target.read_text() == "unrelated data"
 
-        source.write_bytes(b"test")
-        target.write_bytes(b"test")
 
-        junction = Junction(
-            source=source,
-            target=target,
-            junction_type=JunctionType.HARDLINK,
-            is_directory=False,
-        )
+def test_remove_broken_directory_link_uses_attributes():
+    import win32con
+    link = MagicMock(spec=Path)
+    link.__fspath__.return_value = "broken-link"
+    link.exists.return_value = False
+    link.is_dir.return_value = False
+    with patch("winlink.core.operations.os.path.lexists", return_value=True), patch(
+        "winlink.core.operations.win32api.GetFileAttributes",
+        return_value=win32con.FILE_ATTRIBUTE_REPARSE_POINT | win32con.FILE_ATTRIBUTE_DIRECTORY,
+    ):
+        assert remove_junction(link)
+    link.rmdir.assert_called_once()
+    link.unlink.assert_not_called()
 
-        with patch("winlink.core.operations.remove_junction") as mock_remove, patch(
-            "winlink.core.operations.create_hard_link"
-        ) as mock_create:
-            mock_remove.return_value = True
-            mock_create.return_value = True
 
-            result = recreate_junction(junction)
-            assert result is True
-            mock_remove.assert_called_once_with(target)
-            mock_create.assert_called_once_with(source, target)
+def test_recreate_stops_when_removal_fails(tmp_path):
+    junction = Junction(source=tmp_path / "data", target=tmp_path / "link", junction_type=JunctionType.JUNCTION)
+    with patch("winlink.core.operations.os.path.lexists", return_value=True), patch(
+        "winlink.core.operations.remove_junction", return_value=False
+    ), patch("winlink.core.operations.create_junction") as create:
+        assert not recreate_junction(junction)
+        create.assert_not_called()
+
+
+def test_hard_link_real_api_return(tmp_path):
+    source = tmp_path / "data.txt"
+    link = tmp_path / "hard.txt"
+    source.write_text("shared data")
+    assert create_hard_link(source, link)
+    assert source.samefile(link)
+    assert link.read_text() == "shared data"
+
+
+def test_symbolic_link_none_return_is_success(tmp_path):
+    with patch("winlink.core.operations.win32file.CreateSymbolicLink", return_value=None):
+        assert create_symbolic_link(tmp_path / "data", tmp_path / "link")
+
+
+def test_create_junction_never_deletes_existing_file(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    link = tmp_path / "occupied"
+    link.write_text("valuable")
+    with patch("subprocess.run") as run:
+        assert not create_junction(data, link)
+        run.assert_not_called()
+    assert link.read_text() == "valuable"
+
+
+def test_real_junction_lifecycle_preserves_data(tmp_path):
+    from winlink.core.scanner import get_reparse_target, get_junction_type
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    (storage / "payload").write_text("keep")
+    link = tmp_path / "junction"
+    assert create_junction(storage, link)
+    assert link.is_junction()
+    assert get_junction_type(link) == JunctionType.JUNCTION
+    assert get_reparse_target(link).resolve() == storage.resolve()
+    assert (link / "payload").read_text() == "keep"
+    assert remove_junction(link)
+    assert not link.exists()
+    assert (storage / "payload").read_text() == "keep"
+
+
+def test_real_broken_junction_can_be_removed(tmp_path):
+    storage = tmp_path / "storage"
+    storage.mkdir()
+    link = tmp_path / "junction"
+    assert create_junction(storage, link)
+    storage.rmdir()
+    assert not link.exists()
+    assert link.is_junction()
+    assert remove_junction(link)
+    assert not link.is_junction()
+
+
+def test_real_junction_accepts_shell_metacharacters(tmp_path):
+    storage = tmp_path / "storage & (data)"
+    storage.mkdir()
+    link = tmp_path / "link & (example)"
+    assert create_junction(storage, link)
+    assert link.is_junction()
+    assert link.resolve() == storage.resolve()
+    assert remove_junction(link)
+
+
+def test_real_hard_link_integrity_uses_file_identity(tmp_path):
+    source, link = tmp_path / "source", tmp_path / "link"
+    source.write_text("data")
+    assert create_hard_link(source, link)
+    junction = Junction(source=source, target=link, junction_type=JunctionType.HARDLINK, is_directory=False)
+    assert verify_junction_integrity(junction)
+    link.unlink()
+    link.write_text("data")
+    assert not verify_junction_integrity(junction)
+    assert junction.status == JunctionStatus.BROKEN

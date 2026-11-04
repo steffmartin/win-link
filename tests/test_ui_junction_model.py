@@ -187,3 +187,18 @@ def test_model_invalid_index(junction_model):
 
     junction = junction_model.get_junction(index)
     assert junction is None
+
+
+def test_table_model_has_no_children(junction_model, sample_junctions):
+    junction_model.set_junctions(sample_junctions)
+    parent = junction_model.index(0, 0)
+    assert junction_model.rowCount(parent) == 0
+    assert junction_model.columnCount(parent) == 0
+
+
+def test_update_notifies_entire_row(junction_model, sample_junctions):
+    junction_model.set_junctions(sample_junctions)
+    changes = []
+    junction_model.dataChanged.connect(lambda left, right, roles: changes.append((left.column(), right.column())))
+    junction_model.update_junction(junction_model.index(0, 2), sample_junctions[1])
+    assert changes == [(0, 5)]

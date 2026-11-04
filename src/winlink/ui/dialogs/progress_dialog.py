@@ -1,9 +1,7 @@
 """Dialog for showing operation progress"""
 
-
 from PyQt6.QtCore import QObject, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QDialog,
     QHBoxLayout,
     QLabel,
     QProgressBar,
@@ -11,6 +9,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
+from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
 
 
@@ -32,17 +31,20 @@ class ProgressWorker(QObject):
 
     def is_cancelled(self) -> bool:
         """Check if operation was cancelled"""
-        return self._cancelled
+        return bool(self._cancelled)
 
 
-class ProgressDialog(QDialog):
+class ProgressDialog(AnimatedDialog):
     """Dialog for showing operation progress"""
+
+    cancellation_requested = pyqtSignal()
 
     def __init__(self, title: str = "Operação em Andamento", parent=None):
         super().__init__(parent)
         self.logger = get_logger()
         self._title = title
         self._was_cancelled = False
+        self._finished = False
 
         self.init_ui()
 
@@ -70,7 +72,7 @@ class ProgressDialog(QDialog):
         # Details label
         self.details_label = QLabel()
         self.details_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.details_label.setStyleSheet("color: #5C5C5C; margin: 5px 0;")
+        self.details_label.setStyleSheet("margin: 5px 0;")
         layout.addWidget(self.details_label)
 
         layout.addStretch()
@@ -108,6 +110,8 @@ class ProgressDialog(QDialog):
             success: Whether operation succeeded
             message: Final message
         """
+        self._finished = True
+        self.cancel_btn.setEnabled(True)
         if success:
             self.progress_bar.setValue(100)
             self.status_label.setText("Concluído!")
@@ -124,10 +128,12 @@ class ProgressDialog(QDialog):
 
     def cancel_operation(self):
         """Cancel the operation"""
+        if self._finished or self._was_cancelled:
+            return
         self._was_cancelled = True
         self.status_label.setText("Cancelando...")
         self.cancel_btn.setEnabled(False)
-        self.reject()
+        self.cancellation_requested.emit()
 
     def was_cancelled(self) -> bool:
         """Check if operation was cancelled"""
@@ -135,7 +141,7 @@ class ProgressDialog(QDialog):
 
     def closeEvent(self, event):
         """Handle close event"""
-        if self.progress_bar.value() < 100 and not self._was_cancelled:
+        if not self._finished:
             # Still in progress
             event.ignore()
         else:

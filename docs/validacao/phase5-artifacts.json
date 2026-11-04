@@ -1,0 +1,6 @@
+{
+  "installer": "dist\\WinLink-Setup-0.1.0.exe",
+  "installer_bytes": 30632846,
+  "installer_sha256": "c4aa932e412bcb208bb734b3fa9da6cbbbcd51bdd2f834a0078d98782a6b5c9f",
+  "portable_bytes": 101615770
+}

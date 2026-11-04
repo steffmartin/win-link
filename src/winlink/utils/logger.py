@@ -27,7 +27,9 @@ def setup_logger(
     logger.setLevel(level)
 
     # Remove existing handlers to avoid duplicates
-    logger.handlers.clear()
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        handler.close()
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
