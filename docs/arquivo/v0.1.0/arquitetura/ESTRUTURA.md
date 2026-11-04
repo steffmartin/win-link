@@ -49,7 +49,7 @@ npm.cmd --prefix prototypes/ui test
 npm.cmd --prefix prototypes/ui run build
 ```
 
-A demo continua em http://127.0.0.1:5174/. Comandos locais da demo estão no [README próprio](../../prototypes/ui/README.md). Scripts `browser-*.js` continuam sendo funções para um runner Playwright que fornece uma página; não dependem do caminho antigo da pasta.
+A demo continua em http://127.0.0.1:5174/. Comandos locais da demo estão no [README próprio](../prototypes/ui/README.md). Scripts `browser-*.js` continuam sendo funções para um runner Playwright que fornece uma página; não dependem do caminho antigo da pasta.
 
 ## Arquivos gerados e limpeza
 

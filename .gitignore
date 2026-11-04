@@ -55,7 +55,8 @@ yarn-error.log*
 *.pfx
 *.p12
 
-# Local editors and operating-system files
+# Local agent settings, editors and operating-system files
+.devin/
 .idea/
 .vscode/
 *.swp

@@ -1,4 +1,6 @@
-# Plano de desenvolvimento — WinLink
+# Plano de desenvolvimento — WinLink (arquivado)
+
+**Fechamento em 04/11/2026:** mantenedor dispensou a validação manual de symlinks, aceitou a interface atual e autorizou a release inicial. Windows limpo e Windows 10 já estavam dispensados. As pendências de homologação abaixo são históricas e não bloqueiam a versão 0.1.0. Continuidade em [documento ativo](../../../CONTINUIDADE.md).
 
 ## Fases e estado
 
@@ -14,7 +16,7 @@
 
 ## Fase 6 — implementação local do design aprovado
 
-O estudo/protótipo externo foi revisado localmente. Não refazer o diagnóstico nem substituir a direção visual aprovada. Referências: [guia de implementação](../guias/IMPLEMENTACAO-UI.md), [demo](../../prototypes/ui/README.md), [especificação](../produto/ESPECIFICACAO.md) e [melhorias](MELHORIAS.md).
+O estudo/protótipo externo foi revisado localmente. Não refazer o diagnóstico nem substituir a direção visual aprovada. Referências: [guia de implementação](../guias/IMPLEMENTACAO-UI.md), [demo](../prototypes/ui/README.md), [especificação](../produto/ESPECIFICACAO.md) e [melhorias](MELHORIAS.md).
 
 ### 6.6 Redesign e melhorias aprovadas — implementados
 
@@ -38,7 +40,7 @@ Paridade com as funcionalidades existentes; novidades aprovadas implementadas; c
 
 - Dispensado pelo mantenedor em 04/11/2026: instalar/executar em Windows limpo sem Python. Não executado; não equivale a aprovação.
 - Dispensado pelo mantenedor em 04/11/2026: validar Windows 10 mínimo. Compatibilidade não homologada.
-- [ ] Validar sucesso real de symlinks com Modo de Desenvolvedor/permissões apropriadas.
+- Dispensado pelo mantenedor em 04/11/2026: teste manual de sucesso de symlinks com privilégios apropriados; cenário não homologado.
 
 O build atual não é assinado. Evidências e limites: [validação](../validacao/FASE5.md).
 
@@ -46,9 +48,9 @@ O build atual não é assinado. Evidências e limites: [validação](../validaca
 
 - [x] Atualizar guia de instalação/uso e capturas a partir do aplicativo real após o redesign.
 - [x] Documentar backup, reversão, permissões, recuperação, desinstalação e limites.
-- [ ] Fechar homologação externa e revisar distribuição/offline e compatibilidade.
+- [x] Registrar as dispensas de homologação e os limites da distribuição inicial.
 - [x] Definir licença MIT (decisão do mantenedor em 04/11/2026), manter versão 0.1.0 e preparar notas de versão.
-- [ ] Publicar somente após os critérios técnicos e a revisão do usuário.
+- [x] Lançamento autorizado pelo mantenedor; publicação registrada nas notas vigentes e na release v0.1.0.
 
 Ideias não aprovadas para esta entrega permanecem em [MELHORIAS.md](MELHORIAS.md), separadas da etapa 6.6.
 

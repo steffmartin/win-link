@@ -4,7 +4,7 @@ Este é o guia vigente para portar o protótipo React para o aplicativo Python/P
 
 ## Referências e ponto de retomada
 
-- [Demo e comandos](../../prototypes/ui/README.md): fonte visual executável e editável.
+- [Demo e comandos](../prototypes/ui/README.md): fonte visual executável e editável.
 - [Plano, etapa 6.6](../planejamento/PLANO.md): ordem de trabalho e critérios de entrega.
 - [Regras do produto](../produto/ESPECIFICACAO.md): comportamento que deve ser preservado.
 - [Melhorias aprovadas e ideias fora do escopo](../planejamento/MELHORIAS.md).

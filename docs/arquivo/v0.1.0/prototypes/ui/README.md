@@ -1,8 +1,8 @@
 # Protótipo vigente do WinLink
 
-Referência visual/navegável para a próxima implementação em Python/PyQt6. Direção visual aprovada, cobertura da interface existente acrescida e novidades mantidas por autorização do usuário. A pasta `prototypes/ui` contém a versão vigente revisada localmente e também serve a demo navegável.
+Referência visual/navegável para a próxima implementação em Python/PyQt6. Direção visual aprovada, cobertura da interface existente acrescida e novidades mantidas por autorização do usuário. A pasta `docs/arquivo/v0.1.0/prototypes/ui` contém a versão vigente revisada localmente e também serve a demo navegável.
 
-**Guia e checkpoint único de implementação:** [guia de implementação](../../docs/guias/IMPLEMENTACAO-UI.md). Backlog: [PLANO.md, etapa 6.6](../../docs/planejamento/PLANO.md).
+**Guia e checkpoint único de implementação:** [guia de implementação](../../guias/IMPLEMENTACAO-UI.md). Backlog: [PLANO.md, etapa 6.6](../../planejamento/PLANO.md).
 
 ## Executar
 

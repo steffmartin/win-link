@@ -112,8 +112,7 @@ if len(sys.argv) > 1:
         "junction_preserved": True,
     }
 results["clean_machine"] = "not tested; host has Python installed"
-(ROOT / "docs" / "validacao").mkdir(parents=True, exist_ok=True)
-(ROOT / "docs" / "validacao" / "redesign-distribution.json").write_text(
+(WORK / "distribution-report.json").write_text(
     json.dumps(results, indent=2), encoding="utf-8"
 )
 print(json.dumps(results, indent=2))
