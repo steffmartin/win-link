@@ -23,6 +23,7 @@ class PropertiesDialog(AnimatedDialog):
     """Dialog for displaying junction properties"""
 
     cancellation_requested = pyqtSignal()
+    undo_requested = pyqtSignal(object)
 
     def __init__(self, junction: Junction, parent=None, history_manager=None):
         super().__init__(parent)
@@ -122,14 +123,32 @@ class PropertiesDialog(AnimatedDialog):
         self.close_btn = QPushButton("Fechar")
         self.close_btn.clicked.connect(self.accept)
 
+        self.undo_btn = QPushButton("Reverter (Desfazer Link)")
+        self.undo_btn.clicked.connect(self.request_undo)
+        button_layout.addWidget(self.undo_btn)
+        self.recalculate_btn = QPushButton("Recalcular")
+        self.recalculate_btn.clicked.connect(self.recalculate)
+        button_layout.addWidget(self.recalculate_btn)
         button_layout.addWidget(self.close_btn)
 
         layout.addLayout(button_layout)
+
+    def request_undo(self):
+        if not getattr(self, "_calculating", False):
+            self.accept()
+            self.undo_requested.emit(self.junction)
+
+    def recalculate(self):
+        if not getattr(self, "_calculating", False):
+            self.junction.size_bytes = None
+            self.load_junction_data()
 
     def load_junction_data(self):
         """Load junction data into UI"""
         # Type
         type_text = self.get_type_display(self.junction.junction_type)
+        if self.junction.junction_type.value == "SYMLINK":
+            type_text += " (diretório)" if self.junction.is_directory else " (arquivo)"
         self.type_label.setText(type_text)
 
         # Status
@@ -182,6 +201,7 @@ class PropertiesDialog(AnimatedDialog):
             self.file_count_label.setText(str(files))
             self.folder_count_label.setText(str(folders))
         except OSError:
+            self.size_label.setText("Indisponível")
             self.file_count_label.setText("Indisponível")
             self.folder_count_label.setText("Indisponível")
         finally:

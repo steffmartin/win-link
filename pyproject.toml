@@ -3,6 +3,7 @@ name = "winlink"
 version = "0.1.0"
 description = "Gerenciador de junções para Windows 11"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "PyQt6>=6.7.0",

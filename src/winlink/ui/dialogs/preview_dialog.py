@@ -222,9 +222,10 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
     )
 
     # Check for nested junctions
+    from winlink.core.config import get_settings
     from winlink.core.scanner import scan_directory
 
-    if source_exists:
+    if source_exists and get_settings().warn_nested_junctions:
         try:
             scan_result = scan_directory(source, recursive=True)
 
@@ -251,6 +252,7 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
         try:
             processes = get_processes_using_directory(target)
             if processes:
+                valid = False
                 preview_lines.append("")
                 preview_lines.append("⚠️ Certifique-se de fechar os seguintes processos:")
                 for proc in processes:

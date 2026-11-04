@@ -17,6 +17,7 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._filter_creator: Creator | None = None
         self._filter_type: JunctionType | None = None
         self._search_text: str = ""
+        self._filter_directory: bool | None = None
 
     def set_filter_status(self, status: JunctionStatus | None) -> None:
         """
@@ -48,6 +49,10 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._filter_type = junction_type
         self.invalidateFilter()
 
+    def set_filter_directory(self, is_directory: bool | None):
+        self._filter_directory = is_directory
+        self.invalidateFilter()
+
     def set_search_text(self, text: str) -> None:
         """
         Set search text for filtering.
@@ -63,6 +68,7 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._filter_status = None
         self._filter_creator = None
         self._filter_type = None
+        self._filter_directory = None
         self._search_text = ""
         self.invalidateFilter()
 
@@ -97,6 +103,9 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
 
         # Filter by type
         if self._filter_type and junction.junction_type != self._filter_type:
+            return False
+
+        if self._filter_directory is not None and junction.is_directory != self._filter_directory:
             return False
 
         # Filter by search text

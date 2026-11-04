@@ -9,6 +9,7 @@
 #define OutputBase "WinLink-Setup-0.1.0"
 #endif
 [Setup]
+LicenseFile=..\LICENSE
 AppId={#InstallerAppId}
 AppName=WinLink
 AppVersion={#AppVersion}

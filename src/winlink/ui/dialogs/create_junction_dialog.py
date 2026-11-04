@@ -33,6 +33,14 @@ class CreateJunctionDialog(AnimatedDialog):
         self._link_type: JunctionType = JunctionType.JUNCTION
 
         self.init_ui()
+        from winlink.core.config import get_settings
+
+        preference = getattr(getattr(parent, "settings", None), "default_link_type", None)
+        preference = preference or get_settings().default_link_type
+        self.type_combo.setCurrentIndex(
+            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference]
+        )
+        self.file_symlink.setChecked(preference == "symlink_file")
 
     def init_ui(self):
         """Initialize UI components"""
@@ -41,6 +49,10 @@ class CreateJunctionDialog(AnimatedDialog):
         self.setModal(True)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        heading = QLabel("Criar Novo Link")
+        heading.setObjectName("pageTitle")
+        layout.addWidget(heading)
 
         # Grid layout for form
         form_layout = QGridLayout()
@@ -53,33 +65,50 @@ class CreateJunctionDialog(AnimatedDialog):
         self.type_combo.addItem("Hard Link (Arquivo)", JunctionType.HARDLINK)
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
 
+        type_label.hide()
+        self.type_combo.hide()
         form_layout.addWidget(type_label, 0, 0)
         form_layout.addWidget(self.type_combo, 0, 1, 1, 2)
 
         # Target (destination) field
-        self.target_label = QLabel("Destino (pasta que será linkada):")
+        self.target_label = QLabel("Caminho do novo link:")
         self.target_edit = QLineEdit()
         self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\.vscode")
         self.target_browse_btn = QPushButton("...")
         self.target_browse_btn.setMaximumWidth(40)
         self.target_browse_btn.clicked.connect(self.browse_target)
 
-        form_layout.addWidget(self.target_label, 1, 0, 1, 3)
-        form_layout.addWidget(self.target_edit, 2, 0, 1, 2)
-        form_layout.addWidget(self.target_browse_btn, 2, 2)
+        form_layout.addWidget(self.target_label, 3, 0, 1, 3)
+        form_layout.addWidget(self.target_edit, 4, 0, 1, 2)
+        form_layout.addWidget(self.target_browse_btn, 4, 2)
 
         # Source field
-        self.source_label = QLabel("Origem (onde os arquivos ficarão):")
+        self.source_label = QLabel("Local dos dados:")
         self.source_edit = QLineEdit()
         self.source_edit.setPlaceholderText("Ex: D:\\Cache\\.vscode")
         self.source_browse_btn = QPushButton("...")
         self.source_browse_btn.setMaximumWidth(40)
         self.source_browse_btn.clicked.connect(self.browse_source)
 
-        form_layout.addWidget(self.source_label, 3, 0, 1, 3)
-        form_layout.addWidget(self.source_edit, 4, 0, 1, 2)
-        form_layout.addWidget(self.source_browse_btn, 4, 2)
+        form_layout.addWidget(self.source_label, 1, 0, 1, 3)
+        form_layout.addWidget(self.source_edit, 2, 0, 1, 2)
+        form_layout.addWidget(self.source_browse_btn, 2, 2)
 
+        cards = QHBoxLayout()
+        self.type_cards = []
+        for title, index, file in [
+            ("Junction", 0, False),
+            ("Symlink (Dir)", 1, False),
+            ("Symlink (File)", 1, True),
+            ("Hardlink", 2, False),
+        ]:
+            button = QPushButton(title)
+            button.setMinimumHeight(64)
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked=False, i=index, f=file: self.select_type(i, f))
+            cards.addWidget(button)
+            self.type_cards.append(button)
+        layout.addLayout(cards)
         layout.addLayout(form_layout)
         self.file_symlink = QCheckBox("Link simbólico de arquivo existente")
         self.file_symlink.toggled.connect(
@@ -111,6 +140,7 @@ class CreateJunctionDialog(AnimatedDialog):
         self.create_btn = QPushButton("Criar Link")
         self.create_btn.clicked.connect(self.show_preview)
         self.create_btn.setEnabled(False)
+        self.create_btn.setProperty("primary", True)
 
         button_layout.addWidget(self.cancel_btn)
         button_layout.addWidget(self.preview_btn)
@@ -118,6 +148,13 @@ class CreateJunctionDialog(AnimatedDialog):
 
         layout.addLayout(button_layout)
 
+        self.source_label.setBuddy(self.source_edit)
+        self.target_label.setBuddy(self.target_edit)
+        self.source_browse_btn.setAccessibleName("Selecionar local dos dados")
+        self.target_browse_btn.setAccessibleName("Selecionar caminho do novo link")
+        self.setTabOrder(self.source_edit, self.source_browse_btn)
+        self.setTabOrder(self.source_browse_btn, self.target_edit)
+        self.setTabOrder(self.target_edit, self.target_browse_btn)
         # Connect text changed signals
         self.target_edit.textChanged.connect(self.validate_inputs)
         self.source_edit.textChanged.connect(self.validate_inputs)
@@ -125,20 +162,24 @@ class CreateJunctionDialog(AnimatedDialog):
         # Initialize for default type
         self.on_type_changed(0)
 
+    def select_type(self, index, file):
+        self.type_combo.setCurrentIndex(index)
+        self.file_symlink.setChecked(file)
+
     def on_type_changed(self, index: int):
         """Handle link type selection change"""
         link_type = self.type_combo.itemData(index)
         self._link_type = link_type
 
-        self.file_symlink.setVisible(link_type == JunctionType.SYMLINK)
+        self.file_symlink.hide()
         if link_type != JunctionType.SYMLINK:
             self.file_symlink.setChecked(False)
         if link_type == JunctionType.HARDLINK or (
             link_type == JunctionType.SYMLINK and self.file_symlink.isChecked()
         ):
             # Hard links are for files only
-            self.target_label.setText("Destino (arquivo que será linkado):")
-            self.source_label.setText("Origem (arquivo existente):")
+            self.target_label.setText("Caminho do novo link:")
+            self.source_label.setText("Local dos dados (arquivo existente):")
             self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\document.txt")
             self.source_edit.setPlaceholderText("Ex: D:\\Cache\\document.txt")
             self.info_label.setText(
@@ -147,14 +188,21 @@ class CreateJunctionDialog(AnimatedDialog):
             )
         else:
             # Junctions and symlinks are for directories
-            self.target_label.setText("Destino (pasta que será linkada):")
-            self.source_label.setText("Origem (onde os arquivos ficarão):")
+            self.target_label.setText("Caminho do novo link:")
+            self.source_label.setText("Local dos dados:")
             self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\.vscode")
             self.source_edit.setPlaceholderText("Ex: D:\\Cache\\.vscode")
             self.info_label.setText(
                 "ℹ️ Se o destino já existir, os arquivos serão copiados para a origem antes de criar o link."
             )
 
+        for card_index, card in enumerate(self.type_cards):
+            selected = (
+                (2 if self.file_symlink.isChecked() else 1)
+                if link_type == JunctionType.SYMLINK
+                else (3 if link_type == JunctionType.HARDLINK else 0)
+            )
+            card.setChecked(card_index == selected)
         self.validate_inputs()
 
     def browse_target(self):

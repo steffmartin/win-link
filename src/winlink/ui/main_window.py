@@ -4,20 +4,23 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListView,
+    QListWidget,
     QMainWindow,
     QMenu,
     QMessageBox,
     QPushButton,
+    QStackedWidget,
     QStatusBar,
     QTableView,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -33,11 +36,8 @@ from winlink.core.models import (
     UndoStrategy,
 )
 from winlink.ui.dialogs import (
-    CreateJunctionDialog,
-    HistoryDialog,
     ProgressDialog,
     PropertiesDialog,
-    SettingsDialog,
     UndoDialog,
 )
 from winlink.ui.junction_filter import JunctionFilterProxyModel
@@ -100,6 +100,9 @@ class MainWindow(QMainWindow):
         self._scan_pending = False
         self.init_ui()
         self.apply_theme()
+        self.theme_manager.theme_changed.connect(
+            lambda _: self.setStyleSheet(self.theme_manager.get_stylesheet())
+        )
         from winlink.core.cache import CacheManager
 
         cached = CacheManager().load()
@@ -119,11 +122,57 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         # Main layout
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        shell = QVBoxLayout(central_widget)
+        shell.setContentsMargins(0, 0, 0, 0)
+        header = QHBoxLayout()
+        header.setContentsMargins(24, 16, 24, 16)
+        brand = QLabel("WinLink <small>Manager</small>")
+        brand.setObjectName("brand")
+        header.addWidget(brand)
+        header.addStretch()
+        about = QPushButton("Sobre")
+        about.clicked.connect(self.show_about)
+        header.addWidget(about)
+        self.quick_theme = QComboBox()
+        for label, value in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
+            self.quick_theme.addItem(label, value)
+        self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
+        self.quick_theme.currentIndexChanged.connect(self.change_theme)
+        self.quick_theme.setAccessibleName("Tema")
+        header.addWidget(self.quick_theme)
+        shell.addLayout(header)
+        body = QHBoxLayout()
+        self.navigation = QListWidget()
+        self.navigation.setObjectName("navigation")
+        self.navigation.addItems(["Meus Links", "Criar Novo", "Histórico", "Configurações"])
+        self.navigation.setFixedWidth(224)
+        self.navigation.setSpacing(4)
+        self.navigation.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        body.addWidget(self.navigation)
+        self.pages = QStackedWidget()
+        body.addWidget(self.pages, 1)
+        shell.addLayout(body, 1)
+        list_page = QWidget()
+        self.pages.addWidget(list_page)
+        main_layout = QVBoxLayout(list_page)
+        title_row = QHBoxLayout()
+        title = QLabel("Meus Links")
+        title.setObjectName("pageTitle")
+        title_row.addWidget(title)
+        title_row.addStretch()
+        for label, handler in [
+            ("Atualizar · F5", self.start_scan),
+            ("Início", self.on_home),
+            ("Criar Novo", self.on_new_junction),
+        ]:
+            button = QPushButton(label)
+            button.clicked.connect(handler)
+            title_row.addWidget(button)
+        main_layout.addLayout(title_row)
+        main_layout.setContentsMargins(24, 24, 24, 24)
         main_layout.setSpacing(0)
         # Create toolbar
-        self.create_toolbar()
+        # Navigation replaces the former toolbar.
         # Search bar
         search_layout = QHBoxLayout()
         search_layout.setContentsMargins(10, 10, 10, 10)
@@ -152,8 +201,13 @@ class MainWindow(QMainWindow):
         self.creator_filter.currentIndexChanged.connect(self.on_filter_changed)
         self.type_filter = QComboBox()
         self.type_filter.addItem("Todos os Tipos", None)
-        for link_type in JunctionType:
-            self.type_filter.addItem(link_type.value, link_type)
+        for label, link_type in [
+            ("Junction", JunctionType.JUNCTION),
+            ("Symlink (diretório)", JunctionType.SYMLINK),
+            ("Hard link", JunctionType.HARDLINK),
+            ("Symlink (arquivo)", JunctionType.SYMLINK),
+        ]:
+            self.type_filter.addItem(label, link_type)
         self.type_filter.currentIndexChanged.connect(self.on_filter_changed)
         self.clear_filter_btn = QPushButton("Limpar Filtros")
         self.clear_filter_btn.clicked.connect(self.clear_filters)
@@ -163,7 +217,13 @@ class MainWindow(QMainWindow):
         filter_layout.addWidget(self.type_filter)
         filter_layout.addWidget(self.clear_filter_btn)
         filter_layout.addStretch()
-        main_layout.addLayout(filter_layout)
+        filter_container = QWidget()
+        filter_container.setLayout(filter_layout)
+        filter_container.hide()
+        main_layout.addWidget(filter_container)
+        filters_button = QPushButton("Filtros")
+        filters_button.clicked.connect(self.edit_filters)
+        search_layout.addWidget(filters_button)
         # Junction table
         self.table_view = QTableView()
         self.table_view.setModel(self.filter_model)
@@ -176,52 +236,157 @@ class MainWindow(QMainWindow):
         self.table_view.resizeColumnsToContents()
         for column, width in enumerate((300, 300, 110, 120, 100)):
             self.table_view.setColumnWidth(column, width)
-        main_layout.addWidget(self.table_view)
+        self.link_views = QStackedWidget()
+        self.card_view = QListView()
+        self.card_view.setModel(self.filter_model)
+        from winlink.ui.link_cards import LinkCardDelegate
+
+        self.card_view.setItemDelegate(LinkCardDelegate(self.card_view))
+        self.card_view.setUniformItemSizes(True)
+        self.card_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.card_view.doubleClicked.connect(self.open_selected_properties)
+        self.card_view.activated.connect(self.open_selected_properties)
+        self.card_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.card_view.customContextMenuRequested.connect(self.show_card_context_menu)
+        self.link_views.addWidget(self.card_view)
+        self.link_views.addWidget(self.table_view)
+        view_mode = QComboBox()
+        view_mode.addItems(["Visão normal", "Compacta"])
+        view_mode.currentIndexChanged.connect(self.link_views.setCurrentIndex)
+        search_layout.addWidget(view_mode)
+        sort_row = QHBoxLayout()
+        sort_row.addWidget(QLabel("Ordenar por"))
+        sort_column = QComboBox()
+        sort_column.addItems(
+            ["Local dos dados", "Caminho do link", "Criador", "Tipo", "Tamanho", "Status"]
+        )
+        sort_direction = QComboBox()
+        sort_direction.addItems(["Crescente", "Decrescente"])
+
+        def sort_links():
+            self.filter_model.sort(
+                sort_column.currentIndex(),
+                (
+                    Qt.SortOrder.AscendingOrder
+                    if sort_direction.currentIndex() == 0
+                    else Qt.SortOrder.DescendingOrder
+                ),
+            )
+
+        sort_column.currentIndexChanged.connect(sort_links)
+        sort_direction.currentIndexChanged.connect(sort_links)
+        sort_row.addWidget(sort_column)
+        sort_row.addWidget(sort_direction)
+        sort_row.addStretch()
+        main_layout.addLayout(sort_row)
+        self.scan_notice = QLabel()
+        self.scan_notice.setWordWrap(True)
+        self.scan_notice.hide()
+        main_layout.addWidget(self.scan_notice)
+        self.list_summary = QLabel()
+        main_layout.addWidget(self.list_summary)
+        self.filter_model.modelReset.connect(self.update_list_summary)
+        self.filter_model.rowsInserted.connect(self.update_list_summary)
+        self.filter_model.rowsRemoved.connect(self.update_list_summary)
+        main_layout.addWidget(self.link_views, 1)
+        sort_links()
+        self.table_view.doubleClicked.connect(self.open_selected_properties)
+        self.table_view.verticalHeader().setDefaultSectionSize(64)
+        self.table_view.setAlternatingRowColors(True)
+        self.table_view.setWordWrap(False)
+        from winlink.ui.pages import CreatePage, HistoryPage, SettingsPage, embed_page
+
+        self.create_page = CreatePage(self)
+        embed_page(self.create_page, self.pages)
+        self.create_page.accepted.connect(self.create_from_page)
+        self.create_page.rejected.connect(lambda: self.navigate(0))
+        self.history_page = HistoryPage(self.history_manager, self)
+        embed_page(self.history_page, self.pages)
+        self.history_page.undo_requested.connect(self.undo_junction)
+        self.history_page.rejected.connect(lambda: self.navigate(0))
+        self.history_page.close_btn.clicked.disconnect()
+        self.history_page.close_btn.clicked.connect(lambda: self.navigate(0))
+        self.settings_page = SettingsPage(self.settings, self)
+        embed_page(self.settings_page, self.pages)
+        self.settings_page.accepted.connect(self.settings_saved)
+        self.settings_page.rejected.connect(lambda: self.navigate(0))
+        self.navigation.currentRowChanged.connect(self.navigate)
+        self.navigation.setCurrentRow(0)
         # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Pronto")
         # Menu bar
+        self.update_list_summary()
         self.create_menu_bar()
+        self.menuBar().hide()
+        for action in self.findChildren(QAction):
+            action.setShortcut(QKeySequence())
+        self._shortcuts = []
+        for sequence, handler in [
+            ("Ctrl+N", self.on_new_junction),
+            ("Ctrl+H", self.on_history),
+            ("Ctrl+,", self.on_settings),
+            ("Ctrl+F", self.focus_search),
+            ("F5", self.start_scan),
+            ("Ctrl+Q", self.close),
+        ]:
+            shortcut = QShortcut(QKeySequence(sequence), self)
+            shortcut.activated.connect(handler)
+            self._shortcuts.append(shortcut)
 
-    def create_toolbar(self):
-        """Create toolbar"""
-        toolbar = QToolBar("Principal")
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
-        # Home action
-        home_action = QAction("Home", self)
-        home_action.setStatusTip("Atualizar lista e voltar ao estado inicial")
-        home_action.triggered.connect(self.on_home)
-        from PyQt6.QtWidgets import QStyle
+    def focus_search(self):
+        self.navigate(0)
+        self.search_edit.setFocus()
 
-        home_action.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
-        toolbar.addAction(home_action)
-        toolbar.addSeparator()
-        # New junction action
-        new_action = QAction("Nova Junção", self)
-        new_action.setStatusTip("Criar nova junção")
-        new_action.triggered.connect(self.on_new_junction)
-        new_action.setIcon(self.windowIcon())
-        toolbar.addAction(new_action)
-        toolbar.addSeparator()
-        # Settings action
-        settings_action = QAction("Configurações", self)
-        settings_action.setStatusTip("Abrir configurações")
-        settings_action.triggered.connect(self.on_settings)
-        settings_action.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogDetailedView)
+    def navigate(self, index):
+        if self._operation_active:
+            self.navigation.blockSignals(True)
+            self.navigation.setCurrentRow(self.pages.currentIndex())
+            self.navigation.blockSignals(False)
+            return
+        self.pages.setCurrentIndex(index)
+        if self.navigation.currentRow() != index:
+            self.navigation.setCurrentRow(index)
+        if index == 2:
+            self.history_page.load_history()
+
+    def create_from_page(self):
+        source = self.create_page.get_source_path()
+        target = self.create_page.get_target_path()
+        if source and target:
+            self.create_link(target, source, self.create_page.get_link_type())
+
+    def settings_saved(self):
+        self.apply_theme()
+        self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
+        from winlink.utils.logger import setup_logger
+
+        self.logger = setup_logger(
+            level=getattr(logging, self.settings.log_level),
+            log_file=self.settings.log_file,
+            log_to_console=self.settings.log_to_console,
         )
-        toolbar.addAction(settings_action)
-        toolbar.addSeparator()
-        # History action
-        history_action = QAction("Histórico", self)
-        history_action.setStatusTip("Ver histórico de operações")
-        history_action.triggered.connect(self.on_history)
-        history_action.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogInfoView)
-        )
-        toolbar.addAction(history_action)
+        self.status_bar.showMessage("Configurações salvas")
+        self.start_scan()
+
+    def change_theme(self):
+        from winlink.core.config import save_settings
+
+        candidate = self.settings.model_copy(deep=True)
+        candidate.theme_mode = self.quick_theme.currentData()
+        try:
+            save_settings(candidate)
+        except OSError as exc:
+            QMessageBox.warning(self, "Tema não salvo", str(exc))
+            return
+        self.settings.theme_mode = candidate.theme_mode
+        self.apply_theme()
+
+    def open_selected_properties(self, index):
+        junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
+        if junction:
+            self.show_properties(junction)
 
     def create_menu_bar(self):
         """Create menu bar"""
@@ -256,7 +421,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(history_action)
         search_action = QAction("&Buscar", self)
         search_action.setShortcut("Ctrl+F")
-        search_action.triggered.connect(self.search_edit.setFocus)
+        search_action.triggered.connect(lambda: (self.navigate(0), self.search_edit.setFocus()))
         view_menu.addAction(search_action)
         # Help menu
         help_menu = menubar.addMenu("&Ajuda")
@@ -316,8 +481,18 @@ class MainWindow(QMainWindow):
         """Handle scan completion"""
         from winlink.core.cache import CacheManager
 
-        if not result.errors:
-            CacheManager().save(result)
+        if result.errors:
+            self.scan_notice.setText(
+                "Descoberta incompleta. A última lista disponível foi preservada. Confira os caminhos e use Atualizar para tentar novamente.\n"
+                + "\n".join(result.errors)
+            )
+            self.scan_notice.show()
+            if self.junction_model.rowCount() == 0:
+                self.junction_model.set_junctions(result.junctions)
+            self.status_bar.showMessage("Descoberta incompleta; consulte o aviso da lista.")
+            return
+        self.scan_notice.hide()
+        CacheManager().save(result)
         self.junction_model.set_junctions(result.junctions)
         self.status_bar.showMessage(
             f"Escaneamento concluído: {len(result.junctions)} junções encontradas"
@@ -326,6 +501,10 @@ class MainWindow(QMainWindow):
 
     def on_scan_error(self, error: str):
         """Handle scan error"""
+        self.scan_notice.setText(
+            f"A atualização falhou. A lista anterior foi preservada. Tente Atualizar novamente.\n{error}"
+        )
+        self.scan_notice.show()
         self.status_bar.showMessage(f"Erro ao escanear: {error}")
         self.logger.error(f"Scan error: {error}")
         QMessageBox.critical(self, "Erro", f"Erro ao escanear junções: {error}")
@@ -337,6 +516,9 @@ class MainWindow(QMainWindow):
     def on_filter_changed(self):
         """Handle filter change"""
         self.filter_model.set_filter_type(self.type_filter.currentData())
+        self.filter_model.set_filter_directory(
+            {2: True, 4: False}.get(self.type_filter.currentIndex())
+        )
         # Status filter
         status_index = self.status_filter.currentIndex()
         if status_index == 0:
@@ -367,18 +549,21 @@ class MainWindow(QMainWindow):
 
     def on_home(self):
         """Handle home action"""
+        self.navigate(0)
         self.clear_filters()
         self.start_scan()
 
     def on_new_junction(self):
         """Handle new junction action"""
-        dialog = CreateJunctionDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            target = dialog.get_target_path()
-            source = dialog.get_source_path()
-            link_type = dialog.get_link_type()
-            if target and source:
-                self.create_link(target, source, link_type)
+        if self._operation_active:
+            return
+        preference = self.settings.default_link_type
+        if not self.create_page.source_edit.text() and not self.create_page.target_edit.text():
+            self.create_page.type_combo.setCurrentIndex(
+                {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference]
+            )
+            self.create_page.file_symlink.setChecked(preference == "symlink_file")
+        self.navigate(1)
 
     def create_junction(self, target: Path, source: Path):
         """Compatibility entry point for directory junction creation."""
@@ -470,6 +655,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erro", error)
         finally:
             self._operation_active = False
+            progress.set_operation_finished(success, error or "")
             progress.close()
         if (
             self.history_manager.add_operation(
@@ -477,7 +663,11 @@ class MainWindow(QMainWindow):
             )
             is False
         ):
-            QMessageBox.warning(self, "Histórico", "Não foi possível salvar o histórico.")
+            QMessageBox.warning(
+                self,
+                "Histórico",
+                "A operação terminou, mas o registro do histórico falhou. Confira o estado do link antes de repetir.",
+            )
         if success:
             self.start_scan()
             if self.settings.show_notifications is not False:
@@ -582,7 +772,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(
                     self,
                     "Historico",
-                    "Nao foi possivel salvar o historico. Consulte o log antes de continuar.",
+                    "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                 )
             # Refresh scan
             self.start_scan()
@@ -599,7 +789,10 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.logger.error(f"Error creating link: {e}")
             progress.set_operation_finished(False, str(e))
-            QMessageBox.critical(self, "Erro", f"Erro ao criar link: {e}")
+            if progress.was_cancelled() is True:
+                QMessageBox.information(self, "Cancelado", str(e))
+            else:
+                QMessageBox.critical(self, "Erro", f"Erro ao criar link: {e}")
             # Add to history
             op_type = (
                 OperationType.CREATE_SYMLINK
@@ -620,30 +813,70 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(
                     self,
                     "Historico",
-                    "Nao foi possivel salvar o historico. Consulte o log antes de continuar.",
+                    "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                 )
 
     def on_settings(self):
         """Handle settings action"""
-        dialog = SettingsDialog(self.settings, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            # Reapply theme if changed
-            self.apply_theme()
-            from winlink.utils.logger import setup_logger
-
-            self.logger = setup_logger(
-                level=getattr(logging, self.settings.log_level),
-                log_file=self.settings.log_file,
-                log_to_console=self.settings.log_to_console,
-            )
-            # Restart scan if directories changed
-            self.start_scan()
+        self.navigate(3)
 
     def on_history(self):
-        """Handle history action"""
-        dialog = HistoryDialog(self.history_manager, self)
-        dialog.undo_requested.connect(self.undo_junction)
-        dialog.exec()
+        """Open history within the application shell."""
+        self.navigate(2)
+
+    def edit_filters(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Filtros da lista")
+        layout = QVBoxLayout(dialog)
+        copies = []
+        for label, original in [
+            ("Status", self.status_filter),
+            ("Criador", self.creator_filter),
+            ("Tipo", self.type_filter),
+        ]:
+            layout.addWidget(QLabel(label))
+            field = QComboBox()
+            field.setAccessibleName(label)
+            for index in range(original.count()):
+                field.addItem(original.itemText(index))
+            field.setCurrentIndex(original.currentIndex())
+            layout.addWidget(field)
+            copies.append((original, field))
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Apply).setText("Aplicar filtros")
+        buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            for original, field in copies:
+                original.setCurrentIndex(field.currentIndex())
+
+    def update_list_summary(self):
+        count = self.filter_model.rowCount()
+        total = self.junction_model.rowCount()
+        self.list_summary.setText(
+            f"{count} de {total} links"
+            if count
+            else "Nenhum link encontrado. Ajuste a busca ou os diretórios de descoberta."
+        )
+
+    def show_card_context_menu(self, position):
+        index = self.card_view.indexAt(position)
+        if not index.isValid():
+            return
+        junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
+        if junction:
+            menu = QMenu(self)
+            menu.addAction("Propriedades", lambda: self.show_properties(junction))
+            menu.addAction("Desfazer", lambda: self.undo_junction(junction))
+            menu.exec(self.card_view.viewport().mapToGlobal(position))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "navigation"):
+            self.navigation.setFixedWidth(145 if self.width() < 900 else 224)
 
     def show_context_menu(self, position):
         """Show context menu for selected junction"""
@@ -667,6 +900,7 @@ class MainWindow(QMainWindow):
     def show_properties(self, junction: Junction):
         """Show junction properties dialog"""
         dialog = PropertiesDialog(junction, self, history_manager=self.history_manager)
+        dialog.undo_requested.connect(self.undo_junction)
         dialog.exec()
 
     def undo_junction(self, junction: Junction):
@@ -697,6 +931,12 @@ class MainWindow(QMainWindow):
 
                 def perform(context):
                     context.check_cancelled()
+                    from winlink.core.operations import verify_junction_integrity
+
+                    if not verify_junction_integrity(junction):
+                        raise OSError(
+                            "O link foi alterado ou está inacessível. Atualize a lista antes de desfazer."
+                        )
                     if strategy == UndoStrategy.REMOVE_ONLY:
                         if not remove_junction(junction.target):
                             raise OSError("Não foi possível remover a junção.")
@@ -777,7 +1017,7 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(
                         self,
                         "Historico",
-                        "Nao foi possivel salvar o historico. Consulte o log antes de continuar.",
+                        "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                     )
                 # Refresh scan
                 self.start_scan()
@@ -786,7 +1026,17 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 self.logger.error(f"Error undoing junction: {e}")
                 progress.set_operation_finished(False, str(e))
-                QMessageBox.critical(self, "Erro", f"Erro ao desfazer junção: {e}")
+                if progress.was_cancelled() is True:
+                    QMessageBox.information(self, "Cancelado", str(e))
+                elif "Arquivos restaurados" in str(e):
+                    QMessageBox.warning(
+                        self,
+                        "Restauração realizada; origem preservada",
+                        f"{e}\nNão repita a reversão. Confira os caminhos preservados.",
+                    )
+                    self.start_scan()
+                else:
+                    QMessageBox.critical(self, "Erro", f"Erro ao desfazer junção: {e}")
                 # Add to history
                 from winlink.core.models import OperationType
 
@@ -803,7 +1053,7 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(
                         self,
                         "Historico",
-                        "Nao foi possivel salvar o historico. Consulte o log antes de continuar.",
+                        "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                     )
 
     def remove_file_link(self, junction: Junction):
@@ -833,7 +1083,11 @@ class MainWindow(QMainWindow):
             )
             is False
         ):
-            QMessageBox.warning(self, "Histórico", "Não foi possível salvar o histórico.")
+            QMessageBox.warning(
+                self,
+                "Histórico",
+                "A operação terminou, mas o registro do histórico falhou. Confira o estado do link antes de repetir.",
+            )
         self.start_scan()
 
     def show_about(self):
@@ -844,7 +1098,10 @@ class MainWindow(QMainWindow):
             "WinLink - Gerenciador de Junções\n\n"
             "Versão 0.1.0\n\n"
             "Aplicativo Windows para gerenciamento de junções e links simbólicos "
-            "com interface moderna compatível com Windows 11.",
+            "com interface moderna compatível com Windows 11.\n\n"
+            "Ctrl+N: criar · Ctrl+H: histórico · Ctrl+,: configurações\n"
+            "Ctrl+F: buscar · F5: atualizar · Ctrl+Q: sair\n\n"
+            "Licença MIT — Copyright (c) 2026 Steff Martin.",
         )
 
     def closeEvent(self, event):

@@ -31,6 +31,8 @@ class AppSettings(BaseSettings):
     # Theme
     theme_mode: Literal["auto", "light", "dark"] = "auto"
 
+    default_link_type: Literal["junction", "symlink_dir", "symlink_file", "hardlink"] = "junction"
+
     # Scan directories
     scan_directories: list[str] = Field(
         default_factory=lambda: [

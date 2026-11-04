@@ -2,7 +2,7 @@
 
 import winreg
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication
 
@@ -15,14 +15,14 @@ class ThemeColors:
     # Light theme (Windows 11)
     LIGHT = {
         "background": QColor("#FFFFFF"),
-        "surface": QColor("#F3F3F3"),
-        "surface_variant": QColor("#EDEDED"),
-        "primary": QColor("#0067C0"),
+        "surface": QColor("#f9fafb"),
+        "surface_variant": QColor("#f3f4f6"),
+        "primary": QColor("#2563eb"),
         "primary_container": QColor("#D0E4FF"),
         "on_primary": QColor("#FFFFFF"),
-        "text": QColor("#1A1A1A"),
+        "text": QColor("#111827"),
         "text_secondary": QColor("#5C5C5C"),
-        "border": QColor("#E5E5E5"),
+        "border": QColor("#d1d5db"),
         "success": QColor("#107C10"),
         "warning": QColor("#9B8F06"),
         "error": QColor("#C42B1A"),
@@ -30,15 +30,15 @@ class ThemeColors:
 
     # Dark theme (Windows 11)
     DARK = {
-        "background": QColor("#202020"),
-        "surface": QColor("#2B2B2B"),
-        "surface_variant": QColor("#333333"),
-        "primary": QColor("#4CC2FF"),
-        "primary_container": QColor("#004275"),
-        "on_primary": QColor("#000000"),
+        "background": QColor("#111827"),
+        "surface": QColor("#1f2937"),
+        "surface_variant": QColor("#374151"),
+        "primary": QColor("#2563eb"),
+        "primary_container": QColor("#172554"),
+        "on_primary": QColor("#ffffff"),
         "text": QColor("#FFFFFF"),
         "text_secondary": QColor("#D0D0D0"),
-        "border": QColor("#404040"),
+        "border": QColor("#4b5563"),
         "success": QColor("#6CCB6F"),
         "warning": QColor("#E2D868"),
         "error": QColor("#FF8A80"),
@@ -55,6 +55,14 @@ class ThemeManager(QObject):
         self.logger = get_logger()
         self._current_theme = "light"
         self._mode = "auto"
+        self._system_timer = QTimer(self)
+        self._system_timer.setInterval(2000)
+        self._system_timer.timeout.connect(self.refresh_system_theme)
+        self._system_timer.start()
+
+    def refresh_system_theme(self):
+        if self._mode == "auto" and self.get_system_theme() != self._current_theme:
+            self.apply_theme("auto")
 
     def get_system_theme(self) -> str:
         """
@@ -117,6 +125,7 @@ class ThemeManager(QObject):
 
         # Window colors
         palette.setColor(QPalette.ColorRole.Window, colors["background"])
+        palette.setColor(QPalette.ColorRole.Mid, colors["border"])
         palette.setColor(QPalette.ColorRole.WindowText, colors["text"])
 
         # Base colors (for widgets)
@@ -320,10 +329,12 @@ class ThemeManager(QObject):
         }}
 
         QLabel {{
+            background-color: transparent;
             color: {text};
         }}
 
         QCheckBox {{
+            background-color: transparent;
             spacing: 6px;
         }}
 
@@ -437,6 +448,18 @@ class ThemeManager(QObject):
         }}
         """
 
+        stylesheet += f"""
+        QLabel#brand {{ font-size: 22px; font-weight: 700; }}
+        QLabel#pageTitle {{ font-size: 24px; font-weight: 700; padding-bottom: 16px; }}
+        QListWidget#navigation {{ background: {surface}; border: none;
+            border-right: 1px solid {border}; padding: 16px 8px; font-weight: 600; font-size: 13px; }}
+        QListWidget#navigation::item {{ padding: 12px 6px; border-radius: 8px; }}
+        QListWidget#navigation::item:selected {{ background: {primary_container}; color: {text}; }}
+        QPushButton:checked {{ border: 2px solid #2563eb; background: {primary_container}; }}
+        QPushButton:focus, QComboBox:focus {{ border: 2px solid #3b82f6; }}
+        QPushButton[primary="true"] {{ background: #2563eb; color: white; padding: 10px 20px; }}
+        QGroupBox {{ padding: 24px 16px 16px 16px; margin-top: 20px; border-radius: 8px; }}
+        """
         return stylesheet
 
     @property

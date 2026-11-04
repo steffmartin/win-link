@@ -44,6 +44,7 @@ class UndoDialog(AnimatedDialog):
         layout.addWidget(info_label)
 
         junction_label = QLabel(f"{self.target} -> {self.source}")
+        junction_label.setWordWrap(True)
         junction_label.setStyleSheet("font-weight: bold; margin: 5px 0;")
         layout.addWidget(junction_label)
 

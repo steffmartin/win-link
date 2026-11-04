@@ -110,6 +110,28 @@ class HistoryManager:
             settings = get_settings()
             history = self._load_history(strict=True)
 
+            metadata = dict(metadata or {})
+            if not success and error_message and "Operação cancelada" in error_message:
+                metadata["result"] = "cancelled"
+            if (
+                success
+                and target
+                and operation_type
+                in (
+                    OperationType.CREATE_JUNCTION,
+                    OperationType.CREATE_SYMLINK,
+                    OperationType.CREATE_HARDLINK,
+                )
+            ):
+                try:
+                    identity = target.lstat()
+                    metadata["link_identity"] = [identity.st_dev, identity.st_ino]
+                    if source:
+                        origin = source.stat()
+                        metadata["source_identity"] = [origin.st_dev, origin.st_ino]
+                except OSError:
+                    # The operation already completed; a metadata query must not turn it into a failure.
+                    pass
             # Create operation record
             record = OperationRecord(
                 operation_type=operation_type,
@@ -241,3 +263,20 @@ class HistoryManager:
             Last operation record or None
         """
         return self.get_last_operation()
+
+
+def creation_was_undone(record: OperationRecord, records: list[OperationRecord]) -> bool:
+    """Infer legacy reversals without rewriting existing history entries."""
+    if record.operation_type not in (
+        OperationType.CREATE_JUNCTION,
+        OperationType.CREATE_SYMLINK,
+        OperationType.CREATE_HARDLINK,
+    ):
+        return False
+    return any(
+        other.success
+        and other.operation_type in (OperationType.UNDO_OPERATION, OperationType.REMOVE_JUNCTION)
+        and other.target == record.target
+        and other.timestamp > record.timestamp
+        for other in records
+    )

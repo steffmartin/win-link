@@ -2,10 +2,11 @@
 
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
+from PyQt6.QtCore import QAbstractTableModel, QDate, QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from winlink.core.history import HistoryManager
+from winlink.core.history import HistoryManager, creation_was_undone
 from winlink.core.models import OperationRecord, OperationType
 from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
@@ -26,11 +27,12 @@ class HistoryTableModel(QAbstractTableModel):
 
     _operations: list[OperationRecord]
 
-    COLUMNS = ["Data", "Tipo", "Detalhes"]
+    COLUMNS = ["Data", "Operação", "Detalhes", "Resultado"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._operations: list[OperationRecord] = []
+        self.all_operations: list[OperationRecord] = []
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of rows"""
@@ -81,6 +83,12 @@ class HistoryTableModel(QAbstractTableModel):
             return self._get_type_display(operation.operation_type)
         elif column == 2:  # Detalhes
             return self._get_details_display(operation)
+        elif column == 3:
+            if creation_was_undone(operation, self.all_operations):
+                return "Criação desfeita"
+            if operation.metadata.get("result") == "cancelled":
+                return "Cancelado"
+            return "Sucesso" if operation.success else "Falha"
         return ""
 
     def _get_tooltip_data(self, operation: OperationRecord) -> str:
@@ -163,6 +171,10 @@ class HistoryDialog(AnimatedDialog):
         self.setModal(True)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        heading = QLabel("Histórico de Operações")
+        heading.setObjectName("pageTitle")
+        layout.addWidget(heading)
 
         # Filters
         filter_layout = QHBoxLayout()
@@ -178,7 +190,7 @@ class HistoryDialog(AnimatedDialog):
         filter_layout.addWidget(self.type_combo)
 
         self.date_combo = QComboBox()
-        self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês"])
+        self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês", "Personalizado"])
         self.date_combo.currentTextChanged.connect(self.on_filter_changed)
         filter_layout.addWidget(self.date_combo)
 
@@ -189,6 +201,26 @@ class HistoryDialog(AnimatedDialog):
         filter_layout.addStretch()
 
         layout.addLayout(filter_layout)
+
+        interval = QHBoxLayout()
+        self.result_combo = QComboBox()
+        self.result_combo.addItems(
+            ["Todos os resultados", "Sucesso", "Falha", "Cancelado", "Criação desfeita"]
+        )
+        self.result_combo.setAccessibleName("Resultado")
+        self.result_combo.currentIndexChanged.connect(self.on_filter_changed)
+        interval.addWidget(QLabel("Resultado"))
+        interval.addWidget(self.result_combo)
+        self.from_date = QDateEdit(QDate.currentDate().addMonths(-1))
+        self.to_date = QDateEdit(QDate.currentDate())
+        for label, field in [("De", self.from_date), ("Até", self.to_date)]:
+            field.setCalendarPopup(True)
+            field.setDisplayFormat("dd/MM/yyyy")
+            field.setAccessibleName(label)
+            field.dateChanged.connect(self.on_filter_changed)
+            interval.addWidget(QLabel(label))
+            interval.addWidget(field)
+        layout.addLayout(interval)
 
         # Table
         self.table_model = HistoryTableModel(self)
@@ -218,6 +250,9 @@ class HistoryDialog(AnimatedDialog):
         self.export_btn = QPushButton("Exportar")
         self.export_btn.clicked.connect(self.export_history)
 
+        self.details_btn = QPushButton("Detalhes")
+        self.details_btn.clicked.connect(self.show_details)
+        button_layout.addWidget(self.details_btn)
         self.undo_btn = QPushButton("Desfazer selecionada")
         self.undo_btn.setToolTip(
             "Desfazer a criação selecionada após verificar se o link ainda é o mesmo"
@@ -229,6 +264,19 @@ class HistoryDialog(AnimatedDialog):
         button_layout.addWidget(self.export_btn)
 
         layout.addLayout(button_layout)
+
+    def show_details(self):
+        record = self.table_model.get_operation(self.table_view.currentIndex())
+        if record:
+            import json
+
+            QMessageBox.information(
+                self,
+                "Detalhes da operação",
+                self.table_model._get_tooltip_data(record)
+                + "\n"
+                + json.dumps(record.metadata, ensure_ascii=False, indent=2),
+            )
 
     def undo_selected(self):
         from winlink.core.models import Creator, Junction, JunctionType
@@ -242,6 +290,7 @@ class HistoryDialog(AnimatedDialog):
         }
         if (
             not record
+            or creation_was_undone(record, self.history_manager.get_history())
             or not record.success
             or record.operation_type not in types
             or not record.source
@@ -251,6 +300,21 @@ class HistoryDialog(AnimatedDialog):
                 self, "Histórico", "Selecione uma criação bem-sucedida para desfazer."
             )
             return
+        for field, path in [("link_identity", record.target), ("source_identity", record.source)]:
+            expected = record.metadata.get(field)
+            if expected:
+                try:
+                    actual = path.lstat() if field == "link_identity" else path.stat()
+                    matches = expected == [actual.st_dev, actual.st_ino]
+                except OSError:
+                    matches = False
+                if not matches:
+                    QMessageBox.warning(
+                        self,
+                        "Histórico",
+                        "A identidade do link ou dos dados mudou. Atualize a lista; esta criação não pode ser desfeita pelo histórico.",
+                    )
+                    return
         junction = Junction(
             source=record.source,
             target=record.target,
@@ -293,7 +357,25 @@ class HistoryDialog(AnimatedDialog):
 
     def apply_filters(self, operations: list[OperationRecord]):
         """Apply filters to operations"""
+        self.table_model.all_operations = operations
         filtered = operations
+        result = self.result_combo.currentText()
+        if result == "Sucesso":
+            filtered = [op for op in filtered if op.success]
+        elif result == "Falha":
+            filtered = [
+                op for op in filtered if not op.success and op.metadata.get("result") != "cancelled"
+            ]
+        elif result == "Cancelado":
+            filtered = [op for op in filtered if op.metadata.get("result") == "cancelled"]
+        elif result == "Criação desfeita":
+            filtered = [op for op in filtered if creation_was_undone(op, operations)]
+        custom = self._filter_date_range == "Personalizado"
+        self.from_date.setEnabled(custom)
+        self.to_date.setEnabled(custom)
+        if custom:
+            start, end = self.from_date.date().toPyDate(), self.to_date.date().toPyDate()
+            filtered = [op for op in filtered if start <= op.timestamp.date() <= end]
 
         # Filter by type
         if self._filter_type:
@@ -314,12 +396,13 @@ class HistoryDialog(AnimatedDialog):
 
         # Update model
         self.table_model.set_operations(filtered)
-        self.total_label.setText(f"Total: {len(filtered)} operações")
+        self.total_label.setText(f"Total: {len(filtered)} de {len(operations)} operações")
 
     def clear_filters(self):
         """Clear all filters"""
         self.type_combo.setCurrentText("Todas")
         self.date_combo.setCurrentText("Todos")
+        self.result_combo.setCurrentIndex(0)
 
     def clear_history(self):
         """Clear all history"""

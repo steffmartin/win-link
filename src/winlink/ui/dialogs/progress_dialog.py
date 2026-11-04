@@ -73,6 +73,7 @@ class ProgressDialog(AnimatedDialog):
         self.details_label = QLabel()
         self.details_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.details_label.setStyleSheet("margin: 5px 0;")
+        self.details_label.setWordWrap(True)
         layout.addWidget(self.details_label)
 
         layout.addStretch()
@@ -119,7 +120,9 @@ class ProgressDialog(AnimatedDialog):
             self.cancel_btn.clicked.disconnect()
             self.cancel_btn.clicked.connect(self.accept)
         else:
-            self.status_label.setText("Erro")
+            self.status_label.setText(
+                "Cancelado — dados preservados" if self._was_cancelled else "Falha na operação"
+            )
             if message:
                 self.details_label.setText(message)
             self.cancel_btn.setText("Fechar")
@@ -131,13 +134,23 @@ class ProgressDialog(AnimatedDialog):
         if self._finished or self._was_cancelled:
             return
         self._was_cancelled = True
-        self.status_label.setText("Cancelando...")
+        self.status_label.setText("Cancelando / preservando dados…")
         self.cancel_btn.setEnabled(False)
         self.cancellation_requested.emit()
 
     def was_cancelled(self) -> bool:
         """Check if operation was cancelled"""
         return self._was_cancelled
+
+    def reject(self):
+        if self._finished:
+            super().reject()
+        else:
+            self.cancel_operation()
+
+    def accept(self):
+        if self._finished:
+            super().accept()
 
     def closeEvent(self, event):
         """Handle close event"""

@@ -3,12 +3,33 @@
 import ctypes
 import os
 
-from PyQt6.QtCore import QPropertyAnimation
-from PyQt6.QtWidgets import QDialog
+from PyQt6.QtCore import QPropertyAnimation, Qt
+from PyQt6.QtWidgets import QDialog, QScrollArea, QVBoxLayout, QWidget
 
 
 class AnimatedDialog(QDialog):
     def showEvent(self, event):
+        if self.isWindow() and not getattr(self, "_scroll_ready", False) and self.layout():
+            self._scroll_ready = True
+            content = QWidget()
+            content.setLayout(self.layout())
+            area = QScrollArea()
+            area.setWidgetResizable(True)
+            area.setFrameShape(QScrollArea.Shape.NoFrame)
+            area.setWidget(content)
+            layout = QVBoxLayout(self)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(area)
+            available = self.screen().availableGeometry()
+            self.setMinimumSize(320, 180)
+            self.resize(
+                min(760, int(available.width() * 0.9)),
+                min(content.sizeHint().height() + 40, int(available.height() * 0.9)),
+            )
+            self.setMaximumHeight(int(available.height() * 0.9))
+            for label in self.findChildren(QWidget):
+                if label.inherits("QLabel"):
+                    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         super().showEvent(event)
         enabled = ctypes.c_int(0)
         if (

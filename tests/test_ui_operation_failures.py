@@ -67,7 +67,7 @@ def test_window_exposes_type_filter_and_sorting(qtbot, monkeypatch, tmp_path):
 
     monkeypatch.setattr(main_window.MainWindow, "start_scan", lambda self: None)
     monkeypatch.setattr(main_window, "get_settings", lambda: AppSettings())
-    monkeypatch.setattr(main_window, "HistoryManager", Mock())
+    monkeypatch.setattr(main_window, "HistoryManager", Mock(return_value=Mock(get_history=Mock(return_value=[]))))
     window = main_window.MainWindow()
     qtbot.addWidget(window)
     window.junction_model.set_junctions(
@@ -131,6 +131,7 @@ def test_undo_move_back_respects_backup(qtbot, monkeypatch, tmp_path, keep_sourc
     source, target = tmp_path / "storage", tmp_path / "link"
     source.mkdir()
     (source / "data").write_text("content")
+    assert operations.create_junction(source, target)
     junction = Junction(source=source, target=target, junction_type=JunctionType.JUNCTION)
     dialog = Mock()
     dialog.exec.return_value = main_window.QDialog.DialogCode.Accepted
@@ -139,7 +140,6 @@ def test_undo_move_back_respects_backup(qtbot, monkeypatch, tmp_path, keep_sourc
     monkeypatch.setattr(main_window, "UndoDialog", Mock(return_value=dialog))
     monkeypatch.setattr(main_window, "ProgressDialog", Mock())
     monkeypatch.setattr(main_window, "QMessageBox", Mock())
-    monkeypatch.setattr(operations, "remove_junction", lambda path: True)
     window = Mock()
     main_window.MainWindow.undo_junction(window, junction)
     assert (target / "data").read_text() == "content"

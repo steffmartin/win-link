@@ -41,6 +41,10 @@ class SettingsDialog(AnimatedDialog):
         self.setModal(True)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        heading = QLabel("Configurações")
+        heading.setObjectName("pageTitle")
+        layout.addWidget(heading)
 
         # General section
         general_group = QGroupBox("Geral")
@@ -56,17 +60,16 @@ class SettingsDialog(AnimatedDialog):
         theme_layout.addStretch()
         general_layout.addLayout(theme_layout)
 
-        # Language (placeholder for future)
-        language_layout = QHBoxLayout()
-        language_label = QLabel("Idioma:")
-        self.language_combo = QComboBox()
-        self.language_combo.addItems(["Português", "English"])
-        self.language_combo.setCurrentText("Português")
-        self.language_combo.setEnabled(False)  # Not implemented yet
-        language_layout.addWidget(language_label)
-        language_layout.addWidget(self.language_combo)
-        language_layout.addStretch()
-        general_layout.addLayout(language_layout)
+        self.default_type_combo = QComboBox()
+        for label, value in [
+            ("Junction", "junction"),
+            ("Symlink (diretório)", "symlink_dir"),
+            ("Symlink (arquivo)", "symlink_file"),
+            ("Hard link", "hardlink"),
+        ]:
+            self.default_type_combo.addItem(label, value)
+        general_layout.addWidget(QLabel("Tipo de link padrão"))
+        general_layout.addWidget(self.default_type_combo)
 
         general_group.setLayout(general_layout)
         layout.addWidget(general_group)
@@ -140,12 +143,19 @@ class SettingsDialog(AnimatedDialog):
 
         # Buttons
         button_layout = QHBoxLayout()
+        self.defaults_btn = QPushButton("Restaurar padrões")
+        self.defaults_btn.clicked.connect(self.restore_defaults)
+        self.discard_btn = QPushButton("Descartar alterações")
+        self.discard_btn.clicked.connect(self.discard_changes)
+        button_layout.addWidget(self.defaults_btn)
+        button_layout.addWidget(self.discard_btn)
         button_layout.addStretch()
 
         self.cancel_btn = QPushButton("Cancelar")
         self.cancel_btn.clicked.connect(self.reject)
 
         self.save_btn = QPushButton("Salvar")
+        self.save_btn.setProperty("primary", True)
         self.save_btn.clicked.connect(self.save_settings)
 
         button_layout.addWidget(self.cancel_btn)
@@ -153,10 +163,22 @@ class SettingsDialog(AnimatedDialog):
 
         layout.addLayout(button_layout)
 
-    def load_settings(self):
+    def restore_defaults(self):
+        """Prepare visible preferences without changing persisted storage locations."""
+        self.load_settings(AppSettings())
+
+    def discard_changes(self):
+        self.load_settings(self.settings)
+
+    def load_settings(self, settings=None):
         """Load settings into UI"""
+        settings = settings or self.settings
+        self._scan_directories = list(settings.scan_directories)
+        self.default_type_combo.setCurrentIndex(
+            self.default_type_combo.findData(settings.default_link_type)
+        )
         # Theme
-        theme_index = self.theme_combo.findText(self.settings.theme_mode)
+        theme_index = self.theme_combo.findText(settings.theme_mode)
         if theme_index >= 0:
             self.theme_combo.setCurrentIndex(theme_index)
 
@@ -167,12 +189,12 @@ class SettingsDialog(AnimatedDialog):
 
         # Operations
         self.confirm_checkbox.setChecked(True)
-        self.backup_checkbox.setChecked(self.settings.auto_backup_before_undo)
-        self.notify_checkbox.setChecked(self.settings.show_notifications)
-        self.warn_nested_checkbox.setChecked(self.settings.warn_nested_junctions)
+        self.backup_checkbox.setChecked(settings.auto_backup_before_undo)
+        self.notify_checkbox.setChecked(settings.show_notifications)
+        self.warn_nested_checkbox.setChecked(settings.warn_nested_junctions)
 
         # Logs
-        log_level_index = self.log_level_combo.findText(self.settings.log_level)
+        log_level_index = self.log_level_combo.findText(settings.log_level)
         if log_level_index >= 0:
             self.log_level_combo.setCurrentIndex(log_level_index)
 
@@ -219,8 +241,12 @@ class SettingsDialog(AnimatedDialog):
             )
             return
 
+        if any(not Path(path).is_absolute() for path in self._scan_directories):
+            QMessageBox.warning(self, "Revise as preferências", "Use somente diretórios absolutos.")
+            return
         candidate = self.settings.model_copy(deep=True)
         # Update settings
+        candidate.default_link_type = self.default_type_combo.currentData()
         candidate.theme_mode = self.theme_combo.currentText()
         candidate.scan_directories = self._scan_directories
         candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()

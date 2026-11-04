@@ -76,7 +76,11 @@ class JunctionTableModel(QAbstractTableModel):
         elif column == 2:  # Criador
             return self._get_creator_display(junction.creator)
         elif column == 3:  # Tipo
-            return self._get_type_display(junction.junction_type)
+            return self._get_type_display(junction.junction_type) + (
+                (" (diretório)" if junction.is_directory else " (arquivo)")
+                if junction.junction_type == JunctionType.SYMLINK
+                else ""
+            )
         elif column == 4:  # Tamanho
             return self._format_size(junction.size_bytes)
         elif column == 5:  # Status
