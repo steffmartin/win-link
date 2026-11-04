@@ -36,8 +36,8 @@ Paridade com as funcionalidades existentes; novidades aprovadas implementadas; c
 
 ## Homologação ainda pendente da fase 5
 
-- [ ] Instalar/executar em Windows limpo sem Python.
-- [ ] Validar Windows 10 mínimo, além do host Windows 11 usado nos testes.
+- Dispensado pelo mantenedor em 04/11/2026: instalar/executar em Windows limpo sem Python. Não executado; não equivale a aprovação.
+- Dispensado pelo mantenedor em 04/11/2026: validar Windows 10 mínimo. Compatibilidade não homologada.
 - [ ] Validar sucesso real de symlinks com Modo de Desenvolvedor/permissões apropriadas.
 
 O build atual não é assinado. Evidências e limites: [validação](../validacao/FASE5.md).
@@ -54,4 +54,4 @@ Ideias não aprovadas para esta entrega permanecem em [MELHORIAS.md](MELHORIAS.m
 
 ## Checkpoint vigente — 04/11/2026, 17:49; validação final após o checkpoint
 
-Implementação local da etapa 6.6 entregue; testes e evidências atuais em [REDESIGN.md](../validacao/REDESIGN.md). As caixas de homologação externa permanecem abertas: este host Windows 11 tem Python instalado, não oferece Windows Sandbox e negou a criação real dos dois tipos de symlink com WinError 1314. O trabalho local não substitui esses testes nem autoriza anunciar lançamento homologado.
+Implementação local da etapa 6.6 entregue; testes e evidências atuais em [REDESIGN.md](../validacao/REDESIGN.md). Após decisão do mantenedor, Windows limpo e Windows 10 foram dispensados; resta o teste manual de symlinks com privilégios. Evidência do host: este host Windows 11 tem Python instalado, não oferece Windows Sandbox e negou a criação real dos dois tipos de symlink com WinError 1314. O trabalho local não substitui esses testes nem autoriza anunciar lançamento homologado.

@@ -6,7 +6,7 @@ Aplicativo Windows em Python/PyQt6 para descobrir, criar e desfazer junctions, l
 
 O design aprovado foi implementado no aplicativo Python/PyQt6, com navegação lateral, cartões/visão compacta, criação, propriedades, histórico e configurações. As melhorias da etapa 6.6 estão implementadas. O React continua sendo apenas referência visual.
 
-**Ainda não é um lançamento homologado:** Windows limpo sem Python, Windows 10 e sucesso real de symlinks com permissões apropriadas continuam pendentes. Consulte a [validação atual](docs/validacao/REDESIGN.md), o [guia de uso](docs/guias/USO.md) e as [notas de versão](docs/produto/NOTAS-DE-VERSAO.md).
+**Homologação de permissões pendente:** falta validar manualmente o sucesso real de symlinks de arquivo/diretório com privilégios apropriados. Windows limpo sem Python e Windows 10 não serão testados, por decisão do mantenedor; esses ambientes continuam sem homologação. Consulte a [validação atual](docs/validacao/REDESIGN.md), o [guia de uso](docs/guias/USO.md) e as [notas de versão](docs/produto/NOTAS-DE-VERSAO.md).
 
 Comece pelo [guia de implementação](docs/guias/IMPLEMENTACAO-UI.md) e pelo [plano](docs/planejamento/PLANO.md).
 

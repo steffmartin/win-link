@@ -31,3 +31,7 @@ Portátil e instalador de produção regenerados com PyInstaller 6.22.3 e Inno S
 A execução adicional do script de navegador `browser-priority1.js` foi interrompida sem conclusão durante a automação; não está contabilizada como aprovada. Os testes de regras (74), os outros três scripts de navegador citados e os testes reais Python são evidências independentes. Não houve alteração no código da demo.
 
 Validação final do build de código `8b8ab19`: 299 testes Python aprovados (XML versionado), Ruff/Black/mypy aprovados, portátil e instalação isolada aprovados novamente após a última alteração. Não foram incluídos caches, dependências, ferramentas ou binários nos commits. O pacote portátil exige a pasta inteira; `redesign-artifacts.json` registra a presença da licença e o SHA-256 do executável e instalador.
+
+## Decisão posterior do mantenedor — 04/11/2026
+
+Os testes em Windows limpo sem Python e Windows 10 foram explicitamente dispensados pelo mantenedor. Permanecem não executados e não são tratados como aprovados; deixam de bloquear esta entrega por decisão de escopo. A pendência restante de permissões é a validação manual de symlink de diretório e de arquivo com o aplicativo elevado (ou Modo de Desenvolvedor). Os resultados WinError 1314 acima continuam sendo a evidência histórica das tentativas sem privilégio.
