@@ -12,7 +12,9 @@ A validação de distribuição no fechamento passou: abertura portátil/instala
 
 ## Bugs, melhorias e acompanhamento
 
-As [Issues do GitHub do projeto](https://github.com/steffmartin/win-link/issues) são o registro único de novos bugs, melhorias e solicitações. Não manter backlog ou lista paralela de issues em documentos do repositório. As ideias anteriores permanecem no [arquivo histórico](arquivo/v0.1.0/planejamento/MELHORIAS.md) como referência; não representam tarefas aprovadas.
+As [Issues do GitHub do projeto](https://github.com/steffmartin/win-link/issues) são o registro único de novos bugs, melhorias e solicitações. Não manter backlog ou lista paralela de issues em documentos do repositório. As propostas não implementadas do [planejamento histórico](arquivo/v0.1.0/planejamento/MELHORIAS.md) foram registradas nas Issues em 04/11/2026; o arquivo conserva apenas sua origem, sem espelhar estado ou prioridade.
+
+Agentes devem seguir [AGENTS.md](../AGENTS.md). Para evoluir a interface, consultar o [guia de UI](UI.md) antes de recorrer ao protótipo histórico.
 
 Ao abrir uma issue de bug, registrar versão do WinLink, versão/build do Windows, tipo de link, permissões, passos mínimos, resultado esperado e observado. Incluir mensagem de erro e trechos de log com caminhos e informações pessoais removidos. Usar dados descartáveis para reproduzir operações de arquivos.
 

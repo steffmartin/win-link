@@ -67,6 +67,8 @@ Também é possível abrir com `iniciar-winlink.bat` após instalar as dependên
 - [Uso](docs/USO.md): instalar, criar, descobrir e desfazer links.
 - [Distribuição](docs/DISTRIBUICAO.md): gerar e validar pacotes.
 - [Continuidade](docs/CONTINUIDADE.md): orientações técnicas de manutenção e limites da release.
+- [Guia de UI](docs/UI.md): padrões visuais, componentes e interações para continuidade.
+- [Orientações para agentes](AGENTS.md): regras obrigatórias e índice de leitura sob demanda.
 - [Issues do GitHub](https://github.com/steffmartin/win-link/issues): registro de bugs e melhorias.
 - [Notas de versão](docs/NOTAS-DE-VERSAO.md).
 - [Arquivo histórico](docs/arquivo/v0.1.0/README.md).
