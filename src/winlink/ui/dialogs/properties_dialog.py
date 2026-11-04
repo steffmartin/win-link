@@ -6,7 +6,6 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -35,103 +34,81 @@ class PropertiesDialog(AnimatedDialog):
         self.load_junction_data()
 
     def init_ui(self):
-        """Initialize UI components"""
-        self.setWindowTitle("Propriedades")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
+        from PyQt6.QtCore import Qt
+
+        from winlink.ui.components import ActionRow, Panel, button_style, field, heading
+        from winlink.ui.icons import symbol_icon
+
+        self.setWindowTitle("Propriedades do Link")
         self.setModal(True)
-
         layout = QVBoxLayout(self)
-
-        # General information section
-        general_group = QGroupBox("Informações Gerais")
-        general_layout = QFormLayout()
-
-        self.type_label = QLabel()
-        general_layout.addRow("Tipo:", self.type_label)
-
-        self.status_label = QLabel()
-        general_layout.addRow("Status:", self.status_label)
-
-        self.creator_label = QLabel()
-        general_layout.addRow("Criador:", self.creator_label)
-
-        self.created_at_label = QLabel()
-        general_layout.addRow("Data de criação:", self.created_at_label)
-
-        general_group.setLayout(general_layout)
-        layout.addWidget(general_group)
-
-        # Paths section
-        paths_group = QGroupBox("Caminhos")
-        paths_layout = QFormLayout()
-
-        self.source_label = QLabel()
-        self.source_label.setWordWrap(True)
-        self.source_label.setStyleSheet("font-family: Consolas, monospace;")
-        paths_layout.addRow("Origem:", self.source_label)
-
-        self.source_button = QPushButton("Abrir pasta")
-        self.source_button.clicked.connect(self.open_source)
-        paths_layout.addRow("", self.source_button)
-
-        self.target_label = QLabel()
-        self.target_label.setWordWrap(True)
-        self.target_label.setStyleSheet("font-family: Consolas, monospace;")
-        paths_layout.addRow("Destino:", self.target_label)
-
-        self.target_button = QPushButton("Abrir pasta")
-        self.target_button.clicked.connect(self.open_target)
-        paths_layout.addRow("", self.target_button)
-
-        paths_group.setLayout(paths_layout)
-        layout.addWidget(paths_group)
-
-        # Statistics section
-        stats_group = QGroupBox("Estatísticas")
-        stats_layout = QFormLayout()
-
-        self.size_label = QLabel()
-        stats_layout.addRow("Tamanho total:", self.size_label)
-
-        self.file_count_label = QLabel()
-        stats_layout.addRow("Número de arquivos:", self.file_count_label)
-
-        self.folder_count_label = QLabel()
-        stats_layout.addRow("Número de pastas:", self.folder_count_label)
-
-        stats_group.setLayout(stats_layout)
-        layout.addWidget(stats_group)
-
-        # History section
-        history_group = QGroupBox("Histórico de Operações")
-        history_layout = QVBoxLayout()
-
-        self.history_label = QLabel()
-        self.history_label.setWordWrap(True)
-        history_layout.addWidget(self.history_label)
-
-        history_group.setLayout(history_layout)
-        layout.addWidget(history_group)
-
-        layout.addStretch()
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-
-        self.close_btn = QPushButton("Fechar")
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(20)
+        top = heading(layout, "Propriedades do Link")
+        self.close_btn = button_style(QPushButton("Fechar"), "close")
         self.close_btn.clicked.connect(self.accept)
-
-        self.undo_btn = QPushButton("Reverter (Desfazer Link)")
-        self.undo_btn.clicked.connect(self.request_undo)
-        button_layout.addWidget(self.undo_btn)
-        self.recalculate_btn = QPushButton("Recalcular")
+        top.addWidget(self.close_btn)
+        panel = Panel()
+        header = QHBoxLayout()
+        icon = QLabel()
+        icon.setPixmap(
+            symbol_icon("folder" if self.junction.is_directory else "file", "#3b82f6").pixmap(
+                32, 32
+            )
+        )
+        header.addWidget(icon)
+        name = QLabel(self.junction.target.name)
+        name.setWordWrap(True)
+        name.setObjectName("sectionTitle")
+        header.addWidget(name, 1)
+        self.status_label = QLabel()
+        header.addWidget(self.status_label)
+        panel.content.addLayout(header)
+        metadata = QFormLayout()
+        metadata.setVerticalSpacing(12)
+        self.type_label = QLabel()
+        self.creator_label = QLabel()
+        self.created_at_label = QLabel()
+        metadata.addRow("Tipo:", self.type_label)
+        metadata.addRow("Criador:", self.creator_label)
+        metadata.addRow("Data de criação:", self.created_at_label)
+        panel.content.addLayout(metadata)
+        self.target_label = QLabel()
+        self.source_label = QLabel()
+        for title, label in [
+            ("Ponto de Acesso (Destino)", self.target_label),
+            ("Alvo / Local dos dados (Origem)", self.source_label),
+        ]:
+            label.setWordWrap(True)
+            label.setObjectName("pathBlock")
+            field(panel.content, title, label)
+        statistics = QFormLayout()
+        statistics.setVerticalSpacing(12)
+        self.size_label = QLabel()
+        self.file_count_label = QLabel()
+        self.folder_count_label = QLabel()
+        statistics.addRow("Tamanho total:", self.size_label)
+        statistics.addRow("Arquivos:", self.file_count_label)
+        statistics.addRow("Pastas:", self.folder_count_label)
+        panel.content.addLayout(statistics)
+        self.source_button = button_style(QPushButton("Abrir origem"), "folder")
+        self.source_button.clicked.connect(self.open_source)
+        self.target_button = button_style(QPushButton("Abrir destino"), "external")
+        self.target_button.clicked.connect(self.open_target)
+        self.recalculate_btn = button_style(QPushButton("Recalcular"), "refresh")
         self.recalculate_btn.clicked.connect(self.recalculate)
-        button_layout.addWidget(self.recalculate_btn)
-        button_layout.addWidget(self.close_btn)
-
-        layout.addLayout(button_layout)
+        panel.content.addWidget(
+            ActionRow([self.source_button, self.target_button, self.recalculate_btn])
+        )
+        heading(panel.content, "Histórico deste link")
+        self.history_label = QLabel()
+        self.history_label.setObjectName("muted")
+        self.history_label.setWordWrap(True)
+        panel.content.addWidget(self.history_label)
+        self.undo_btn = button_style(QPushButton("Reverter (Desfazer Link)"), "trash", danger=True)
+        self.undo_btn.clicked.connect(self.request_undo)
+        panel.content.addWidget(self.undo_btn, 0, Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(panel)
 
     def request_undo(self):
         if not getattr(self, "_calculating", False):

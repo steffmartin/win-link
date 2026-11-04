@@ -51,10 +51,21 @@ class ProgressDialog(AnimatedDialog):
     def init_ui(self):
         """Initialize UI components"""
         self.setWindowTitle(self._title)
-        self.setMinimumWidth(500)
+        self.preferred_width = 512
+        self.setMinimumWidth(400)
         self.setModal(True)
 
+        from winlink.ui.components import button_style, heading
+        from winlink.ui.icons import symbol_icon
+
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(20)
+        heading(layout, self._title)
+        self.result_icon = QLabel()
+        self.result_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.result_icon.setPixmap(symbol_icon("clock", "#3b82f6").pixmap(48, 48))
+        layout.addWidget(self.result_icon)
 
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -74,15 +85,16 @@ class ProgressDialog(AnimatedDialog):
         self.details_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.details_label.setStyleSheet("margin: 5px 0;")
         self.details_label.setWordWrap(True)
+        self.details_label.hide()
         layout.addWidget(self.details_label)
 
-        layout.addStretch()
+        layout.addSpacing(8)
 
         # Cancel button
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.cancel_btn = QPushButton("Cancelar")
+        self.cancel_btn = button_style(QPushButton("Interromper"), "close")
         self.cancel_btn.clicked.connect(self.cancel_operation)
 
         button_layout.addWidget(self.cancel_btn)
@@ -102,6 +114,7 @@ class ProgressDialog(AnimatedDialog):
             self.status_label.setText(message)
         if details:
             self.details_label.setText(details)
+            self.details_label.show()
 
     def set_operation_finished(self, success: bool, message: str = ""):
         """
@@ -111,6 +124,14 @@ class ProgressDialog(AnimatedDialog):
             success: Whether operation succeeded
             message: Final message
         """
+        from winlink.ui.icons import symbol_icon
+
+        self.result_icon.setPixmap(
+            symbol_icon(
+                "check" if success else "warning" if self._was_cancelled else "error",
+                "#16a34a" if success else "#d97706" if self._was_cancelled else "#ef4444",
+            ).pixmap(56, 56)
+        )
         self._finished = True
         self.cancel_btn.setEnabled(True)
         if success:
@@ -125,6 +146,7 @@ class ProgressDialog(AnimatedDialog):
             )
             if message:
                 self.details_label.setText(message)
+                self.details_label.show()
             self.cancel_btn.setText("Fechar")
             self.cancel_btn.clicked.disconnect()
             self.cancel_btn.clicked.connect(self.reject)

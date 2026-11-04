@@ -28,7 +28,13 @@ class HistoryTableModel(QAbstractTableModel):
 
     _operations: list[OperationRecord]
 
-    COLUMNS = ["Data", "Operação", "Detalhes", "Resultado"]
+    COLUMNS = [
+        "Data / Hora",
+        "Ação Realizada",
+        "Caminho Afetado (Destino)",
+        "Status",
+        "Recuperação",
+    ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,7 +89,7 @@ class HistoryTableModel(QAbstractTableModel):
         elif column == 1:  # Tipo
             return self._get_type_display(operation.operation_type)
         elif column == 2:  # Detalhes
-            return self._get_details_display(operation)
+            return str(operation.target or operation.source or "—")
         elif column == 3:
             if creation_was_undone(operation, self.all_operations):
                 return "Criação desfeita"
@@ -165,112 +171,105 @@ class HistoryDialog(AnimatedDialog):
         self.load_history()
 
     def init_ui(self):
-        """Initialize UI components"""
-        self.setWindowTitle("Histórico de Operações")
-        self.setMinimumWidth(800)
-        self.setMinimumHeight(600)
-        self.setModal(True)
+        from winlink.ui.components import FieldGrid, Panel, button_style, heading
 
+        self.setWindowTitle("Histórico de Operações")
+        self.setModal(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
-        heading = QLabel("Histórico de Operações")
-        heading.setObjectName("pageTitle")
-        layout.addWidget(heading)
-
-        # Filters
-        filter_layout = QHBoxLayout()
-
-        filter_label = QLabel("Filtros:")
-        filter_layout.addWidget(filter_label)
-
+        layout.setSpacing(20)
+        title = heading(layout, "Histórico de Operações")
+        self.export_btn = button_style(QPushButton("Exportar"), "download")
+        self.export_btn.clicked.connect(self.export_history)
+        self.clear_history_btn = button_style(QPushButton("Limpar"), "trash")
+        self.clear_history_btn.clicked.connect(self.clear_history)
+        title.addWidget(self.export_btn)
+        title.addWidget(self.clear_history_btn)
+        note = QLabel(
+            'Registro de criações e reversões. Use "Desfazer" para reverter a criação selecionada.'
+        )
+        note.setWordWrap(True)
+        note.setObjectName("muted")
+        layout.addWidget(note)
         self.type_combo = QComboBox()
         self.type_combo.addItem("Todas")
-        for op_type in OperationType:
-            self.type_combo.addItem(HistoryTableModel()._get_type_display(op_type), op_type)
+        for op in OperationType:
+            self.type_combo.addItem(HistoryTableModel()._get_type_display(op), op)
         self.type_combo.currentTextChanged.connect(self.on_filter_changed)
-        filter_layout.addWidget(self.type_combo)
-
         self.date_combo = QComboBox()
         self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês", "Personalizado"])
         self.date_combo.currentTextChanged.connect(self.on_filter_changed)
-        filter_layout.addWidget(self.date_combo)
-
-        self.clear_filter_btn = QPushButton("Limpar")
-        self.clear_filter_btn.clicked.connect(self.clear_filters)
-        filter_layout.addWidget(self.clear_filter_btn)
-
-        filter_layout.addStretch()
-
-        layout.addLayout(filter_layout)
-
-        interval = QHBoxLayout()
         self.result_combo = QComboBox()
         self.result_combo.addItems(
             ["Todos os resultados", "Sucesso", "Falha", "Cancelado", "Criação desfeita"]
         )
         self.result_combo.setAccessibleName("Resultado")
         self.result_combo.currentIndexChanged.connect(self.on_filter_changed)
-        interval.addWidget(QLabel("Resultado"))
-        interval.addWidget(self.result_combo)
         self.from_date = QDateEdit(QDate.currentDate().addMonths(-1))
         self.to_date = QDateEdit(QDate.currentDate())
-        for label, field in [("De", self.from_date), ("Até", self.to_date)]:
-            field.setCalendarPopup(True)
-            field.setDisplayFormat("dd/MM/yyyy")
-            field.setAccessibleName(label)
-            field.dateChanged.connect(self.on_filter_changed)
-            interval.addWidget(QLabel(label))
-            interval.addWidget(field)
-        layout.addLayout(interval)
-
-        # Table
+        for name, control in [("De", self.from_date), ("Até", self.to_date)]:
+            control.setCalendarPopup(True)
+            control.setDisplayFormat("dd/MM/yyyy")
+            control.setAccessibleName(name)
+            control.dateChanged.connect(self.on_filter_changed)
+        panel = Panel()
+        panel.content.setContentsMargins(16, 16, 16, 16)
+        panel.content.addWidget(QLabel("Filtrar histórico"))
+        self.clear_filter_btn = button_style(QPushButton("Limpar filtros"), "filter")
+        self.clear_filter_btn.clicked.connect(self.clear_filters)
+        panel.content.addWidget(
+            FieldGrid(
+                [
+                    ("Operação", self.type_combo),
+                    ("Período", self.date_combo),
+                    ("Resultado", self.result_combo),
+                    ("De", self.from_date),
+                    ("Até", self.to_date),
+                    ("", self.clear_filter_btn),
+                ]
+            )
+        )
+        layout.addWidget(panel)
+        self.total_label = QLabel()
+        self.total_label.setObjectName("muted")
+        layout.addWidget(self.total_label)
         self.table_model = HistoryTableModel(self)
         self.table_view = QTableView()
         self.table_view.setModel(self.table_model)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
-        for column, width in enumerate((165, 170, 340, 200)):
-            self.table_view.setColumnWidth(column, width)
         self.table_view.setWordWrap(False)
-        self.table_view.setAlternatingRowColors(True)
+        self.table_view.setMinimumHeight(240)
+        self.table_view.setShowGrid(False)
+        self.table_view.horizontalHeader().setStretchLastSection(True)
         self.table_view.verticalHeader().hide()
-        self.table_view.verticalHeader().setDefaultSectionSize(42)
-        layout.addWidget(self.table_view)
+        self.table_view.verticalHeader().setDefaultSectionSize(64)
+        for index, width in enumerate((150, 150, 240, 160, 230)):
+            self.table_view.setColumnWidth(index, width)
+        from winlink.ui.history_actions import HistoryActionDelegate, HistoryStatusDelegate
 
-        # Total label
-        self.total_label = QLabel()
-        self.total_label.setStyleSheet("margin: 10px 0;")
-        layout.addWidget(self.total_label)
-
-        layout.addStretch()
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-
+        delegate = HistoryActionDelegate(self.table_view)
+        delegate.requested.connect(self.row_action)
+        self.table_view.setItemDelegateForColumn(4, delegate)
+        self.table_view.setItemDelegateForColumn(3, HistoryStatusDelegate(self.table_view))
+        layout.addWidget(self.table_view, 1)
+        self.details_btn = button_style(QPushButton("Detalhes"), "info")
+        self.details_btn.clicked.connect(self.show_details)
+        self.undo_btn = button_style(QPushButton("Desfazer selecionada"), "undo")
+        self.undo_btn.clicked.connect(self.undo_selected)
+        # Keyboard-accessible alternatives to the per-row pointer actions.
+        actions = QHBoxLayout()
+        actions.addWidget(self.details_btn)
+        actions.addWidget(self.undo_btn)
+        actions.addStretch()
+        layout.addLayout(actions)
         self.close_btn = QPushButton("Fechar")
         self.close_btn.clicked.connect(self.accept)
+        self.close_btn.hide()
+        layout.addWidget(self.close_btn)
 
-        self.clear_history_btn = QPushButton("Limpar Histórico")
-        self.clear_history_btn.clicked.connect(self.clear_history)
-
-        self.export_btn = QPushButton("Exportar")
-        self.export_btn.clicked.connect(self.export_history)
-
-        self.details_btn = QPushButton("Detalhes")
-        self.details_btn.clicked.connect(self.show_details)
-        button_layout.addWidget(self.details_btn)
-        self.undo_btn = QPushButton("Desfazer selecionada")
-        self.undo_btn.setToolTip(
-            "Desfazer a criação selecionada após verificar se o link ainda é o mesmo"
-        )
-        self.undo_btn.clicked.connect(self.undo_selected)
-        button_layout.addWidget(self.undo_btn)
-        button_layout.addWidget(self.close_btn)
-        button_layout.addWidget(self.clear_history_btn)
-        button_layout.addWidget(self.export_btn)
-
-        layout.addLayout(button_layout)
+    def row_action(self, index, action):
+        self.table_view.setCurrentIndex(index)
+        self.undo_selected() if action == "undo" else self.show_details()
 
     def show_details(self):
         record = self.table_model.get_operation(self.table_view.currentIndex())
@@ -279,7 +278,12 @@ class HistoryDialog(AnimatedDialog):
 
             dialog = AnimatedDialog(self)
             dialog.setWindowTitle("Detalhes da operação")
+            from winlink.ui.components import button_style, heading
+
             layout = QVBoxLayout(dialog)
+            layout.setContentsMargins(24, 24, 24, 24)
+            layout.setSpacing(16)
+            heading(layout, "Detalhes da operação", icon="info")
             details = QTextEdit()
             details.setReadOnly(True)
             details.setPlainText(
@@ -288,7 +292,7 @@ class HistoryDialog(AnimatedDialog):
                 + json.dumps(record.metadata, ensure_ascii=False, indent=2)
             )
             layout.addWidget(details)
-            close = QPushButton("Fechar")
+            close = button_style(QPushButton("Fechar"), "close")
             close.clicked.connect(dialog.accept)
             layout.addWidget(close)
             dialog.exec()

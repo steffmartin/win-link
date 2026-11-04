@@ -9,6 +9,9 @@ from PyQt6.QtWidgets import QDialog, QScrollArea, QVBoxLayout, QWidget
 
 class AnimatedDialog(QDialog):
     def showEvent(self, event):
+        from winlink.ui.icons import refresh_widget_icons
+
+        refresh_widget_icons(self)
         if self.isWindow() and not getattr(self, "_scroll_ready", False) and self.layout():
             self._scroll_ready = True
             content = QWidget()
@@ -23,7 +26,7 @@ class AnimatedDialog(QDialog):
             available = self.screen().availableGeometry()
             self.setMinimumSize(320, 180)
             self.resize(
-                min(760, int(available.width() * 0.9)),
+                min(getattr(self, "preferred_width", 680), int(available.width() * 0.9)),
                 min(content.sizeHint().height() + 40, int(available.height() * 0.9)),
             )
             self.setMaximumHeight(int(available.height() * 0.9))

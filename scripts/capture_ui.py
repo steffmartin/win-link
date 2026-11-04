@@ -9,7 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QScrollArea
 
 from winlink.core.config import AppSettings, save_settings
 from winlink.core.history import HistoryManager
@@ -48,9 +49,12 @@ with tempfile.TemporaryDirectory(prefix="winlink-ui-") as tmp:
             window.navigate(index)
             window.resize(1280, 800)
             app.processEvents()
+            QTest.qWait(30)
             window.grab().save(str(out / f"{name}-{theme}.png"))
             window.resize(760, 400)
             app.processEvents()
+            QTest.qWait(30)
+            assert window.size().width() == 760 and window.size().height() == 400, window.size()
             window.grab().save(str(out / f"{name}-{theme}-small.png"))
             if index in (1, 3):
                 area = window.pages.currentWidget()
@@ -58,12 +62,56 @@ with tempfile.TemporaryDirectory(prefix="winlink-ui-") as tmp:
                 app.processEvents()
                 window.grab().save(str(out / f"{name}-{theme}-small-bottom.png"))
                 area.verticalScrollBar().setValue(0)
-    junction = Junction(source=data, target=links / "Projetos", junction_type=JunctionType.JUNCTION)
-    dialog = PropertiesDialog(junction, window, window.history_manager)
-    dialog.show()
-    app.processEvents()
-    dialog.grab().save(str(out / "propriedades-dark.png"))
-    dialog.close()
+
+    from winlink.ui.dialogs.preview_dialog import PreviewDialog
+    from winlink.ui.dialogs.progress_dialog import ProgressDialog
+    from winlink.ui.dialogs.undo_dialog import UndoDialog
+
+    for theme in ["light", "dark"]:
+        window.quick_theme.setCurrentIndex(window.quick_theme.findData(theme))
+        window.resize(1280, 800)
+        junction = Junction(
+            source=data, target=links / "Projetos", junction_type=JunctionType.JUNCTION
+        )
+        dialogs = [
+            ("propriedades", PropertiesDialog(junction, window, window.history_manager)),
+            ("previa", PreviewDialog(links / "Novo", data, window, JunctionType.JUNCTION)),
+            ("reversao", UndoDialog(data, links / "Projetos", window)),
+            ("progresso", ProgressDialog("Operação em Andamento", window)),
+        ]
+        for name, dialog in dialogs:
+            dialog.show()
+            QTest.qWait(40)
+            dialog.grab().save(str(out / f"{name}-{theme}.png"))
+            dialog.resize(520, 300)
+            QTest.qWait(30)
+            area = dialog.findChild(QScrollArea)
+            if area:
+                area.verticalScrollBar().setValue(area.verticalScrollBar().maximum())
+            QTest.qWait(30)
+            dialog.grab().save(str(out / f"{name}-{theme}-small-bottom.png"))
+            if name == "progresso":
+                dialog.set_operation_finished(
+                    False, "Falha de teste para revisão visual; nenhum arquivo foi alterado."
+                )
+            dialog.close()
+
+    # Record filter and About dialogs through the real application actions.
+    def capture_modal(name):
+        from PyQt6.QtCore import QTimer
+
+        def capture():
+            dialog = app.activeModalWidget()
+            if dialog:
+                dialog.grab().save(str(out / f"{name}-dark.png"))
+                dialog.reject()
+
+        QTimer.singleShot(100, capture)
+
+    capture_modal("filtros")
+    window.edit_filters()
+    capture_modal("sobre")
+    window.show_about()
     window.close()
     app.processEvents()
     (links / "Projetos").rmdir()

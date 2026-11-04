@@ -50,6 +50,7 @@ def main():
             if window.scan_worker is not None and window.scan_worker.isRunning():
                 QTimer.singleShot(50, finish_smoke)
                 return
+            window.grab().save(str(smoke_output.with_suffix(".png")))
             smoke_output.write_text(
                 json.dumps(
                     {
@@ -57,6 +58,10 @@ def main():
                         "window": window.windowTitle(),
                         "icon_loaded": not window.windowIcon().isNull(),
                         "rows": window.junction_model.rowCount(),
+                        "navigation_icons": all(
+                            not window.navigation.item(i).icon().isNull() for i in range(4)
+                        ),
+                        "creation_icon": not window.create_page.create_btn.icon().isNull(),
                         "status": window.status_bar.currentMessage(),
                     },
                     indent=2,

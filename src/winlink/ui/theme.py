@@ -1,6 +1,8 @@
 """Theme management for Windows 11 style UI"""
 
+import sys
 import winreg
+from pathlib import Path
 
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPalette
@@ -433,6 +435,59 @@ class ThemeManager(QObject):
         QPushButton:focus, QComboBox:focus {{ border: 2px solid #3b82f6; }}
         QPushButton[primary="true"] {{ background: #2563eb; color: white; padding: 10px 20px; }}
         QGroupBox {{ padding: 24px 16px 16px 16px; margin-top: 20px; border-radius: 8px; }}
+        """
+        assets = (
+            Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[3] / "resources")) / "ui"
+        )
+        arrow = (assets / "chevron-down.svg").as_posix()
+        radio_off = (assets / "radio-off.svg").as_posix()
+        radio_on = (assets / "radio-on.svg").as_posix()
+        checkbox_off = (assets / "checkbox-off.svg").as_posix()
+        checkbox_on = (assets / "checkbox-on.svg").as_posix()
+        sidebar = bg if self._current_theme == "dark" else surface
+        stylesheet += f"""
+        QFrame#header {{ background: {bg}; border-bottom: 1px solid {border}; }}
+        QLabel#brand {{ font-size: 20px; font-weight: 700; }}
+        QLabel#brandIcon {{ background: #2563eb; border-radius: 6px; }}
+        QLabel#pageTitle {{ font-size: 24px; font-weight: 700; padding: 0; }}
+        QLabel#fieldLabel {{ font-size: 14px; font-weight: 600; }}
+        QLabel#muted {{ color: {text_secondary}; font-size: 13px; }}
+        QLabel#sectionTitle {{ font-size: 20px; font-weight: 700; }}
+        QLabel#pathBlock {{ font-family: Consolas; padding: 12px; background: {bg}; border: 1px solid {border}; border-radius: 6px; }}
+        QLabel#pathText {{ font-family: Consolas; font-size: 12px; }}
+        QFrame#sidebar {{ background: {sidebar}; border-right: 1px solid {border}; }}
+        QListWidget#navigation {{ background: transparent; border: none; padding: 0; font-size: 14px; font-weight: 600; }}
+        QListWidget#navigation::item {{ padding: 8px 6px; border-radius: 8px; }}
+        QListWidget#navigation::item:selected {{ background: {primary_container}; color: #3b82f6; }}
+        QLabel#sidebarFooter {{ color: {text_secondary}; background: transparent; border-top: 1px solid {border}; padding-top: 16px; font-size: 11px; }}
+        QPushButton {{ min-height: 20px; padding: 9px 16px; border-radius: 6px; font-weight: 500; }}
+        QPushButton[primary="true"] {{ background: #2563eb; color: white; border-color: #2563eb; padding: 10px 16px; font-weight: 600; }}
+        QPushButton[primary="true"]:disabled {{ background: {surface_variant}; color: {text_secondary}; border-color: {border}; }}
+        QPushButton[danger="true"] {{ color: {to_hex(colors["error"])}; border-color: {to_hex(colors["error"])}; }}
+        QPushButton#typeCard {{ min-height: 110px; max-height: 110px; padding: 0; border-radius: 8px; background: {bg}; text-align: left; }}
+        QPushButton#typeCard:checked {{ background: {primary_container}; border: 2px solid #2563eb; }}
+        QLineEdit, QComboBox, QDateEdit {{ min-height: 20px; padding: 9px 12px; border: 1px solid {border}; border-radius: 6px; background: {bg}; }}
+        QLineEdit#pathInput {{ font-family: Consolas; font-size: 14px; }}
+        QComboBox {{ padding-right: 28px; }}
+        QComboBox::drop-down {{ width: 24px; border: none; }}
+        QComboBox::down-arrow {{ image: url("{arrow}"); width: 16px; height: 16px; }}
+        QToolButton#themeButton::menu-button {{ border: none; width: 12px; background: transparent; }}
+        QToolButton#themeButton::menu-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
+        QComboBox QAbstractItemView {{ padding: 4px; selection-background-color: {primary_container}; }}
+        QToolButton#themeButton {{ min-width: 28px; min-height: 28px; border-radius: 16px; padding: 4px; }}
+        QWidget#fieldContainer {{ background: transparent; }}
+        QFrame#panel, QFrame#structurePanel {{ background: {surface}; border: 1px solid {border}; border-radius: 12px; }}
+        QFrame#structureNode {{ background: {bg}; border: 1px solid {border}; border-radius: 10px; }}
+        QLabel#infoBanner {{ padding: 16px; background: {primary_container}; border: 1px solid {border}; border-radius: 8px; }}
+        QTableView {{ border: 1px solid {border}; border-radius: 8px; gridline-color: {border}; }}
+        QHeaderView::section {{ border: none; border-bottom: 1px solid {border}; padding: 14px 10px; background: {surface}; font-weight: 600; }}
+        QRadioButton::indicator {{ width: 20px; height: 20px; image: url("{radio_off}"); }}
+        QRadioButton::indicator:checked {{ image: url("{radio_on}"); }}
+        QCheckBox::indicator {{ width: 20px; height: 20px; image: url("{checkbox_off}"); }}
+        QCheckBox::indicator:checked {{ image: url("{checkbox_on}"); }}
+        QRadioButton {{ background: transparent; spacing: 12px; padding: 12px 8px; }}
+        QCheckBox {{ spacing: 12px; padding: 4px 0; }}
+        QTextEdit {{ background: {surface}; border: 1px solid {border}; border-radius: 8px; padding: 12px; }}
         """
         return stylesheet
 

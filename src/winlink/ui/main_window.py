@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QStatusBar,
     QTableView,
@@ -100,9 +101,7 @@ class MainWindow(QMainWindow):
         self._scan_pending = False
         self.init_ui()
         self.apply_theme()
-        self.theme_manager.theme_changed.connect(
-            lambda _: self.setStyleSheet(self.theme_manager.get_stylesheet())
-        )
+        self.theme_manager.theme_changed.connect(lambda _: self.refresh_presentation())
         from winlink.core.cache import CacheManager
 
         cached = CacheManager().load()
@@ -114,7 +113,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize UI components"""
         self.setWindowTitle("WinLink")
-        from winlink.ui.icons import application_icon
+        from winlink.ui.components import Columns, button_style
+        from winlink.ui.icons import application_icon, symbol_icon
 
         self.setWindowIcon(application_icon())
         self.setGeometry(100, 100, self.settings.window_width, self.settings.window_height)
@@ -124,14 +124,28 @@ class MainWindow(QMainWindow):
         # Main layout
         shell = QVBoxLayout(central_widget)
         shell.setContentsMargins(0, 0, 0, 0)
-        header = QHBoxLayout()
-        header.setContentsMargins(24, 16, 24, 16)
-        brand = QLabel("WinLink <small>Manager</small>")
+        from PyQt6.QtWidgets import QFrame, QToolButton
+
+        header_frame = QFrame()
+        header_frame.setObjectName("header")
+        header = QHBoxLayout(header_frame)
+        header.setContentsMargins(16, 14, 16, 14)
+        header.setSpacing(12)
+        logo = QLabel()
+        logo.setObjectName("brandIcon")
+        logo.setPixmap(symbol_icon("link", "#ffffff").pixmap(20, 20))
+        logo.setFixedSize(32, 32)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.addWidget(logo)
+        brand = QLabel(
+            'WinLink <span style="font-size:14px;font-weight:400;color:#6b7280">Manager</span>'
+        )
         brand.setObjectName("brand")
         header.addWidget(brand)
         header.addStretch()
         about = QPushButton("Sobre")
         about.clicked.connect(self.show_about)
+        button_style(about)
         header.addWidget(about)
         self.quick_theme = QComboBox()
         for label, value in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
@@ -139,50 +153,96 @@ class MainWindow(QMainWindow):
         self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
         self.quick_theme.currentIndexChanged.connect(self.change_theme)
         self.quick_theme.setAccessibleName("Tema")
+        self.quick_theme.hide()
         header.addWidget(self.quick_theme)
-        shell.addLayout(header)
+        self.theme_button = QToolButton()
+        self.theme_button.setObjectName("themeButton")
+        self.theme_button.setAccessibleName("Alternar tema")
+        self.theme_button.setToolTip("Alternar tema; use a seta para Seguir sistema")
+        self.theme_button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.theme_button.clicked.connect(
+            lambda: self.quick_theme.setCurrentIndex(
+                self.quick_theme.findData(
+                    "light" if self.theme_manager.current_theme == "dark" else "dark"
+                )
+            )
+        )
+        theme_menu = QMenu(self.theme_button)
+        for text, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
+            theme_menu.addAction(
+                text,
+                lambda checked=False, value=mode: self.quick_theme.setCurrentIndex(
+                    self.quick_theme.findData(value)
+                ),
+            )
+        self.theme_button.setMenu(theme_menu)
+        header.addWidget(self.theme_button)
+        shell.addWidget(header_frame)
         body = QHBoxLayout()
+        body.setSpacing(0)
         self.navigation = QListWidget()
         self.navigation.setObjectName("navigation")
         self.navigation.addItems(["Meus Links", "Criar Novo", "Histórico", "Configurações"])
-        self.navigation.setFixedWidth(224)
+        self.navigation.setIconSize(QSize(18, 18))
+        for i in range(4):
+            self.navigation.item(i).setSizeHint(QSize(160, 48))
         self.navigation.setSpacing(4)
         self.navigation.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        body.addWidget(self.navigation)
+        self.navigation_host = QFrame()
+        self.navigation_host.setObjectName("sidebar")
+        self.navigation_host.setFixedWidth(256)
+        nav_box = QVBoxLayout(self.navigation_host)
+        nav_box.setContentsMargins(8, 16, 8, 16)
+        nav_box.setSpacing(16)
+        nav_box.addWidget(self.navigation, 1)
+        footer = QLabel("⌨  Navegável via teclado\n    Tab / Enter")
+        footer.setObjectName("sidebarFooter")
+        footer.setWordWrap(True)
+        nav_box.addWidget(footer)
+        body.addWidget(self.navigation_host)
         self.pages = QStackedWidget()
         body.addWidget(self.pages, 1)
         shell.addLayout(body, 1)
         list_page = QWidget()
-        self.pages.addWidget(list_page)
+        list_area = QScrollArea()
+        list_area.setWidgetResizable(True)
+        list_area.setFrameShape(QFrame.Shape.NoFrame)
+        list_area.setWidget(list_page)
+        self.pages.addWidget(list_area)
         main_layout = QVBoxLayout(list_page)
-        title_row = QHBoxLayout()
+        left_header = QWidget()
+        title_row = QHBoxLayout(left_header)
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(12)
         title = QLabel("Meus Links")
         title.setObjectName("pageTitle")
         title_row.addWidget(title)
-        title_row.addStretch()
-        for label, handler in [
-            ("Atualizar · F5", self.start_scan),
-            ("Início", self.on_home),
-            ("Criar Novo", self.on_new_junction),
+        for label, handler, icon in [
+            ("Atualizar  F5", self.start_scan, "refresh"),
+            ("Início", self.on_home, "home"),
         ]:
             button = QPushButton(label)
             button.clicked.connect(handler)
+            button_style(button, icon)
             title_row.addWidget(button)
-        main_layout.addLayout(title_row)
+        title_row.addStretch()
         main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(0)
+        main_layout.setSpacing(20)
         # Create toolbar
         # Navigation replaces the former toolbar.
         # Search bar
-        search_layout = QHBoxLayout()
-        search_layout.setContentsMargins(10, 10, 10, 10)
-        search_label = QLabel("Buscar:")
+        right_header = QWidget()
+        search_layout = QHBoxLayout(right_header)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.setSpacing(8)
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("Buscar junções...")
+        self.search_edit.setPlaceholderText("Buscar (Ex: hosts)...")
+        self.search_edit.setAccessibleName("Buscar links")
+        self.search_edit.setMinimumWidth(100)
+        self.search_edit.addAction(symbol_icon("search"), QLineEdit.ActionPosition.LeadingPosition)
         self.search_edit.textChanged.connect(self.on_search_changed)
-        search_layout.addWidget(search_label)
-        search_layout.addWidget(self.search_edit)
-        main_layout.addLayout(search_layout)
+        search_layout.addWidget(self.search_edit, 1)
+        # Header controls are arranged together after all controls exist.
         # Filter bar
         filter_layout = QHBoxLayout()
         filter_layout.setContentsMargins(10, 5, 10, 5)
@@ -223,6 +283,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(filter_container)
         filters_button = QPushButton("Filtros")
         filters_button.clicked.connect(self.edit_filters)
+        button_style(filters_button, "filter")
         search_layout.addWidget(filters_button)
         # Junction table
         self.table_view = QTableView()
@@ -243,6 +304,9 @@ class MainWindow(QMainWindow):
 
         self.card_view.setItemDelegate(LinkCardDelegate(self.card_view))
         self.card_view.setUniformItemSizes(True)
+        self.card_view.setFrameShape(QFrame.Shape.NoFrame)
+        self.card_view.setMinimumHeight(240)
+        self.card_view.clicked.connect(self.card_clicked)
         self.card_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.card_view.doubleClicked.connect(self.open_selected_properties)
         self.card_view.activated.connect(self.open_selected_properties)
@@ -252,10 +316,34 @@ class MainWindow(QMainWindow):
         self.link_views.addWidget(self.table_view)
         view_mode = QComboBox()
         view_mode.addItems(["Visão normal", "Compacta"])
-        view_mode.currentIndexChanged.connect(self.link_views.setCurrentIndex)
-        search_layout.addWidget(view_mode)
+        self.view_mode = view_mode
+        view_mode.currentIndexChanged.connect(
+            lambda index: self.link_views.setCurrentIndex(
+                index if self.filter_model.rowCount() else 2
+            )
+        )
+        empty = QWidget()
+        empty_box = QVBoxLayout(empty)
+        empty_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_box.setSpacing(16)
+        empty_icon = QLabel()
+        empty_icon.setPixmap(symbol_icon("search", "#9ca3af").pixmap(48, 48))
+        empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_title = QLabel("Nenhum link configurado")
+        self.empty_title.setObjectName("sectionTitle")
+        self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_hint = QLabel("Verifique os filtros ou inicie a criação.")
+        empty_hint.setObjectName("muted")
+        empty_hint.setWordWrap(True)
+        empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_box.addWidget(empty_icon)
+        empty_box.addWidget(self.empty_title)
+        empty_box.addWidget(empty_hint)
+        self.link_views.addWidget(empty)
+        search_layout.insertWidget(0, view_mode)
+        main_layout.insertWidget(0, Columns(left_header, right_header))
         sort_row = QHBoxLayout()
-        sort_row.addWidget(QLabel("Ordenar por"))
+
         sort_column = QComboBox()
         sort_column.addItems(
             ["Local dos dados", "Caminho do link", "Criador", "Tipo", "Tamanho", "Status"]
@@ -275,8 +363,13 @@ class MainWindow(QMainWindow):
 
         sort_column.currentIndexChanged.connect(sort_links)
         sort_direction.currentIndexChanged.connect(sort_links)
-        sort_row.addWidget(sort_column)
-        sort_row.addWidget(sort_direction)
+        from winlink.ui.components import field
+
+        for text, control in [("Ordenar por", sort_column), ("Ordem", sort_direction)]:
+            column = QVBoxLayout()
+            column.setSpacing(6)
+            field(column, text, control)
+            sort_row.addLayout(column)
         sort_row.addStretch()
         main_layout.addLayout(sort_row)
         self.scan_notice = QLabel()
@@ -388,6 +481,23 @@ class MainWindow(QMainWindow):
             )
         self.apply_theme()
 
+    def card_clicked(self, index):
+        from PyQt6.QtGui import QCursor
+
+        x = self.card_view.viewport().mapFromGlobal(QCursor.pos()).x()
+        if x >= self.card_view.viewport().width() - 40:
+            self.open_selected_properties(index)
+
+    def refresh_presentation(self):
+        from winlink.ui.icons import refresh_widget_icons, symbol_icon
+
+        self.setStyleSheet(self.theme_manager.get_stylesheet())
+        refresh_widget_icons(self)
+        color = "#d1d5db" if self.theme_manager.current_theme == "dark" else "#4b5563"
+        self.theme_button.setIcon(
+            symbol_icon("sun" if self.theme_manager.current_theme == "dark" else "moon", color)
+        )
+
     def open_selected_properties(self, index):
         junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
         if junction:
@@ -437,7 +547,7 @@ class MainWindow(QMainWindow):
     def apply_theme(self):
         """Apply theme to application"""
         self.theme_manager.apply_theme(self.settings.theme_mode)
-        self.setStyleSheet(self.theme_manager.get_stylesheet())
+        self.refresh_presentation()
 
     def start_scan(self):
         """Start scanning for junctions"""
@@ -832,9 +942,16 @@ class MainWindow(QMainWindow):
         self.navigate(2)
 
     def edit_filters(self):
-        dialog = QDialog(self)
+        from winlink.ui.components import button_style, heading
+        from winlink.ui.dialogs.animated_dialog import AnimatedDialog
+
+        dialog = AnimatedDialog(self)
+        dialog.preferred_width = 448
         dialog.setWindowTitle("Filtros da lista")
         layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+        heading(layout, "Filtrar Links", icon="filter")
         copies = []
         for label, original in [
             ("Status", self.status_filter),
@@ -853,7 +970,10 @@ class MainWindow(QMainWindow):
             QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.button(QDialogButtonBox.StandardButton.Apply).setText("Aplicar filtros")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(dialog.accept)
+        button_style(buttons.button(QDialogButtonBox.StandardButton.Apply), "filter", primary=True)
+        button_style(buttons.button(QDialogButtonBox.StandardButton.Cancel), "close")
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -863,11 +983,9 @@ class MainWindow(QMainWindow):
     def update_list_summary(self):
         count = self.filter_model.rowCount()
         total = self.junction_model.rowCount()
-        self.list_summary.setText(
-            f"{count} de {total} links"
-            if count
-            else "Nenhum link encontrado. Ajuste a busca ou os diretórios de descoberta."
-        )
+        self.list_summary.setText(f"{count} de {total} links")
+        self.empty_title.setText("Busca sem resultados" if total else "Nenhum link configurado")
+        self.link_views.setCurrentIndex(self.view_mode.currentIndex() if count else 2)
 
     def show_card_context_menu(self, position):
         index = self.card_view.indexAt(position)
@@ -876,14 +994,18 @@ class MainWindow(QMainWindow):
         junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
         if junction:
             menu = QMenu(self)
-            menu.addAction("Propriedades", lambda: self.show_properties(junction))
-            menu.addAction("Desfazer", lambda: self.undo_junction(junction))
+            from winlink.ui.icons import symbol_icon
+
+            menu.addAction(
+                symbol_icon("info"), "Propriedades", lambda: self.show_properties(junction)
+            )
+            menu.addAction(symbol_icon("undo"), "Desfazer", lambda: self.undo_junction(junction))
             menu.exec(self.card_view.viewport().mapToGlobal(position))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "navigation"):
-            self.navigation.setFixedWidth(145 if self.width() < 900 else 224)
+            self.navigation_host.setFixedWidth(192 if self.width() < 1100 else 256)
 
     def show_context_menu(self, position):
         """Show context menu for selected junction"""
@@ -897,10 +1019,12 @@ class MainWindow(QMainWindow):
             return
         menu = QMenu(self)
         # Properties action
-        properties_action = menu.addAction("Propriedades")
+        from winlink.ui.icons import symbol_icon
+
+        properties_action = menu.addAction(symbol_icon("info"), "Propriedades")
         properties_action.triggered.connect(lambda: self.show_properties(junction))
         menu.addSeparator()
-        undo_action = menu.addAction("Desfazer")
+        undo_action = menu.addAction(symbol_icon("undo"), "Desfazer")
         undo_action.triggered.connect(lambda: self.undo_junction(junction))
         menu.exec(self.table_view.viewport().mapToGlobal(position))
 
@@ -1119,18 +1243,25 @@ class MainWindow(QMainWindow):
         self.start_scan()
 
     def show_about(self):
-        """Show about dialog"""
-        QMessageBox.about(
-            self,
-            "Sobre WinLink",
-            "WinLink - Gerenciador de Junções\n\n"
-            "Versão 0.1.0\n\n"
-            "Aplicativo Windows para gerenciamento de junções e links simbólicos "
-            "com interface moderna compatível com Windows 11.\n\n"
-            "Ctrl+N: criar · Ctrl+H: histórico · Ctrl+,: configurações\n"
-            "Ctrl+F: buscar · F5: atualizar · Ctrl+Q: sair\n\n"
-            "Licença MIT — Copyright (c) 2026 Steff Martin.",
+        from winlink.ui.components import button_style, heading
+        from winlink.ui.dialogs.animated_dialog import AnimatedDialog
+
+        dialog = AnimatedDialog(self)
+        dialog.preferred_width = 560
+        dialog.setWindowTitle("Sobre WinLink")
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(20)
+        heading(layout, "Sobre WinLink", icon="link")
+        text = QLabel(
+            "WinLink Manager · Versão 0.1.0\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
+        text.setWordWrap(True)
+        layout.addWidget(text)
+        close = button_style(QPushButton("Fechar"), "close")
+        close.clicked.connect(dialog.accept)
+        layout.addWidget(close, 0, Qt.AlignmentFlag.AlignRight)
+        dialog.exec()
 
     def closeEvent(self, event):
         """Handle close event"""

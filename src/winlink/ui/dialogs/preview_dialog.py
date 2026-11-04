@@ -37,35 +37,46 @@ class PreviewDialog(AnimatedDialog):
         self.setMinimumHeight(400)
         self.setModal(True)
 
+        from winlink.ui.components import button_style, heading
+
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+        heading(
+            layout,
+            "Confirmar Criação de Link",
+            "Revise os caminhos e as etapas antes de iniciar.",
+            icon="shield",
+        )
 
         # Preview text
         self.preview_text = QTextEdit()
         self.preview_text.setReadOnly(True)
+        self.preview_text.setMinimumHeight(240)
         self.preview_text.setPlainText("Calculando prévia...")
         layout.addWidget(self.preview_text)
 
         # Space info
         self.space_label = QLabel()
         self.space_label.setStyleSheet("margin: 10px 0;")
+        self.space_label.hide()
         layout.addWidget(self.space_label)
 
         # Warning label
         self.warning_label = QLabel()
         self.warning_label.setWordWrap(True)
         self.warning_label.setStyleSheet("color: #9B8F06; margin: 10px 0;")
+        self.warning_label.hide()
         layout.addWidget(self.warning_label)
-
-        layout.addStretch()
 
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.cancel_btn = QPushButton("Cancelar")
+        self.cancel_btn = button_style(QPushButton("Cancelar"), "close")
         self.cancel_btn.clicked.connect(self.reject)
 
-        self.confirm_btn = QPushButton("Confirmar e Criar")
+        self.confirm_btn = button_style(QPushButton("Confirmar e Iniciar"), "check", primary=True)
         self.confirm_btn.clicked.connect(self.accept)
 
         button_layout.addWidget(self.cancel_btn)
@@ -102,6 +113,7 @@ class PreviewDialog(AnimatedDialog):
 
     def update_progress(self, value, message):
         self.space_label.setText(message)
+        self.space_label.setVisible(bool(message))
 
     def reject(self):
         if not getattr(self, "_calculating", False):

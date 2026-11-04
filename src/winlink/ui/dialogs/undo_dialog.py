@@ -37,7 +37,17 @@ class UndoDialog(AnimatedDialog):
         self.setMinimumWidth(600)
         self.setModal(True)
 
+        from winlink.ui.components import button_style, heading
+
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(12)
+        heading(
+            layout,
+            "Reverter Link",
+            "Escolha a estratégia e confira os caminhos antes de confirmar.",
+            icon="undo",
+        )
 
         # Junction info
         info_label = QLabel("Junção selecionada:")
@@ -67,6 +77,8 @@ class UndoDialog(AnimatedDialog):
             "A junção será removida, deixando uma pasta vazia no destino. Os arquivos permanecem na origem."
         )
         remove_only_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
+        remove_only_desc.setWordWrap(True)
+        remove_only_desc.setObjectName("muted")
         layout.addWidget(remove_only_desc)
 
         # Move back option
@@ -82,6 +94,8 @@ class UndoDialog(AnimatedDialog):
             "Os arquivos serão movidos da origem para o destino, e a junção será removida."
         )
         move_back_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
+        move_back_desc.setWordWrap(True)
+        move_back_desc.setObjectName("muted")
         layout.addWidget(move_back_desc)
 
         # Duplicate option
@@ -96,6 +110,8 @@ class UndoDialog(AnimatedDialog):
             "Os arquivos serão copiados da origem para o destino. A junção será removida. A origem permanece com os arquivos."
         )
         duplicate_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
+        duplicate_desc.setWordWrap(True)
+        duplicate_desc.setObjectName("muted")
         layout.addWidget(duplicate_desc)
 
         # Keep source checkbox
@@ -103,16 +119,16 @@ class UndoDialog(AnimatedDialog):
         self.keep_source_checkbox.setToolTip("Mantém os arquivos na origem como backup.")
         layout.addWidget(self.keep_source_checkbox)
 
-        layout.addStretch()
+        layout.addSpacing(12)
 
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.cancel_btn = QPushButton("Cancelar")
+        self.cancel_btn = button_style(QPushButton("Cancelar"), "close")
         self.cancel_btn.clicked.connect(self.reject)
 
-        self.undo_btn = QPushButton("Desfazer Junção")
+        self.undo_btn = button_style(QPushButton("Executar Reversão"), "undo", primary=True)
         self.undo_btn.clicked.connect(self.accept)
 
         button_layout.addWidget(self.cancel_btn)

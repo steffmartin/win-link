@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -34,135 +34,89 @@ class SettingsDialog(AnimatedDialog):
         self.load_settings()
 
     def init_ui(self):
-        """Initialize UI components"""
-        self.setWindowTitle("Configurações")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
-        self.setModal(True)
+        from PyQt6.QtWidgets import QWidget
 
+        from winlink.ui.components import ActionRow, Panel, button_style, field, heading
+
+        self.setWindowTitle("Configurações do WinLink")
+        self.setModal(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
-        heading = QLabel("Configurações")
-        heading.setObjectName("pageTitle")
-        layout.addWidget(heading)
-
-        # General section
-        general_group = QGroupBox("Geral")
-        general_layout = QVBoxLayout()
-
-        # Theme
-        theme_layout = QHBoxLayout()
-        theme_label = QLabel("Tema:")
+        layout.setSpacing(20)
+        heading(
+            layout,
+            "Configurações do WinLink",
+            "Salve para aplicar. Restaurar padrões prepara os campos e também exige salvar.",
+        )
+        content = QWidget()
+        content.setMaximumWidth(672)
+        fields = QVBoxLayout(content)
+        fields.setContentsMargins(0, 0, 0, 0)
+        fields.setSpacing(12)
         self.theme_combo = QComboBox()
         for label, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
             self.theme_combo.addItem(label, mode)
-        theme_layout.addWidget(theme_label)
-        theme_layout.addWidget(self.theme_combo)
-        theme_layout.addStretch()
-        general_layout.addLayout(theme_layout)
-
+        field(fields, "Tema", self.theme_combo)
         self.default_type_combo = QComboBox()
         for label, value in [
             ("Junction", "junction"),
-            ("Symlink (diretório)", "symlink_dir"),
-            ("Symlink (arquivo)", "symlink_file"),
-            ("Hard link", "hardlink"),
+            ("Symlink (Dir)", "symlink_dir"),
+            ("Symlink (File)", "symlink_file"),
+            ("Hardlink", "hardlink"),
         ]:
             self.default_type_combo.addItem(label, value)
-        general_layout.addWidget(QLabel("Tipo de link padrão"))
-        general_layout.addWidget(self.default_type_combo)
-
-        general_group.setLayout(general_layout)
-        layout.addWidget(general_group)
-
-        # Scan directories section
-        scan_group = QGroupBox("Diretórios de descoberta")
-        scan_layout = QVBoxLayout()
-
-        self.scan_list = QListWidget()
-        scan_layout.addWidget(self.scan_list)
-
-        scan_buttons_layout = QHBoxLayout()
-        self.add_scan_btn = QPushButton("Adicionar")
+        field(fields, "Tipo de link padrão", self.default_type_combo)
+        fields.addSpacing(8)
+        directories = Panel()
+        directories.content.setContentsMargins(16, 16, 16, 16)
+        top = QHBoxLayout()
+        top.addWidget(QLabel("Diretórios configurados"), 1)
+        self.add_scan_btn = button_style(QPushButton("Adicionar diretório"), "plus")
         self.add_scan_btn.clicked.connect(self.add_scan_directory)
-        self.remove_scan_btn = QPushButton("Remover")
+        top.addWidget(self.add_scan_btn)
+        directories.content.addLayout(top)
+        self.scan_list = QListWidget()
+        self.scan_list.setMinimumHeight(96)
+        self.scan_list.setMaximumHeight(160)
+        directories.content.addWidget(self.scan_list)
+        self.remove_scan_btn = button_style(QPushButton("Remover selecionado"), "trash")
         self.remove_scan_btn.clicked.connect(self.remove_scan_directory)
-        scan_buttons_layout.addWidget(self.add_scan_btn)
-        scan_buttons_layout.addWidget(self.remove_scan_btn)
-        scan_layout.addLayout(scan_buttons_layout)
-
-        scan_group.setLayout(scan_layout)
-        layout.addWidget(scan_group)
-
-        # Operations section
-        ops_group = QGroupBox("Operações")
-        ops_layout = QVBoxLayout()
-
+        directories.content.addWidget(self.remove_scan_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        fields.addWidget(directories)
+        fields.addSpacing(8)
         self.confirm_checkbox = QCheckBox("Confirmar operações destrutivas (obrigatório)")
         self.confirm_checkbox.setEnabled(False)
-        self.confirm_checkbox.setToolTip(
-            "A prévia e a confirmação protegem os arquivos e permanecem obrigatórias."
-        )
-        ops_layout.addWidget(self.confirm_checkbox)
-
-        self.backup_checkbox = QCheckBox("Criar backup automático antes de desfazer")
-        ops_layout.addWidget(self.backup_checkbox)
-
-        self.notify_checkbox = QCheckBox("Mostrar notificações de conclusão")
-        ops_layout.addWidget(self.notify_checkbox)
-
-        self.warn_nested_checkbox = QCheckBox("Avisar sobre junções aninhadas")
-        warn_nested_desc = QLabel("(quando criar junção para pasta que já contém junções)")
-        warn_nested_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
-        ops_layout.addWidget(self.warn_nested_checkbox)
-        ops_layout.addWidget(warn_nested_desc)
-
-        ops_group.setLayout(ops_layout)
-        layout.addWidget(ops_group)
-
-        # Logs section
-        logs_group = QGroupBox("Logs")
-        logs_layout = QVBoxLayout()
-
-        log_level_layout = QHBoxLayout()
-        log_level_label = QLabel("Nível:")
+        fields.addWidget(self.confirm_checkbox)
+        note = QLabel("A prévia e a confirmação permanecem obrigatórias para proteger os dados.")
+        note.setWordWrap(True)
+        note.setObjectName("muted")
+        fields.addWidget(note)
+        self.backup_checkbox = QCheckBox("Criar backup antes de desfazer")
+        self.notify_checkbox = QCheckBox("Exibir notificações")
+        self.warn_nested_checkbox = QCheckBox("Avisar sobre links aninhados")
+        for checkbox in [self.backup_checkbox, self.notify_checkbox, self.warn_nested_checkbox]:
+            fields.addWidget(checkbox)
+        fields.addSpacing(8)
         self.log_level_combo = QComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-        log_level_layout.addWidget(log_level_label)
-        log_level_layout.addWidget(self.log_level_combo)
-        log_level_layout.addStretch()
-        logs_layout.addLayout(log_level_layout)
-
-        self.open_logs_btn = QPushButton("Abrir pasta de logs")
+        field(fields, "Nível de logs", self.log_level_combo)
+        self.open_logs_btn = button_style(QPushButton("Abrir pasta de logs"), "folder")
         self.open_logs_btn.clicked.connect(self.open_logs_folder)
-        logs_layout.addWidget(self.open_logs_btn)
-
-        logs_group.setLayout(logs_layout)
-        layout.addWidget(logs_group)
-
-        layout.addStretch()
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        self.defaults_btn = QPushButton("Restaurar padrões")
+        fields.addWidget(self.open_logs_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        fields.addSpacing(12)
+        self.defaults_btn = button_style(QPushButton("Restaurar Padrões"), "refresh")
         self.defaults_btn.clicked.connect(self.restore_defaults)
-        self.discard_btn = QPushButton("Descartar alterações")
+        self.discard_btn = button_style(QPushButton("Descartar alterações"), "undo")
         self.discard_btn.clicked.connect(self.discard_changes)
-        button_layout.addWidget(self.defaults_btn)
-        button_layout.addWidget(self.discard_btn)
-        button_layout.addStretch()
-
-        self.cancel_btn = QPushButton("Cancelar")
-        self.cancel_btn.clicked.connect(self.reject)
-
-        self.save_btn = QPushButton("Salvar")
-        self.save_btn.setProperty("primary", True)
+        self.save_btn = button_style(QPushButton("Salvar Alterações"), "save", primary=True)
         self.save_btn.clicked.connect(self.save_settings)
-
-        button_layout.addWidget(self.cancel_btn)
-        button_layout.addWidget(self.save_btn)
-
-        layout.addLayout(button_layout)
+        self.cancel_btn = button_style(QPushButton("Cancelar"), "close")
+        self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.hide()
+        fields.addWidget(ActionRow([self.defaults_btn, self.discard_btn, self.save_btn]))
+        fields.addWidget(self.cancel_btn)
+        layout.addWidget(content)
+        layout.addStretch()
 
     def restore_defaults(self):
         """Prepare visible preferences without changing persisted storage locations."""

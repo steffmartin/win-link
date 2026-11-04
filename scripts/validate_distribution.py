@@ -38,6 +38,8 @@ def smoke(executable, name):
     )
     result = json.loads(report.read_text(encoding="utf-8"))
     assert result["frozen"] and result["icon_loaded"] and result["window"] == "WinLink"
+    assert result["navigation_icons"] and result["creation_icon"]
+    assert report.with_suffix(".png").exists()
     assert result["status"].startswith("Escaneamento concluído")
     return result
 

@@ -4,10 +4,12 @@ from PyQt6.QtCore import QRect, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QPen
 from PyQt6.QtWidgets import QStyle, QStyledItemDelegate
 
+from winlink.ui.icons import symbol_icon
+
 
 class LinkCardDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index):
-        return QSize(400, 116)
+        return QSize(400, 120)
 
     def paint(self, painter, option, index):
         proxy = index.model()
@@ -18,17 +20,27 @@ class LinkCardDelegate(QStyledItemDelegate):
         colors = option.palette
         rect = option.rect.adjusted(0, 6, -2, -6)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
-        painter.setBrush(colors.highlight() if selected else colors.alternateBase())
-        painter.setPen(QPen(colors.mid().color(), 1))
+        dark = colors.window().color().lightness() < 128
+        painter.setBrush(QColor("#1f2937" if dark else "#f9fafb"))
+        painter.setPen(QPen(QColor("#3b82f6") if selected else colors.mid().color(), 1))
         painter.drawRoundedRect(rect, 8, 8)
-        foreground = colors.highlightedText().color() if selected else colors.text().color()
+        foreground = colors.text().color()
         painter.setPen(foreground)
         font = QFont(option.font)
         font.setPointSize(12)
         font.setBold(True)
         painter.setFont(font)
-        left = rect.left() + 20
-        width = max(80, rect.width() - 240)
+        dark = colors.window().color().lightness() < 128
+        tile = QRect(rect.left() + 16, rect.top() + 26, 48, 48)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#172554" if dark else "#dbeafe"))
+        painter.drawRoundedRect(tile, 12, 12)
+        symbol_icon(
+            "folder" if junction.is_directory else "file", "#60a5fa" if dark else "#2563eb"
+        ).paint(painter, tile.adjusted(12, 12, -12, -12))
+        painter.setPen(foreground)
+        left = rect.left() + 80
+        width = max(60, rect.width() - 300)
         painter.drawText(
             QRect(left, rect.top() + 16, width, 24),
             Qt.AlignmentFlag.AlignVCenter,
@@ -49,25 +61,35 @@ class LinkCardDelegate(QStyledItemDelegate):
         )
         path = f"{junction.source}  →  {junction.target}"
         painter.drawText(
-            QRect(left, rect.top() + 68, rect.width() - 40, 20),
+            QRect(left, rect.top() + 68, rect.width() - 112, 20),
             Qt.AlignmentFlag.AlignVCenter,
-            painter.fontMetrics().elidedText(path, Qt.TextElideMode.ElideMiddle, rect.width() - 40),
+            painter.fontMetrics().elidedText(
+                path, Qt.TextElideMode.ElideMiddle, rect.width() - 112
+            ),
         )
         kind = model._get_type_display(junction.junction_type)
         if junction.junction_type.value == "SYMLINK":
             kind += " (diretório)" if junction.is_directory else " (arquivo)"
-        right = QRect(rect.right() - 200, rect.top() + 16, 180, 22)
+        right = QRect(rect.right() - 214, rect.top() + 20, 164, 22)
         painter.drawText(right, Qt.AlignmentFlag.AlignRight, kind)
-        status = model._get_status_display(junction.status)
-        if not selected:
-            painter.setPen(
-                QColor(
-                    {"ACTIVE": "#16a34a", "BROKEN": "#d97706", "INACCESSIBLE": "#ef4444"}[
-                        junction.status.value
-                    ]
-                )
-            )
-        painter.drawText(right.translated(0, 26), Qt.AlignmentFlag.AlignRight, status)
+        status = {"ACTIVE": "Ativo", "BROKEN": "Quebrado", "INACCESSIBLE": "Inacessível"}[
+            junction.status.value
+        ]
+        tone = {
+            "ACTIVE": "#34d399" if dark else "#059669",
+            "BROKEN": "#f59e0b",
+            "INACCESSIBLE": "#ef4444",
+        }[junction.status.value]
+        painter.setPen(QColor(tone))
+        status_rect = right.translated(0, 26)
+        painter.drawText(status_rect, Qt.AlignmentFlag.AlignRight, status)
+        width = painter.fontMetrics().horizontalAdvance(status)
+        symbol_icon("check" if junction.status.value == "ACTIVE" else "error", tone).paint(
+            painter, QRect(status_rect.right() - width - 22, status_rect.top(), 16, 16)
+        )
+        symbol_icon("more", "#9ca3af").paint(
+            painter, QRect(rect.right() - 32, rect.top() + 40, 20, 20)
+        )
         if option.state & QStyle.StateFlag.State_HasFocus:
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor("#3b82f6"), 2))
