@@ -4,13 +4,13 @@ Este é o guia vigente para portar o protótipo React para o aplicativo Python/P
 
 ## Referências e ponto de retomada
 
-- [Demo e comandos](../prototypes/agente-externo-v1/README.md): fonte visual executável e editável.
-- [Plano, etapa 6.6](../PLANO.md): ordem de trabalho e critérios de entrega.
-- [Regras do produto](../ESPECIFICACAO.md): comportamento que deve ser preservado.
-- [Melhorias aprovadas e ideias fora do escopo](../MELHORIAS.md).
-- [Distribuição](ARQUITETURA-DISTRIBUICAO.md) e [evidências/pendências da fase 5](validacao/FASE5.md).
+- [Demo e comandos](../../prototypes/ui/README.md): fonte visual executável e editável.
+- [Plano, etapa 6.6](../planejamento/PLANO.md): ordem de trabalho e critérios de entrega.
+- [Regras do produto](../produto/ESPECIFICACAO.md): comportamento que deve ser preservado.
+- [Melhorias aprovadas e ideias fora do escopo](../planejamento/MELHORIAS.md).
+- [Distribuição](../arquitetura/DISTRIBUICAO.md) e [evidências/pendências da fase 5](../validacao/FASE5.md).
 
-Retomar pela etapa 6.6; não refazer estudos nem buscar versões anteriores do protótipo. A pasta chama-se `agente-externo-v1` por razões históricas, mas contém a versão vigente revisada localmente. Foi mantida no mesmo caminho para preservar comandos e a demo.
+Retomar pela etapa 6.6; não refazer estudos nem buscar versões anteriores do protótipo. O protótipo e a demo ficam em `prototypes/ui`, sem nomes de agente ou número de versão no caminho. Consulte a [estrutura do projeto](../arquitetura/ESTRUTURA.md) antes de acrescentar arquivos.
 
 ## Fonte de verdade
 
@@ -44,7 +44,7 @@ O aplicativo atual usa três tipos de domínio: JUNCTION, SYMLINK e HARDLINK. Os
 
 ## Melhorias novas aprovadas
 
-Implementar na etapa 6.6: tipo de link padrão persistente, restaurar padrões/descartar rascunho, filtro do histórico por resultado e datas manuais, distinção de symlinks arquivo/diretório nos filtros, troca rápida de tema, detalhes/estado explícito de criação desfeita e reversão pelas propriedades. Estas capacidades não devem ser anunciadas como já implementadas no PyQt6. [Backlog detalhado](../MELHORIAS.md).
+Implementar na etapa 6.6: tipo de link padrão persistente, restaurar padrões/descartar rascunho, filtro do histórico por resultado e datas manuais, distinção de symlinks arquivo/diretório nos filtros, troca rápida de tema, detalhes/estado explícito de criação desfeita e reversão pelas propriedades. Estas capacidades não devem ser anunciadas como já implementadas no PyQt6. [Backlog detalhado](../planejamento/MELHORIAS.md).
 
 ## Aparência e componentes
 
@@ -105,7 +105,7 @@ Caminhos abreviados da tabela são relativos a `src/winlink`. Manter histórico/
 
 ## Validação e entrega
 
-Última validação registrada da demo: 74 testes de regras passaram, build passou e scripts de navegador verificaram os quatro tipos, criação/reversão/backup, falhas/recuperação, filtros, diretórios, tema automático, logs, atalhos e Sobre. Scripts estão em `prototypes/agente-externo-v1/tests`; funções `browser-*.js` recebem uma página Playwright e precisam desse runner. Não são executadas por `npm test`.
+Última validação registrada da demo: 74 testes de regras passaram, build passou e scripts de navegador verificaram os quatro tipos, criação/reversão/backup, falhas/recuperação, filtros, diretórios, tema automático, logs, atalhos e Sobre. Scripts estão em `prototypes/ui/tests`; funções `browser-*.js` recebem uma página Playwright e precisam desse runner. Não são executadas por `npm test`.
 
 Rolagem conferida em 760×400 e 1280×500; cores nos dois temas; lista revisada visualmente. Isso não equivale a auditoria com leitor de tela ou homologação Windows.
 

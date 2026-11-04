@@ -1,8 +1,8 @@
 # Protótipo vigente do WinLink
 
-Referência visual/navegável para a próxima implementação em Python/PyQt6. Direção visual aprovada, cobertura da interface existente acrescida e novidades mantidas por autorização do usuário. A pasta conserva o nome histórico `agente-externo-v1`, mas contém a versão atual revisada localmente.
+Referência visual/navegável para a próxima implementação em Python/PyQt6. Direção visual aprovada, cobertura da interface existente acrescida e novidades mantidas por autorização do usuário. A pasta `prototypes/ui` contém a versão vigente revisada localmente e também serve a demo navegável.
 
-**Guia e checkpoint único de implementação:** [docs/IMPLEMENTACAO-UI.md](../../docs/IMPLEMENTACAO-UI.md). Backlog: [PLANO.md, etapa 6.6](../../PLANO.md).
+**Guia e checkpoint único de implementação:** [guia de implementação](../../docs/guias/IMPLEMENTACAO-UI.md). Backlog: [PLANO.md, etapa 6.6](../../docs/planejamento/PLANO.md).
 
 ## Executar
 

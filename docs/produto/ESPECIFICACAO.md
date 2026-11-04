@@ -2,7 +2,7 @@
 
 ## Produto e stack
 
-Aplicativo Windows em Python 3.12+/PyQt6, com pywin32, psutil, pydantic e configurações JSON. O React/Vite/Tailwind é somente o protótipo de referência do redesign. Dependências e ferramentas vigentes: `pyproject.toml` e `prototypes/agente-externo-v1/package.json`. Não migrar para stacks alternativas discutidas em estudos antigos.
+Aplicativo Windows em Python 3.12+/PyQt6, com pywin32, psutil, pydantic e configurações JSON. O React/Vite/Tailwind é somente o protótipo de referência do redesign. Dependências e ferramentas vigentes: `pyproject.toml` e `prototypes/ui/package.json`. Não migrar para stacks alternativas discutidas em estudos antigos.
 
 Origem/local dos dados é onde o conteúdo reside. Destino/caminho do link é o nome de acesso que aponta para ele. Hard links são nomes equivalentes dos mesmos dados, sem origem privilegiada; exigem o mesmo volume. Symlinks dependem do Modo de Desenvolvedor ou permissões apropriadas do Windows.
 
@@ -39,6 +39,6 @@ Dois temas mais modo automático, teclado/foco, labels, mensagens em português,
 
 ## Próxima entrega e limites
 
-O redesign mantém esse escopo e incorpora as novidades autorizadas em [MELHORIAS.md](MELHORIAS.md). Aparência, cobertura e mapeamento estão no [guia de implementação](docs/IMPLEMENTACAO-UI.md). RF-08 (editar/reconstruir/sincronizar), importação, templates, monitoramento periódico, terminação de processos e elevação automática são propostas históricas fora da entrega atual, não funcionalidades omitidas por acidente do redesign.
+O redesign mantém esse escopo e incorpora as novidades autorizadas em [MELHORIAS.md](../planejamento/MELHORIAS.md). Aparência, cobertura e mapeamento estão no [guia de implementação](../guias/IMPLEMENTACAO-UI.md). RF-08 (editar/reconstruir/sincronizar), importação, templates, monitoramento periódico, terminação de processos e elevação automática são propostas históricas fora da entrega atual, não funcionalidades omitidas por acidente do redesign.
 
-Windows 11 foi usado na validação local; Windows limpo, Windows 10 e sucesso real de symlinks com permissões apropriadas ainda precisam de homologação. Ver [evidências](docs/validacao/FASE5.md). Não anunciar lançamento aprovado antes de fechá-las.
+Windows 11 foi usado na validação local; Windows limpo, Windows 10 e sucesso real de symlinks com permissões apropriadas ainda precisam de homologação. Ver [evidências](../validacao/FASE5.md). Não anunciar lançamento aprovado antes de fechá-las.

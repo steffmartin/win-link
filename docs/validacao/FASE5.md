@@ -29,7 +29,7 @@ Mudanças anteriores foram preservadas; o working tree continua sem commit.
 - Hard links/junctions reais, nomes Unicode, caminhos maiores que 260 caracteres, rollback, cancelamento, colisões e 10 mil registros exercitados em diretórios temporários isolados.
 - Inspeção somente de leitura, sem recursão, de `D:\Cache` e `C:\Users\steff`: 0 e 17 links respectivamente; duração de 0,005 s e 0,011 s. Isto não mede uma varredura completa do perfil. Evidência: `phase5-readonly-scan.json`.
 - Executável portátil e instalado abrem com PATH restrito ao sistema e sem PYTHONPATH/PYTHONHOME. Instalação/desinstalação testadas em diretório isolado do projeto e AppId de validação separado, nos dois modos de histórico; junction de teste e arquivo permaneceram intactos. Resultado: `phase5-distribution.json`.
-- Estudos e capturas anteriores foram removidos após a consolidação. A referência de implementação é o [guia vigente](../IMPLEMENTACAO-UI.md) e o código da demo, sem relação com operações reais.
+- Estudos e capturas anteriores foram removidos após a consolidação. A referência de implementação é o [guia vigente](../guias/IMPLEMENTACAO-UI.md) e o código da demo, sem relação com operações reais.
 
 O primeiro executável apresentou erro ao importar QtWidgets. A causa foi a coleta de ICU/UCRT de ferramentas externas presentes no PATH do agente. O spec agora restringe os caminhos de descoberta ao Python do build e ao Windows; os testes isolados acima exercitam a correção. Não distribuir builds anteriores a essa correção.
 
@@ -60,7 +60,7 @@ Referências do empacotamento: [PyInstaller spec](https://pyinstaller.org/en/sta
 
 ## Auditoria do escopo histórico
 
-Os documentos antigos usam "Fase 1/2/3" também como gerações do produto; isso não é a mesma numeração do PLANO, atual, com sete fases. O estado vigente está no [plano](../../PLANO.md).
+Os documentos antigos usam "Fase 1/2/3" também como gerações do produto; isso não é a mesma numeração do PLANO, atual, com sete fases. O estado vigente está no [plano](../planejamento/PLANO.md).
 
 | Requisito | Situação verificada |
 | --- | --- |

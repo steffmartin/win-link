@@ -20,7 +20,7 @@ uv sync --extra dev --extra build
 
 O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; preserva os resultados de teste para inspeção. Relatório: `docs/validacao/phase5-distribution.json`.
 
-O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar ICU/UCRT externos vindos do PATH. O primeiro build anterior à correção falhou ao importar QtWidgets; não distribuí-lo. Evidências históricas e hashes do build validado: [fase 5](validacao/FASE5.md).
+O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar ICU/UCRT externos vindos do PATH. O primeiro build anterior à correção falhou ao importar QtWidgets; não distribuí-lo. Evidências históricas e hashes do build validado: [fase 5](../validacao/FASE5.md).
 
 ## Instalação e desinstalação
 
@@ -30,4 +30,4 @@ Leitura/junctions não exigem elevação geral do aplicativo. Symlinks dependem 
 
 ## Pendências antes do lançamento
 
-Homologar em máquina Windows limpa sem Python, Windows 10 mínimo e criação real de symlinks com privilégios apropriados. PATH isolado no host de desenvolvimento não substitui outra instalação do Windows. [Plano](../PLANO.md) e [limites da validação](validacao/FASE5.md).
+Homologar em máquina Windows limpa sem Python, Windows 10 mínimo e criação real de symlinks com privilégios apropriados. PATH isolado no host de desenvolvimento não substitui outra instalação do Windows. [Plano](../planejamento/PLANO.md) e [limites da validação](../validacao/FASE5.md).

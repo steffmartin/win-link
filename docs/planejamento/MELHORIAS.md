@@ -12,7 +12,7 @@ O usuário autorizou manter estas novidades no protótipo e implementá-las nas 
 6. Detalhes e indicação explícita de criação já desfeita, sem permitir repetir reversão.
 7. Acesso à reversão pelas propriedades, preservando confirmações e verificação de identidade.
 
-Detalhamento visual/técnico: [guia de implementação](docs/IMPLEMENTACAO-UI.md). Critérios e ordem: [plano](PLANO.md).
+Detalhamento visual/técnico: [guia de implementação](../guias/IMPLEMENTACAO-UI.md). Critérios e ordem: [plano](PLANO.md).
 
 ## Fora do escopo atual — ideias a avaliar
 

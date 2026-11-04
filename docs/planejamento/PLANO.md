@@ -14,7 +14,7 @@
 
 ## Fase 6 — implementação local do design aprovado
 
-O estudo/protótipo externo foi revisado localmente. Não refazer o diagnóstico nem substituir a direção visual aprovada. Referências: [guia de implementação](docs/IMPLEMENTACAO-UI.md), [demo](prototypes/agente-externo-v1/README.md), [especificação](ESPECIFICACAO.md) e [melhorias](MELHORIAS.md).
+O estudo/protótipo externo foi revisado localmente. Não refazer o diagnóstico nem substituir a direção visual aprovada. Referências: [guia de implementação](../guias/IMPLEMENTACAO-UI.md), [demo](../../prototypes/ui/README.md), [especificação](../produto/ESPECIFICACAO.md) e [melhorias](MELHORIAS.md).
 
 ### 6.6 Redesign e melhorias aprovadas — próxima etapa
 
@@ -40,7 +40,7 @@ Paridade com as funcionalidades existentes; novidades aprovadas implementadas; c
 - [ ] Validar Windows 10 mínimo, além do host Windows 11 usado nos testes.
 - [ ] Validar sucesso real de symlinks com Modo de Desenvolvedor/permissões apropriadas.
 
-O build atual não é assinado. Evidências e limites: [validação](docs/validacao/FASE5.md).
+O build atual não é assinado. Evidências e limites: [validação](../validacao/FASE5.md).
 
 ## Fase 7 — documentação final e lançamento
 
