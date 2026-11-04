@@ -55,3 +55,7 @@ Ideias não aprovadas para esta entrega permanecem em [MELHORIAS.md](MELHORIAS.m
 ## Checkpoint vigente — 04/11/2026, 17:49; validação final após o checkpoint
 
 Implementação local da etapa 6.6 entregue; testes e evidências atuais em [REDESIGN.md](../validacao/REDESIGN.md). Após decisão do mantenedor, Windows limpo e Windows 10 foram dispensados; resta o teste manual de symlinks com privilégios. Evidência do host: este host Windows 11 tem Python instalado, não oferece Windows Sandbox e negou a criação real dos dois tipos de symlink com WinError 1314. O trabalho local não substitui esses testes nem autoriza anunciar lançamento homologado.
+
+## Revisão de interface — 04/11/2026
+
+Comparação posterior com o protótipo corrigiu ícones ausentes, posições/dimensões dos botões, criação em duas colunas, ações do histórico, largura das preferências e apresentação dos diálogos. Capturas vigentes substituídas. Validação: 308 testes Python e nove testes de layout em escala 200%, com dimensões reduzidas reais. Evidência consolidada em REDESIGN.md; a revisão não declara homologados os testes dispensados ou ainda pendentes.

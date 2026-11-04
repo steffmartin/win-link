@@ -4,6 +4,8 @@
     "window": "WinLink",
     "icon_loaded": true,
     "rows": 0,
+    "navigation_icons": true,
+    "creation_icon": true,
     "status": "Escaneamento conclu\u00eddo: 0 jun\u00e7\u00f5es encontradas"
   },
   "installed": {
@@ -11,6 +13,8 @@
     "window": "WinLink",
     "icon_loaded": true,
     "rows": 0,
+    "navigation_icons": true,
+    "creation_icon": true,
     "status": "Escaneamento conclu\u00eddo: 0 jun\u00e7\u00f5es encontradas"
   },
   "installer": {

@@ -28,9 +28,9 @@ Em falhas, leia os caminhos preservados antes de agir. Se os arquivos já foram 
 
 ## Histórico e preferências
 
-O histórico combina operação, resultado, períodos rápidos e datas inclusivas em **Personalizado**. **Detalhes** mostra caminhos, erro e metadados. Criações já desfeitas são indicadas e não podem ser revertidas novamente pelo histórico. Registros novos guardam identidade; registros antigos continuam legíveis e usam a verificação de integridade existente. **Exportar** inclui todos os registros, independentemente dos filtros. **Limpar Histórico** exige confirmação e não altera links.
+O histórico combina operação, resultado, períodos rápidos e datas inclusivas em **Personalizado**. Nas ações de cada registro, **Detalhes** mostra caminhos, erro e metadados. Criações já desfeitas são indicadas e não podem ser revertidas novamente pelo histórico. Registros novos guardam identidade; registros antigos continuam legíveis e usam a verificação de integridade existente. **Exportar** inclui todos os registros, independentemente dos filtros. **Limpar Histórico** exige confirmação e não altera links.
 
-O cabeçalho permite Claro, Escuro e Seguir sistema; automático acompanha mudanças do host. Nas configurações, **Restaurar padrões** prepara os campos e só persiste com **Salvar**. **Descartar alterações** recarrega os valores salvos. Caminhos personalizados do histórico/log não são apagados pela restauração de preferências. Notificações, backup, avisos e nível de log usam os serviços reais. **Abrir pasta de logs** ajuda a investigar falhas.
+O ícone de sol/lua no cabeçalho alterna Claro/Escuro; a seta ao lado abre o menu com Claro, Escuro e Seguir sistema. Automático acompanha mudanças do host. Nas configurações, **Restaurar padrões** prepara os campos e só persiste com **Salvar**. **Descartar alterações** recarrega os valores salvos. Caminhos personalizados do histórico/log não são apagados pela restauração de preferências. Notificações, backup, avisos e nível de log usam os serviços reais. **Abrir pasta de logs** ajuda a investigar falhas.
 
 Atalhos: Ctrl+N criar; Ctrl+H histórico; Ctrl+, configurações; Ctrl+F buscar; F5 atualizar; Ctrl+Q sair. Tab/Shift+Tab percorrem controles; Escape fecha confirmações ou solicita cancelamento seguro no progresso. Telas e diálogos têm rolagem para alcançar os últimos controles em janelas pequenas.
 
@@ -38,7 +38,7 @@ Atalhos: Ctrl+N criar; Ctrl+H histórico; Ctrl+, configurações; Ctrl+F buscar;
 
 O desinstalador remove configuração/cache/log padrão e pergunta se deve manter o histórico. Em modo silencioso mantém o histórico, salvo `/DELETEHISTORY`. Não apaga dados migrados, destinos de junctions nem arquivos de histórico/log personalizados.
 
-Windows 10 mínimo e máquina limpa sem Python ainda precisam de homologação. Neste host a criação de symlinks retornou erro 1314; o teste comprova a falha segura, não o sucesso com privilégios. Ver [validação](../validacao/REDESIGN.md).
+Windows 10 e máquina limpa sem Python não foram homologados; esses testes foram dispensados pelo mantenedor. Neste host a criação de symlinks retornou erro 1314; o teste comprova a falha segura, não o sucesso com privilégios. Ver [validação](../validacao/REDESIGN.md).
 
 ## Capturas do aplicativo real
 
@@ -49,3 +49,8 @@ Geradas com links reais em diretório temporário isolado, sem dados do usuário
 ![Histórico](../validacao/capturas/historico-light.png)
 ![Configurações](../validacao/capturas/configuracoes-dark.png)
 ![Propriedades](../validacao/capturas/propriedades-dark.png)
+
+Diálogos revisados:
+
+![Prévia](../validacao/capturas/previa-dark.png)
+![Reversão](../validacao/capturas/reversao-light.png)

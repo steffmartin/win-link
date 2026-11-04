@@ -35,3 +35,24 @@ Validação final do build de código `8b8ab19`: 299 testes Python aprovados (XM
 ## Decisão posterior do mantenedor — 04/11/2026
 
 Os testes em Windows limpo sem Python e Windows 10 foram explicitamente dispensados pelo mantenedor. Permanecem não executados e não são tratados como aprovados; deixam de bloquear esta entrega por decisão de escopo. A pendência restante de permissões é a validação manual de symlink de diretório e de arquivo com o aplicativo elevado (ou Modo de Desenvolvedor). Os resultados WinError 1314 acima continuam sendo a evidência histórica das tentativas sem privilégio.
+
+## Revisão visual após comparação com o protótipo — 04/11/2026
+
+As capturas anteriores não comprovavam fidelidade suficiente: faltavam ícones, a criação não trazia a prévia estrutural, e ações de histórico/configurações estavam em posições e tamanhos diferentes. A revisão corrige a apresentação sem alterar serviços de arquivos, confirmações, identidade ou preservação de dados.
+
+- Cabeçalho com marca e alternância de tema por ícone/menu; navegação e cartões com símbolos vetoriais que acompanham o tema.
+- Lista com título/atualização/início e controles de busca/filtro/visualização alinhados, cartões com ícone de arquivo/pasta, status e acesso às propriedades.
+- Criação com quatro opções em grade 2×2, descrições, campos com seletores de largura adequada, botão Avançar e prévia estrutural em duas colunas no desktop, empilhadas em janela reduzida. A ilustração usa somente os caminhos digitados; validação/operação continuam reais.
+- Histórico com exportação/limpeza no topo, filtros agrupados, resultado em badges e detalhes/desfazer por registro. Alternativas por seleção continuam disponíveis para teclado.
+- Configurações em coluna limitada a 672 px, campos com labels, ações de restaurar/descartar/salvar próximas do conteúdo. Propriedades, prévia, reversão, progresso, filtros, detalhes e Sobre têm cabeçalhos, ícones, espaçamentos e ações consistentes.
+- Indicadores de radios/checkboxes e setas de seleção agora são explícitos nos dois temas. SVGs de interface entram no empacotamento, sem dependência de rede ou Node.
+
+**Validação atual:** 308 testes Python aprovados, Ruff/Black/mypy aprovados. Os nove testes de layout também passaram em processo separado com `QT_SCALE_FACTOR=2`. Eles verificam dimensões reais, ausência de rolagem horizontal externa, tamanho legível das opções, presença de ícones, reposicionamento do cabeçalho, ações por registro e acesso ao botão Salvar. No monitor em escala 200%, o caso desktop é limitado à área lógica disponível pelo Windows; o cenário reduzido permanece exatamente 760×400. A primeira tentativa de pedir 1280×800 nessa escala encontrou o limite físico do monitor; o teste foi corrigido para respeitar essa área, sem ignorar o cenário.
+
+`scripts/capture_ui.py` foi ampliado para capturar as quatro telas e propriedades/prévia/reversão/progresso nos dois temas, além de filtros e Sobre. As capturas reduzidas agora validam 760×400 por assert, evitando tratar como sucesso uma janela que o layout forçou a ficar maior. Saídas de revisão/alta escala ficam em `build/layout-review` e `build/layout-review-highscale`; as capturas vigentes selecionadas substituem as anteriores em `capturas/`.
+
+Código desta revisão: `eec1dee`. Distribuição e hashes atuais são atualizados nos mesmos relatórios JSON da entrega, preservando a decisão de dispensa de Windows limpo/Windows 10 e a pendência manual de symlinks com privilégios.
+
+A suíte de layout também cobre a seleção exclusiva ao clicar repetidamente no tipo atual e a permanência do estado vazio ao alternar a visualização. Verificação final: 308 testes Python e nove testes de layout em escala 200% aprovados.
+
+Validação do pacote final desta revisão: portátil e instalado abriram com os ícones de navegação/criação presentes; o smoke test também gerou capturas do executável congelado. Instalação e desinstalação com/sem histórico passaram em diretório e AppId isolados, preservando junction e dados de teste. O instalador de produção foi regenerado com todos os SVGs e QtSvg incluídos; hashes atuais em `redesign-artifacts.json`. Não houve alteração em dados/configurações da instalação do usuário.
