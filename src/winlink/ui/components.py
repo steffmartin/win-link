@@ -6,13 +6,56 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QListWidget,
     QPushButton,
     QSizePolicy,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QVBoxLayout,
     QWidget,
 )
 
 from winlink.ui.icons import set_button_icon, symbol_icon
+
+
+class NavigationDelegate(QStyledItemDelegate):
+    """Keep keyboard focus around the full item, without the native text outline."""
+
+    def paint(self, painter, option, index):
+        option = QStyleOptionViewItem(option)
+        view = self.parent()
+        focused = bool(option.state & QStyle.StateFlag.State_HasFocus)
+        option.state &= ~QStyle.StateFlag.State_HasFocus
+        super().paint(painter, option, index)
+        if focused and view.keyboard_focus:
+            painter.save()
+            painter.setPen(option.palette.highlight().color())
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(option.rect.adjusted(1, 1, -2, -2), 6, 6)
+            painter.restore()
+
+
+class NavigationList(QListWidget):
+    keyboard_focus = False
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setItemDelegate(NavigationDelegate(self))
+
+    def focusInEvent(self, event):
+        self.keyboard_focus = event.reason() != Qt.FocusReason.MouseFocusReason
+        super().focusInEvent(event)
+
+    def mousePressEvent(self, event):
+        self.keyboard_focus = False
+        super().mousePressEvent(event)
+        self.viewport().update()
+
+    def keyPressEvent(self, event):
+        self.keyboard_focus = True
+        super().keyPressEvent(event)
+        self.viewport().update()
 
 
 def heading(layout, text, subtitle=None, icon=None):

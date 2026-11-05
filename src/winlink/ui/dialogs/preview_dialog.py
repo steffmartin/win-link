@@ -55,6 +55,17 @@ class PreviewDialog(AnimatedDialog):
         self.preview_text.setMinimumHeight(240)
         self.preview_text.setPlainText("Calculando prévia...")
         layout.addWidget(self.preview_text)
+        info_row = QHBoxLayout()
+        from winlink.ui.icons import symbol_icon
+
+        info_icon = QLabel()
+        info_icon.setPixmap(symbol_icon("info").pixmap(18, 18))
+        info_icon.setStyleSheet("background: transparent;")
+        info_row.addWidget(info_icon)
+        info_text = QLabel("Confira os dois caminhos antes de confirmar.")
+        info_text.setWordWrap(True)
+        info_row.addWidget(info_text, 1)
+        layout.addLayout(info_row)
 
         # Space info
         self.space_label = QLabel()
@@ -176,19 +187,20 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
 
         preview_lines.append(f"✓ Criar hard link: {target} -> {source}")
         preview_lines.append("")
-        preview_lines.append("ℹ️ Ambos caminhos apontarão para os mesmos dados no disco.")
-        preview_lines.append("ℹ️ Alterações em um caminho serão refletidas no outro.")
-        preview_lines.append("ℹ️ Hard links funcionam apenas no mesmo volume.")
+        preview_lines.append("Ambos caminhos apontarão para os mesmos dados no disco.")
+        preview_lines.append("Alterações em um caminho serão refletidas no outro.")
+        preview_lines.append("Hard links funcionam apenas no mesmo volume.")
 
         return "\n".join(preview_lines), valid
 
     # Junctions and symlinks (directories)
     if source_exists:
-        preview_lines.append(f"✓ Diretório de origem já existe: {source}")
+        preview_lines.append(f"Local dos dados já existente: {source}")
     else:
-        preview_lines.append(f"✓ Criar diretório de origem: {source}")
+        preview_lines.append(f"Criar local dos dados: {source}")
 
     if target_exists:
+        preview_lines.append(f"Caminho do link contém a pasta a migrar: {target}")
         # Target exists, need to copy files
         from winlink.core.file_ops import (
             calculate_directory_size_recursive,
@@ -201,7 +213,9 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
 
             preview_lines.append(f"✓ Copiar arquivos de {target}")
             preview_lines.append(f"  para {source} ({size_str})")
-            preview_lines.append(f"✓ Remover {target}")
+            preview_lines.append(
+                f"Remover a pasta em {target} somente após preservar os arquivos em {source}"
+            )
 
             # Check disk space
             disk_path = source
@@ -223,10 +237,7 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
             preview_lines.append(f"⚠️ Erro ao calcular tamanho: {e}")
             valid = False
     else:
-        preview_lines.append(f"✓ Criar diretório de origem vazio: {source}")
-        preview_lines.append(
-            f"✓ Criar {'symlink' if link_type == JunctionType.SYMLINK else 'junção'}: {target} -> {source}"
-        )
+        preview_lines.append(f"Caminho do novo link ainda não existe: {target}")
 
     preview_lines.append("")
     preview_lines.append(

@@ -444,6 +444,7 @@ class ThemeManager(QObject):
         radio_on = (assets / "radio-on.svg").as_posix()
         checkbox_off = (assets / "checkbox-off.svg").as_posix()
         checkbox_on = (assets / "checkbox-on.svg").as_posix()
+        checkbox_disabled = (assets / "checkbox-disabled.svg").as_posix()
         sidebar = bg if self._current_theme == "dark" else surface
         stylesheet += f"""
         QFrame#header {{ background: {bg}; border-bottom: 1px solid {border}; }}
@@ -453,7 +454,7 @@ class ThemeManager(QObject):
         QLabel#fieldLabel {{ font-size: 14px; font-weight: 600; }}
         QLabel#muted {{ color: {text_secondary}; font-size: 13px; }}
         QLabel#sectionTitle {{ font-size: 20px; font-weight: 700; }}
-        QLabel#pathBlock {{ font-family: Consolas; padding: 12px; background: {bg}; border: 1px solid {border}; border-radius: 6px; }}
+        QPlainTextEdit#pathBlock {{ font-family: Consolas; padding: 12px; background: {bg}; border: 1px solid {border}; border-radius: 6px; }}
         QLabel#pathText {{ font-family: Consolas; font-size: 12px; }}
         QFrame#sidebar {{ background: {sidebar}; border-right: 1px solid {border}; }}
         QListWidget#navigation {{ background: transparent; border: none; padding: 0; font-size: 14px; font-weight: 600; }}
@@ -462,6 +463,8 @@ class ThemeManager(QObject):
         QLabel#sidebarFooter {{ color: {text_secondary}; background: transparent; border-top: 1px solid {border}; padding-top: 16px; font-size: 11px; }}
         QPushButton {{ min-height: 20px; padding: 9px 16px; border-radius: 6px; font-weight: 500; }}
         QPushButton[primary="true"] {{ background: #2563eb; color: white; border-color: #2563eb; padding: 10px 16px; font-weight: 600; }}
+        QPushButton[primary="true"]:hover {{ background: #1d4ed8; border-color: #1d4ed8; }}
+        QPushButton[primary="true"]:pressed {{ background: #1e40af; border-color: #1e40af; }}
         QPushButton[primary="true"]:disabled {{ background: {surface_variant}; color: {text_secondary}; border-color: {border}; }}
         QPushButton[danger="true"] {{ color: {to_hex(colors["error"])}; border-color: {to_hex(colors["error"])}; }}
         QPushButton#typeCard {{ min-height: 110px; max-height: 110px; padding: 0; border-radius: 8px; background: {bg}; text-align: left; }}
@@ -487,6 +490,8 @@ class ThemeManager(QObject):
         QCheckBox::indicator:checked {{ image: url("{checkbox_on}"); }}
         QRadioButton {{ background: transparent; spacing: 12px; padding: 12px 8px; }}
         QCheckBox {{ spacing: 12px; padding: 4px 0; }}
+        QCheckBox:disabled {{ color: {text_secondary}; }}
+        QCheckBox::indicator:checked:disabled {{ image: url("{checkbox_disabled}"); }}
         QTextEdit {{ background: {surface}; border: 1px solid {border}; border-radius: 8px; padding: 12px; }}
         """
         return stylesheet

@@ -130,7 +130,13 @@ class CreateJunctionDialog(AnimatedDialog):
         self.info_label = QLabel()
         self.info_label.setObjectName("muted")
         self.info_label.setWordWrap(True)
-        form_layout.addWidget(self.info_label)
+        info_row = QHBoxLayout()
+        info_icon = QLabel()
+        info_icon.setPixmap(symbol_icon("info").pixmap(18, 18))
+        info_icon.setStyleSheet("background: transparent;")
+        info_row.addWidget(info_icon)
+        info_row.addWidget(self.info_label, 1)
+        form_layout.addLayout(info_row)
         self.create_btn = button_style(QPushButton("Avançar"), "arrow", primary=True)
         self.create_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.create_btn.setMinimumHeight(46)
@@ -245,7 +251,7 @@ class CreateJunctionDialog(AnimatedDialog):
             self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\.vscode")
             self.source_edit.setPlaceholderText("Ex: D:\\Cache\\.vscode")
             self.info_label.setText(
-                "ℹ️ Se o destino já existir, os arquivos serão copiados para a origem antes de criar o link."
+                "Se o destino já existir, os arquivos serão copiados para a origem antes de criar o link."
             )
 
         for card_index, card in enumerate(self.type_cards):
@@ -258,19 +264,31 @@ class CreateJunctionDialog(AnimatedDialog):
         self.update_structure()
         self.validate_inputs()
 
+    @staticmethod
+    def browse_start(text: str, file: bool = False) -> str:
+        """Use the current selection, or its nearest existing directory."""
+        path = Path(text.strip())
+        if not text.strip() or not path.is_absolute():
+            return str(Path.home())
+        if file and path.parent.is_dir():
+            return str(path)
+        while not path.is_dir() and path != path.parent:
+            path = path.parent
+        return str(path if path.is_dir() else Path.home())
+
     def browse_target(self):
         """Browse for target directory or file"""
         if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
             # Browse for file
             file_path, _ = QFileDialog.getSaveFileName(
-                self, "Novo caminho do link", str(Path.home())
+                self, "Novo caminho do link", self.browse_start(self.target_edit.text(), file=True)
             )
             if file_path:
                 self.target_edit.setText(file_path)
         else:
             # Browse for directory
             directory = QFileDialog.getExistingDirectory(
-                self, "Selecionar Destino", str(Path.home())
+                self, "Selecionar Destino", self.browse_start(self.target_edit.text())
             )
             if directory:
                 self.target_edit.setText(directory)
@@ -279,13 +297,15 @@ class CreateJunctionDialog(AnimatedDialog):
         """Browse for source directory or file"""
         if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
             # Browse for file
-            file_path, _ = QFileDialog.getOpenFileName(self, "Selecionar Origem", str(Path.home()))
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Selecionar Origem", self.browse_start(self.source_edit.text(), file=True)
+            )
             if file_path:
                 self.source_edit.setText(file_path)
         else:
             # Browse for directory
             directory = QFileDialog.getExistingDirectory(
-                self, "Selecionar Origem", str(Path.home())
+                self, "Selecionar Origem", self.browse_start(self.source_edit.text())
             )
             if directory:
                 self.source_edit.setText(directory)

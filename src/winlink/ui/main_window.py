@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListView,
-    QListWidget,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -91,6 +90,7 @@ class MainWindow(QMainWindow):
         self.history_manager = HistoryManager()
         # Theme manager
         self.theme_manager = ThemeManager()
+        self.theme_manager.setParent(self)
         # Data models
         self.junction_model = JunctionTableModel()
         self.filter_model = JunctionFilterProxyModel()
@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
         self._scan_pending = False
         self.init_ui()
         self.apply_theme()
-        self.theme_manager.theme_changed.connect(lambda _: self.refresh_presentation())
+        self.theme_manager.theme_changed.connect(self.refresh_presentation)
         from winlink.core.cache import CacheManager
 
         cached = CacheManager().load()
@@ -180,7 +180,9 @@ class MainWindow(QMainWindow):
         shell.addWidget(header_frame)
         body = QHBoxLayout()
         body.setSpacing(0)
-        self.navigation = QListWidget()
+        from winlink.ui.components import NavigationList
+
+        self.navigation = NavigationList()
         self.navigation.setObjectName("navigation")
         self.navigation.addItems(["Meus Links", "Criar Novo", "Histórico", "Configurações"])
         self.navigation.setIconSize(QSize(18, 18))
@@ -308,7 +310,6 @@ class MainWindow(QMainWindow):
         self.card_view.setMinimumHeight(240)
         self.card_view.clicked.connect(self.card_clicked)
         self.card_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.card_view.doubleClicked.connect(self.open_selected_properties)
         self.card_view.activated.connect(self.open_selected_properties)
         self.card_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.card_view.customContextMenuRequested.connect(self.show_card_context_menu)
@@ -384,7 +385,8 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.link_views, 1)
         sort_links()
         self.table_view.doubleClicked.connect(self.open_selected_properties)
-        self.table_view.verticalHeader().setDefaultSectionSize(64)
+        self.table_view.verticalHeader().hide()
+        self.table_view.verticalHeader().setDefaultSectionSize(36)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setWordWrap(False)
         from winlink.ui.pages import CreatePage, HistoryPage, SettingsPage, embed_page
@@ -1254,7 +1256,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.0\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.1\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

@@ -37,7 +37,6 @@ class AppSettings(BaseSettings):
     scan_directories: list[str] = Field(
         default_factory=lambda: [
             str(Path.home()),
-            "D:\\Cache",
         ]
     )
 

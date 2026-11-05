@@ -9,7 +9,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
 )
 
@@ -59,6 +61,8 @@ class PropertiesDialog(AnimatedDialog):
         header.addWidget(icon)
         name = QLabel(self.junction.target.name)
         name.setWordWrap(True)
+        name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        name.setToolTip(self.junction.target.name)
         name.setObjectName("sectionTitle")
         header.addWidget(name, 1)
         self.status_label = QLabel()
@@ -73,13 +77,19 @@ class PropertiesDialog(AnimatedDialog):
         metadata.addRow("Criador:", self.creator_label)
         metadata.addRow("Data de criação:", self.created_at_label)
         panel.content.addLayout(metadata)
-        self.target_label = QLabel()
-        self.source_label = QLabel()
+        self.target_label = QPlainTextEdit()
+        self.source_label = QPlainTextEdit()
         for title, label in [
             ("Ponto de Acesso (Destino)", self.target_label),
             ("Alvo / Local dos dados (Origem)", self.source_label),
         ]:
-            label.setWordWrap(True)
+            from PyQt6.QtGui import QTextOption
+
+            label.setReadOnly(True)
+            label.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
+            label.setMinimumWidth(0)
+            label.setMinimumHeight(80)
+            label.setMaximumHeight(120)
             label.setObjectName("pathBlock")
             field(panel.content, title, label)
         statistics = QFormLayout()
@@ -146,8 +156,8 @@ class PropertiesDialog(AnimatedDialog):
         self.created_at_label.setText(created_at_text)
 
         # Paths
-        self.source_label.setText(str(self.junction.source.absolute()))
-        self.target_label.setText(str(self.junction.target.absolute()))
+        self.source_label.setPlainText(str(self.junction.source.absolute()))
+        self.target_label.setPlainText(str(self.junction.target.absolute()))
 
         # Statistics
         if self.junction.size_bytes is not None:
