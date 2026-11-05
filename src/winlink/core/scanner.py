@@ -2,6 +2,7 @@
 
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import win32api
@@ -322,6 +323,7 @@ def scan_directory(
     known_junctions: set[Path] | None = None,
     *,
     excluded_directories: tuple[Path, ...] = (),
+    should_cancel: Callable[[], bool] | None = None,
 ) -> list[Junction]:
     """
     Scan a directory for junctions, symlinks, and hard links.
@@ -339,7 +341,7 @@ def scan_directory(
 
     junctions: list[Junction] = []
 
-    if is_discovery_excluded(path, excluded_directories):
+    if (should_cancel and should_cancel()) or is_discovery_excluded(path, excluded_directories):
         return junctions
 
     if not path.exists() or not path.is_dir():
@@ -349,6 +351,8 @@ def scan_directory(
     try:
         # Walk through directory
         for item in path.iterdir():
+            if should_cancel and should_cancel():
+                break
             if is_discovery_excluded(item, excluded_directories):
                 continue
             try:
@@ -446,6 +450,7 @@ def scan_directory(
                                 recursive,
                                 known_junctions,
                                 excluded_directories=excluded_directories,
+                                should_cancel=should_cancel,
                             )
                         )
                     except Exception as e:
@@ -470,6 +475,7 @@ def scan_directories(
     cache_max_age_seconds: float = 3600,
     *,
     excluded_directories: tuple[Path, ...] = (),
+    should_cancel: Callable[[], bool] | None = None,
 ) -> ScanResult:
     """
     Scan multiple directories for junctions, symlinks, and hard links.
@@ -494,10 +500,11 @@ def scan_directories(
         known_junctions = set()
 
     cache_manager = CacheManager()
-    if use_cache:
+    if use_cache and not (should_cancel and should_cancel()):
         cached = cache_manager.load()
         if (
             cached
+            and not cached.partial
             and recursive
             and cached.scan_directories == [str(d) for d in directories]
             and cached.excluded_directories == [str(d) for d in excluded_directories]
@@ -519,10 +526,16 @@ def scan_directories(
 
     # Perform actual scan
     for directory in directories:
+        if should_cancel and should_cancel():
+            break
         logger.info(f"Scanning directory: {directory}")
         try:
             junctions = scan_directory(
-                directory, recursive, known_junctions, excluded_directories=excluded_directories
+                directory,
+                recursive,
+                known_junctions,
+                excluded_directories=excluded_directories,
+                should_cancel=should_cancel,
             )
             existing = {j.target for j in all_junctions}
             all_junctions.extend(j for j in junctions if j.target not in existing)
@@ -532,11 +545,13 @@ def scan_directories(
             logger.error(error_msg)
             errors.append(error_msg)
 
+    cancelled = bool(should_cancel and should_cancel())
     duration = time.time() - start_time
 
     result = ScanResult(
         junctions=all_junctions,
         scanned_directories=scanned_dirs,
+        cancelled=cancelled,
         excluded_directories=list(excluded_directories),
         scan_duration_seconds=duration,
         errors=errors,
@@ -545,7 +560,7 @@ def scan_directories(
     logger.info(f"Scan complete: found {len(all_junctions)} junctions in {duration:.2f}s")
 
     # Save to cache
-    if use_cache and recursive and not errors:
+    if use_cache and recursive and not errors and not cancelled:
         cache_manager = CacheManager()
         cache_manager.save(result)
 

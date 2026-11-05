@@ -28,6 +28,7 @@ class JunctionCache(BaseModel):
     scan_directories: list[str] = Field(
         default_factory=list, description="Directories that were scanned"
     )
+    partial: bool = False
     excluded_directories: list[str] = Field(default_factory=list)
     cached_at: datetime = Field(default_factory=datetime.now, description="When cache was created")
     version: str = Field(default="1.0", description="Cache format version")
@@ -84,7 +85,9 @@ class CacheManager:
             logger.warning(f"Failed to load cache: {e}")
             return None
 
-    def save(self, scan_result: ScanResult) -> bool:
+    def save(
+        self, scan_result: ScanResult, *, requested_directories: list[Path] | None = None
+    ) -> bool:
         """
         Save scan result to cache.
 
@@ -95,14 +98,36 @@ class CacheManager:
             True if successful, False otherwise
         """
         try:
-            # Create cache entries
-            entries = [CacheEntry(junction=junction) for junction in scan_result.junctions]
+            directories = [
+                str(path)
+                for path in (
+                    scan_result.scanned_directories
+                    if requested_directories is None
+                    else requested_directories
+                )
+            ]
+            exclusions = [str(path) for path in scan_result.excluded_directories]
+            entries: dict[Path, CacheEntry] = {}
+            if scan_result.cancelled:
+                if not scan_result.junctions:
+                    return True
+                previous = self.load()
+                if (
+                    previous
+                    and previous.scan_directories == directories
+                    and previous.excluded_directories == exclusions
+                ):
+                    entries.update((entry.junction.target, entry) for entry in previous.entries)
+            entries.update(
+                (junction.target, CacheEntry(junction=junction))
+                for junction in scan_result.junctions
+            )
 
-            # Create cache object
             cache = JunctionCache(
-                entries=entries,
-                scan_directories=[str(d) for d in scan_result.scanned_directories],
-                excluded_directories=[str(d) for d in scan_result.excluded_directories],
+                entries=list(entries.values()),
+                scan_directories=directories,
+                excluded_directories=exclusions,
+                partial=scan_result.cancelled,
                 cached_at=datetime.now(),
             )
 

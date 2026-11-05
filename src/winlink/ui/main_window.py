@@ -78,6 +78,7 @@ class ScanWorker(QThread):
                 recursive=True,
                 known_junctions=self.known_junctions,
                 excluded_directories=self.excluded_directories,
+                should_cancel=self.isInterruptionRequested,
             )
             self.result_ready.emit(result)
         except Exception as e:
@@ -103,6 +104,7 @@ class MainWindow(QMainWindow):
         self.scan_worker: ScanWorker | None = None
         self._operation_active = False
         self._scan_pending = False
+        self._closing_after_scan = False
         self.init_ui()
         self.apply_theme()
         self.theme_manager.theme_changed.connect(self.refresh_presentation)
@@ -556,7 +558,7 @@ class MainWindow(QMainWindow):
 
     def start_scan(self):
         """Start scanning for junctions"""
-        if self._operation_active is True:
+        if self._operation_active or self._closing_after_scan:
             return
         if self.scan_worker is not None and self.scan_worker.isRunning():
             self._scan_pending = True
@@ -597,7 +599,9 @@ class MainWindow(QMainWindow):
 
     def on_scan_thread_finished(self):
         """Run a refresh requested while the preceding scan was still active."""
-        if self._scan_pending:
+        if self._closing_after_scan:
+            self.close()
+        elif self._scan_pending:
             self.start_scan()
 
     def on_scan_finished(self, result):
@@ -605,6 +609,11 @@ class MainWindow(QMainWindow):
         from winlink.core.cache import CacheManager
 
         if tuple(result.excluded_directories) != self.discovery_exclusions():
+            return
+
+        if result.cancelled:
+            if self.scan_worker is not None:
+                CacheManager().save(result, requested_directories=self.scan_worker.directories)
             return
 
         if result.errors:
@@ -627,6 +636,9 @@ class MainWindow(QMainWindow):
 
     def on_scan_error(self, error: str):
         """Handle scan error"""
+        if self._closing_after_scan:
+            self.logger.error(f"Erro ao encerrar descoberta: {error}")
+            return
         self.scan_notice.setText(
             f"A atualização falhou. A lista anterior foi preservada. Tente Atualizar novamente.\n{error}"
         )
@@ -1312,7 +1324,11 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         if self.scan_worker is not None and self.scan_worker.isRunning():
-            self.status_bar.showMessage("Aguarde o término do escaneamento para fechar.")
+            self._closing_after_scan = True
+            self._scan_pending = False
+            self.scan_worker.requestInterruption()
+            self.status_bar.showMessage("Cancelando a descoberta para fechar…")
+            self.setEnabled(False)
             event.ignore()
             return
         # Save window size if enabled

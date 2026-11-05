@@ -45,6 +45,8 @@ def test_creation_failure_is_not_reported_as_success(qtbot, monkeypatch, tmp_pat
 
 def test_refresh_does_not_replace_running_scanner():
     window = Mock()
+    window._operation_active = False
+    window._closing_after_scan = False
     window.scan_worker.isRunning.return_value = True
     worker = window.scan_worker
     main_window.MainWindow.start_scan(window)
@@ -52,13 +54,17 @@ def test_refresh_does_not_replace_running_scanner():
     window.status_bar.showMessage.assert_not_called()
 
 
-def test_close_waits_for_running_scanner():
+def test_close_requests_interruption_without_waiting_for_scanner():
     window = Mock()
+    window._operation_active = False
     window.scan_worker.isRunning.return_value = True
     event = Mock()
     main_window.MainWindow.closeEvent(window, event)
     event.ignore.assert_called_once()
     event.accept.assert_not_called()
+    window.scan_worker.requestInterruption.assert_called_once()
+    window.scan_worker.wait.assert_not_called()
+    assert window._closing_after_scan
 
 
 def test_window_exposes_type_filter_and_sorting(qtbot, monkeypatch, tmp_path):
@@ -122,7 +128,11 @@ def test_scan_worker_passes_app_owned_paths(monkeypatch, tmp_path):
     worker = main_window.ScanWorker([tmp_path], known)
     worker.run()
     scan.assert_called_once_with(
-        [tmp_path], recursive=True, known_junctions=known, excluded_directories=()
+        [tmp_path],
+        recursive=True,
+        known_junctions=known,
+        excluded_directories=(),
+        should_cancel=worker.isInterruptionRequested,
     )
 
 
@@ -814,3 +824,55 @@ def test_creation_cancelled_during_copy_preserves_original(qtbot, monkeypatch, t
     assert (target / "b").read_text() == "second"
     assert window.history_manager.add_operation.call_args.kwargs["success"] is False
     assert not list(tmp_path.glob("*.winlink-backup-*"))
+
+def test_close_cancels_worker_merges_cache_and_skips_queued_refresh(qtbot, monkeypatch, tmp_path):
+    from threading import Event
+
+    from winlink.core import scanner
+    from winlink.core.cache import CacheManager
+    from winlink.core.config import AppSettings
+    from winlink.core.models import Junction, JunctionType, ScanResult
+
+    started, stopped, release = Event(), Event(), Event()
+    old, found = [
+        Junction(source=tmp_path / "data", target=tmp_path / name, junction_type=JunctionType.JUNCTION)
+        for name in ("cached", "found")
+    ]
+    cache = CacheManager()
+    assert cache.save(ScanResult(junctions=[old], scanned_directories=[tmp_path]))
+    calls = []
+
+    def scan(*args, should_cancel, **kwargs):
+        calls.append(True)
+        started.set()
+        while not should_cancel():
+            if release.wait(0.01):
+                return ScanResult()
+        stopped.set()
+        release.wait(3)
+        return ScanResult(junctions=[found], cancelled=True)
+
+    monkeypatch.setattr(scanner, "scan_directories", scan)
+    monkeypatch.setattr(
+        main_window, "get_settings",
+        lambda: AppSettings(scan_directories=[str(tmp_path)], scan_excluded_directories=[]),
+    )
+    window = main_window.MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    try:
+        qtbot.waitUntil(started.is_set)
+        window.start_scan()
+        assert window._scan_pending
+        window.close()
+        assert window.isVisible()
+        qtbot.waitUntil(stopped.is_set)
+        assert window.scan_worker.isRunning()
+    finally:
+        release.set()
+        qtbot.waitUntil(lambda: not window.scan_worker.isRunning(), timeout=5000)
+    qtbot.waitUntil(lambda: not window.isVisible(), timeout=5000)
+    assert len(calls) == 1
+    saved = cache.load()
+    assert saved is not None and saved.partial
+    assert {link.target for link in saved.to_junctions()} == {old.target, found.target}

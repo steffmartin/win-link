@@ -385,3 +385,38 @@ def test_discovery_cache_is_invalidated_when_exclusions_change(tmp_path):
     assert link not in {junction.target for junction in filtered.junctions}
     restored = scan_directories([tmp_path], use_cache=True)
     assert link in {junction.target for junction in restored.junctions}
+
+def test_cancelled_scan_returns_links_found_inside_current_root(tmp_path, monkeypatch):
+    from threading import Event
+    from winlink.core import scanner
+    from winlink.core.operations import create_hard_link
+
+    root = tmp_path / "root"
+    root.mkdir()
+    data = tmp_path / "data"
+    data.write_text("data")
+    link = root / "link"
+    assert create_hard_link(data, link)
+    later_root = tmp_path / "later"
+    later_root.mkdir()
+
+    cancelled = Event()
+    status = scanner.check_junction_status
+    opened = []
+    iterdir = Path.iterdir
+
+    def visit(path):
+        opened.append(path)
+        return iterdir(path)
+
+    def check(junction):
+        result = status(junction)
+        cancelled.set()
+        return result
+
+    monkeypatch.setattr(Path, "iterdir", visit)
+    monkeypatch.setattr(scanner, "check_junction_status", check)
+    result = scan_directories([root, later_root], should_cancel=cancelled.is_set)
+    assert result.cancelled
+    assert [junction.target for junction in result.junctions] == [link]
+    assert opened == [root]

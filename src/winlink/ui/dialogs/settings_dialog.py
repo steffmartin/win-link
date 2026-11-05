@@ -83,13 +83,6 @@ class SettingsDialog(AnimatedDialog):
         )
         fields.addWidget(self.default_type_combo)
         fields.addSpacing(8)
-        explanation = QLabel(
-            "A descoberta percorre as pastas incluídas e ignora as excluídas e suas subpastas. "
-            "Os padrões são a pasta temporária e a pasta do Windows, quando disponíveis."
-        )
-        explanation.setWordWrap(True)
-        explanation.setObjectName("muted")
-        fields.addWidget(explanation)
         self.scan_list = QListWidget()
         self.excluded_list = QListWidget()
         directories = []
