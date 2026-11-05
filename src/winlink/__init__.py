@@ -1,3 +1,3 @@
 """WinLink - Gerenciador de Junções NTFS para Windows 11"""
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"

@@ -1,3 +1,8 @@
+# WinLink 0.1.5 — 05/11/2026
+
+- Configurações permite salvar pastas excluídas da descoberta. A varredura pula cada subárvore excluída, mesmo quando uma raiz incluída está dentro dela. Os padrões são a pasta temporária e a pasta do Windows, quando disponíveis. As listas ficam lado a lado em janelas amplas e empilhadas nas menores. [#56](https://github.com/steffmartin/win-link/issues/56)
+- Fechar durante a descoberta solicita cancelamento cooperativo, preserva os resultados parciais junto ao cache válido do mesmo escopo e encerra a janela quando a varredura para. Durante migração ou reversão, o bloqueio de fechamento continua ativo. [#34](https://github.com/steffmartin/win-link/issues/34)
+
 # WinLink 0.1.4 — 05/11/2026
 
 - Cabeçalho com ícones para Sobre e para o tema do sistema (#40 e #41).

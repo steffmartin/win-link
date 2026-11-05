@@ -1,6 +1,6 @@
 # Continuidade do WinLink
 
-Documento ativo de manutenção a partir da versão 0.1.0. O patch atual é a v0.1.4, descrito nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a divisão dos patches ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
+Documento ativo de manutenção a partir da versão 0.1.0. O patch atual é a v0.1.5, descrito nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a divisão dos patches ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
 
 ## Base da entrega inicial
 
@@ -9,6 +9,10 @@ Em 04/11/2026, o mantenedor autorizou a release inicial e dispensou o teste manu
 Verificação de fechamento: 308 testes Python, Ruff, Black e mypy aprovados; 74 testes unitários do protótipo e build Vite aprovados. O build histórico emite avisos sobre a diretiva `use client` do lucide-react, sem impedir sua conclusão.
 
 A validação de distribuição no fechamento passou: abertura portátil/instalada, instalação e desinstalação com/sem histórico, preservando junction e dados de teste. Os hashes do executável e instalador conferem com os pacotes preparados anteriormente; a reorganização não alterou o código do aplicativo.
+
+## Descoberta e cache
+
+A descoberta usa as listas de inclusão e exclusão da configuração. A varredura pula as subárvores excluídas antes de abrir seus diretórios. Cache e resultados precisam corresponder à política de exclusões vigente. Ao fechar durante a descoberta, a thread recebe um pedido de interrupção e a janela fecha após sua conclusão. O cache parcial preserva entradas anteriores do mesmo escopo e é seguido por uma nova varredura na abertura.
 
 ## Bugs, melhorias e acompanhamento
 
@@ -22,7 +26,7 @@ Para melhorias, descrever o problema, comportamento proposto e critério de acei
 
 ## Limites da release inicial
 
-Nenhum novo bug funcional foi identificado nesta revisão. O sucesso de symlinks com privilégios apropriados, Windows limpo sem Python e Windows 10 não foram homologados por dispensa do mantenedor. Os pacotes não possuem assinatura digital. Esses limites descrevem a entrega inicial; se houver trabalho para tratá-los, o acompanhamento será em Issues do GitHub.
+O sucesso de symlinks com privilégios apropriados, Windows limpo sem Python e Windows 10 não foram homologados por dispensa do mantenedor. Os pacotes não possuem assinatura digital. Esses limites descrevem a entrega inicial; se houver trabalho para tratá-los, o acompanhamento será em Issues do GitHub.
 
 ## Rotina de manutenção
 

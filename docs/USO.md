@@ -1,18 +1,26 @@
-# Guia de uso do WinLink 0.1.2
+# Guia de uso do WinLink
 
 ## Instalar e abrir
 
-O instalador offline é `dist/WinLink-Setup-0.1.2.exe`. A versão portátil exige toda a pasta `dist/WinLink`, incluindo `_internal`. Não precisa de Python instalado para executar o pacote; a validação em outro Windows sem Python foi dispensada pelo mantenedor. O aplicativo é por usuário e não solicita elevação automática. Código sob licença MIT; pacote sem assinatura digital.
+Baixe o instalador offline ou o ZIP portátil na [release indicada no README](../README.md#baixar-e-começar). Extraia toda a pasta `WinLink` do ZIP, incluindo `_internal`. Não precisa de Python instalado para executar o pacote; a validação em outro Windows sem Python foi dispensada pelo mantenedor. O aplicativo é por usuário e não solicita elevação automática. Código sob licença MIT; pacote sem assinatura digital.
 
 ## Encontrar links
 
-Em **Configurações**, escolha pelo menos um diretório absoluto para descoberta e salve. **Meus Links** abre a lista em cartões; **Compacta** apresenta a tabela. A busca procura nos dois caminhos. **Filtros** combina criador, status e tipo, distinguindo symlinks de arquivo/diretório. Aplicar confirma o rascunho; Cancelar/Escape o descarta. A ordenação fica no mesmo diálogo e inclui caminhos, criador, tipo, tamanho e status; também segue Aplicar/Cancelar. Tamanho indisponível não significa pasta vazia. Clique duas vezes ou use Enter para propriedades; o menu de contexto também permite desfazer.
+Em **Configurações**, escolha pelo menos uma pasta absoluta para descoberta e salve. **Meus Links** abre na apresentação salva em **Configurações**. O modo normal exibe cartões e o compacto exibe uma tabela. O seletor da lista permite alternar temporariamente. A busca procura nos dois caminhos. **Filtros** combina criador, status e tipo, distinguindo symlinks de arquivo/diretório. Aplicar confirma o rascunho; Cancelar/Escape o descarta. A ordenação fica no mesmo diálogo e inclui caminhos, criador, tipo, tamanho e status; também segue Aplicar/Cancelar. Tamanho indisponível não significa pasta vazia. Clique duas vezes ou use Enter para propriedades; o menu de contexto também permite desfazer.
 
-O cache acelera a abertura e uma varredura nova atualiza a lista. **Atualizar/F5** repete a descoberta; **Limpar busca e filtros**, ao lado de Filtros, limpa busca/filtros e atualiza, mantendo a ordenação. Se a atualização falhar, confira o aviso e os diretórios, depois tente novamente. Uma lista preservada pode estar desatualizada; cada reversão verifica novamente o link.
+O cache acelera a abertura e uma varredura nova atualiza a lista. **Atualizar/F5** repete a descoberta; **Limpar**, ao lado de **Filtros**, limpa busca/filtros e atualiza, mantendo a ordenação. Se a atualização falhar, confira o aviso e os diretórios, depois tente novamente. Uma lista preservada pode estar desatualizada; cada reversão verifica novamente o link.
+
+Se você fechar o WinLink durante a descoberta, ele solicita o cancelamento e fecha assim que a varredura parar. Os links já encontrados complementam o cache anterior da mesma seleção de pastas. A próxima abertura inicia uma nova varredura.
+
+### Pastas incluídas e excluídas
+
+Em **Configurações**, adicione as raízes em **Pastas incluídas** e use **Pastas excluídas** para pular diretórios inteiros. Por exemplo, incluir `C:/` e excluir `C:/tmp` percorre as demais subpastas de `C:/`. Uma exclusão prevalece mesmo se a pasta ou uma de suas subpastas também estiver na lista de inclusão. Um link cujo próprio caminho esteja excluído também é omitido.
+
+Configurações antigas sem uma lista de exclusões recebem os padrões, a pasta temporária e a pasta do Windows quando disponíveis. Revise ou remova essas entradas conforme precisar. **Restaurar Padrões** repõe a lista padrão no rascunho, **Descartar alterações** recupera a lista salva e **Salvar Alterações** aplica a seleção à descoberta. Uma lista vazia salva é preservada.
 
 ## Criar
 
-Em **Criar Novo**, escolha Junction, Symlink (Dir), Symlink (File) ou Hardlink. **1. Ponto de Acesso** é o caminho do link; **2. Dados Físicos** é onde os dados ficam. Por exemplo: Ponto de Acesso em `C:\Links\Projetos`, Dados Físicos em `D:\Dados\Projetos`. Hard links são nomes equivalentes do mesmo arquivo, sem um nome principal; substituir o arquivo por outro pode romper essa relação. A preferência de tipo padrão vale para um formulário vazio.
+Em **Criar Novo**, escolha Junction, Symlink (Dir), Symlink (File) ou Hardlink. O ícone no canto de cada cartão abre a ajuda sobre aquele tipo. **1. Ponto de Acesso** é o caminho do link; **2. Dados Físicos** é onde os dados ficam. Por exemplo: Ponto de Acesso em `C:\Links\Projetos`, Dados Físicos em `D:\Dados\Projetos`. Hard links são nomes equivalentes do mesmo arquivo, sem um nome principal; substituir o arquivo por outro pode romper essa relação. A preferência de tipo padrão vale para um formulário vazio.
 
 Diretórios podem usar um novo local dos dados. Se o caminho do link já contiver uma pasta normal, a prévia explica a migração. Arquivos exigem dados existentes e um novo nome livre; hard links exigem o mesmo volume. Symlinks podem exigir Modo de Desenvolvedor ou privilégios apropriados. Nenhuma opção faz elevação automática.
 
@@ -54,9 +62,3 @@ Diálogos revisados:
 
 ![Prévia](arquivo/v0.1.0/validacao/capturas/previa-dark.png)
 ![Reversão](arquivo/v0.1.0/validacao/capturas/reversao-light.png)
-
-## Pastas incluídas e excluídas da descoberta
-
-Em **Configurações**, adicione as raízes em **Pastas incluídas** e use **Pastas excluídas** para pular diretórios inteiros. Por exemplo, incluir `C:/` e excluir `C:/tmp` percorre as demais subpastas de `C:/`. Uma exclusão prevalece mesmo se a pasta ou uma de suas subpastas também estiver na lista de inclusão. Um link cujo próprio caminho esteja excluído também é omitido.
-
-Configurações antigas sem uma lista de exclusões recebem os padrões, a pasta temporária e a pasta do Windows quando disponíveis. Revise ou remova essas entradas conforme precisar. **Restaurar Padrões** repõe a lista padrão no rascunho, **Descartar alterações** recupera a lista salva e **Salvar Alterações** aplica a seleção à descoberta. Uma lista vazia salva é preservada.

@@ -33,7 +33,7 @@ def main():
     # Create Qt application
     app = QApplication(sys.argv)
     app.setApplicationName("WinLink")
-    app.setApplicationVersion("0.1.4")
+    app.setApplicationVersion("0.1.5")
 
     # Create and show main window
     window = MainWindow()

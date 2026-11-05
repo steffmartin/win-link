@@ -10,15 +10,15 @@ Por exemplo: você pode guardar uma pasta de projetos em outro disco e manter um
 
 ## Baixar e começar
 
-Acesse a [release v0.1.4](https://github.com/steffmartin/win-link/releases/tag/v0.1.4):
+Acesse a [release v0.1.5](https://github.com/steffmartin/win-link/releases/tag/v0.1.5):
 
-- **Instalador:** `WinLink-Setup-0.1.4.exe`, instalação por usuário.
-- **Portátil:** extraia todo o `WinLink-Portable-0.1.4.zip` e execute `WinLink/WinLink.exe`. Mantenha a pasta `_internal` ao lado do executável.
+- **Instalador:** `WinLink-Setup-0.1.5.exe`, instalação por usuário.
+- **Portátil:** extraia todo o `WinLink-Portable-0.1.5.zip` e execute `WinLink/WinLink.exe`. Mantenha a pasta `_internal` ao lado do executável.
 - `SHA256SUMS.txt` contém os hashes dos dois pacotes.
 
 Os pacotes incluem Python e as dependências. O aplicativo foi validado localmente em Windows 11 e não possui assinatura digital. Windows 10, Windows limpo sem Python e o sucesso de symlinks com privilégios apropriados não foram homologados; o mantenedor dispensou essas validações para a release inicial.
 
-Escolha os diretórios de descoberta em **Configurações**, abra **Meus Links** e use **Criar Novo** para preparar uma operação. Confira os caminhos e avisos antes de confirmar. O [guia de uso](docs/USO.md) explica criação, reversão, histórico e recuperação de falhas.
+Escolha as pastas incluídas e excluídas da descoberta em **Configurações**, abra **Meus Links** e use **Criar Novo** para preparar uma operação. Confira os caminhos e avisos antes de confirmar. O [guia de uso](docs/USO.md) explica criação, reversão, histórico e recuperação de falhas.
 
 ## Recursos e funcionamento
 
