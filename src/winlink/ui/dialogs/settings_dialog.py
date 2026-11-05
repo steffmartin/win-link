@@ -2,12 +2,10 @@
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
-    QHBoxLayout,
     QLabel,
     QListWidget,
     QMessageBox,
@@ -16,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from winlink.core.config import AppSettings, save_settings
+from winlink.core.scanner import discovery_path, is_discovery_excluded
 from winlink.ui.dialogs.animated_dialog import AnimatedDialog
 from winlink.utils.logger import get_logger
 
@@ -28,15 +27,21 @@ class SettingsDialog(AnimatedDialog):
         self.logger = get_logger()
         self.settings = settings
 
-        self._scan_directories: list[str] = list(settings.scan_directories)
-
         self.init_ui()
         self.load_settings()
 
     def init_ui(self):
         from PyQt6.QtWidgets import QWidget
 
-        from winlink.ui.components import ActionRow, Panel, button_style, field, heading, help_row
+        from winlink.ui.components import (
+            ActionRow,
+            Columns,
+            Panel,
+            button_style,
+            field,
+            heading,
+            help_row,
+        )
 
         self.setWindowTitle("Configurações do WinLink")
         self.setModal(True)
@@ -78,22 +83,50 @@ class SettingsDialog(AnimatedDialog):
         )
         fields.addWidget(self.default_type_combo)
         fields.addSpacing(8)
-        directories = Panel()
-        directories.content.setContentsMargins(16, 16, 16, 16)
-        top = QHBoxLayout()
-        top.addWidget(QLabel("Diretórios configurados"), 1)
-        self.add_scan_btn = button_style(QPushButton("Adicionar diretório"), "plus")
-        self.add_scan_btn.clicked.connect(self.add_scan_directory)
-        top.addWidget(self.add_scan_btn)
-        directories.content.addLayout(top)
+        explanation = QLabel(
+            "A descoberta percorre as pastas incluídas e ignora as excluídas e suas subpastas. "
+            "Os padrões são a pasta temporária e a pasta do Windows, quando disponíveis."
+        )
+        explanation.setWordWrap(True)
+        explanation.setObjectName("muted")
+        fields.addWidget(explanation)
         self.scan_list = QListWidget()
-        self.scan_list.setMinimumHeight(96)
-        self.scan_list.setMaximumHeight(160)
-        directories.content.addWidget(self.scan_list)
-        self.remove_scan_btn = button_style(QPushButton("Remover selecionado"), "trash")
-        self.remove_scan_btn.clicked.connect(self.remove_scan_directory)
-        directories.content.addWidget(self.remove_scan_btn, 0, Qt.AlignmentFlag.AlignLeft)
-        fields.addWidget(directories)
+        self.excluded_list = QListWidget()
+        directories = []
+        for title, listing, add, remove in (
+            (
+                "Pastas incluídas",
+                self.scan_list,
+                self.add_scan_directory,
+                self.remove_scan_directory,
+            ),
+            (
+                "Pastas excluídas",
+                self.excluded_list,
+                self.add_excluded_directory,
+                self.remove_excluded_directory,
+            ),
+        ):
+            panel = Panel()
+            panel.content.setContentsMargins(16, 16, 16, 16)
+            label = QLabel(title)
+            label.setBuddy(listing)
+            panel.content.addWidget(label)
+            listing.setAccessibleName(title)
+            listing.setMinimumHeight(96)
+            listing.setMaximumHeight(160)
+            panel.content.addWidget(listing)
+            add_button = button_style(QPushButton("Adicionar pasta"), "plus")
+            add_button.clicked.connect(add)
+            remove_button = button_style(QPushButton("Remover selecionada"), "trash")
+            remove_button.clicked.connect(remove)
+            panel.content.addWidget(ActionRow([add_button, remove_button]))
+            directories.append(panel)
+        fields.addWidget(Columns(*directories))
+        self.discovery_notice = QLabel()
+        self.discovery_notice.setWordWrap(True)
+        self.discovery_notice.setObjectName("muted")
+        fields.addWidget(self.discovery_notice)
         fields.addSpacing(8)
         self.confirm_checkbox = QCheckBox("Confirmar operações destrutivas (obrigatório)")
         self.confirm_checkbox.setEnabled(False)
@@ -151,6 +184,7 @@ class SettingsDialog(AnimatedDialog):
         """Load settings into UI"""
         settings = settings or self.settings
         self._scan_directories = list(settings.scan_directories)
+        self._excluded_directories = list(settings.scan_excluded_directories)
         self.default_type_combo.setCurrentIndex(
             self.default_type_combo.findData(settings.default_link_type)
         )
@@ -166,6 +200,10 @@ class SettingsDialog(AnimatedDialog):
         for directory in self._scan_directories:
             self.scan_list.addItem(directory)
 
+        self.excluded_list.clear()
+        self.excluded_list.addItems(self._excluded_directories)
+        self.update_discovery_notice()
+
         # Operations
         self.confirm_checkbox.setChecked(True)
         self.backup_checkbox.setChecked(settings.auto_backup_before_undo)
@@ -177,20 +215,49 @@ class SettingsDialog(AnimatedDialog):
         if log_level_index >= 0:
             self.log_level_combo.setCurrentIndex(log_level_index)
 
+    def update_discovery_notice(self):
+        exclusions = tuple(discovery_path(Path(path)) for path in self._excluded_directories)
+        conflicts = [
+            path for path in self._scan_directories if is_discovery_excluded(Path(path), exclusions)
+        ]
+        self.discovery_notice.setText(
+            "Pastas incluídas que serão ignoradas: " + ", ".join(conflicts) if conflicts else ""
+        )
+        self.discovery_notice.setVisible(bool(conflicts))
+
     def add_scan_directory(self):
-        """Add a scan directory"""
+        self.add_discovery_directory(self.scan_list, self._scan_directories)
+
+    def add_excluded_directory(self):
+        self.add_discovery_directory(self.excluded_list, self._excluded_directories)
+
+    def add_discovery_directory(self, listing, paths):
         directory = QFileDialog.getExistingDirectory(self, "Selecionar Diretório", str(Path.home()))
-        if directory:
-            self._scan_directories.append(directory)
-            self.scan_list.addItem(directory)
+        if not directory:
+            return
+        path = discovery_path(Path(directory))
+        if not path.is_absolute():
+            QMessageBox.warning(self, "Revise as preferências", "Use somente diretórios absolutos.")
+            return
+        if path in {discovery_path(Path(item)) for item in paths}:
+            QMessageBox.warning(self, "Revise as preferências", "Esta pasta já está na lista.")
+            return
+        paths.append(str(path))
+        listing.addItem(str(path))
+        self.update_discovery_notice()
 
     def remove_scan_directory(self):
-        """Remove selected scan directory"""
-        current_row = self.scan_list.currentRow()
-        if current_row >= 0:
-            directory = self.scan_list.item(current_row).text()
-            self._scan_directories.remove(directory)
-            self.scan_list.takeItem(current_row)
+        self.remove_discovery_directory(self.scan_list, self._scan_directories)
+
+    def remove_excluded_directory(self):
+        self.remove_discovery_directory(self.excluded_list, self._excluded_directories)
+
+    def remove_discovery_directory(self, listing, paths):
+        row = listing.currentRow()
+        if row >= 0:
+            paths.pop(row)
+            listing.takeItem(row)
+            self.update_discovery_notice()
 
     def open_logs_folder(self):
         """Open logs folder in file explorer"""
@@ -220,7 +287,10 @@ class SettingsDialog(AnimatedDialog):
             )
             return
 
-        if any(not Path(path).is_absolute() for path in self._scan_directories):
+        if any(
+            not Path(path).is_absolute()
+            for path in self._scan_directories + self._excluded_directories
+        ):
             QMessageBox.warning(self, "Revise as preferências", "Use somente diretórios absolutos.")
             return
         candidate = self.settings.model_copy(deep=True)
@@ -229,6 +299,7 @@ class SettingsDialog(AnimatedDialog):
         candidate.theme_mode = self.theme_combo.currentData()
         candidate.link_view_mode = self.link_view_combo.currentData()
         candidate.scan_directories = self._scan_directories
+        candidate.scan_excluded_directories = self._excluded_directories
         candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()
         candidate.auto_backup_before_undo = self.backup_checkbox.isChecked()
         candidate.show_notifications = self.notify_checkbox.isChecked()

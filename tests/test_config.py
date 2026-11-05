@@ -39,6 +39,7 @@ def test_operation_settings():
 
 def test_settings_persist_and_reload(monkeypatch, tmp_path):
     from winlink.core.config import save_settings
+
     monkeypatch.setenv("APPDATA", str(tmp_path))
     settings = AppSettings(theme_mode="dark", scan_directories=[str(tmp_path)])
     save_settings(settings)
@@ -59,6 +60,35 @@ def test_invalid_settings_file_is_preserved(monkeypatch, tmp_path):
 def test_invalid_configuration_values_are_rejected():
     import pytest
     from pydantic import ValidationError
+
     for values in [{"theme_mode": "unknown"}, {"log_level": "invalid"}, {"max_history_entries": 0}]:
         with pytest.raises(ValidationError):
             AppSettings(**values)
+
+
+def test_old_settings_receive_safe_exclusion_defaults(tmp_path, monkeypatch):
+    import json
+
+    from winlink.core import config
+
+    temp = tmp_path / "Temp"
+    windows = tmp_path / "Windows"
+    temp.mkdir()
+    windows.mkdir()
+    monkeypatch.setattr(config.tempfile, "gettempdir", lambda: str(temp))
+    monkeypatch.setattr(config.win32api, "GetWindowsDirectory", lambda: str(windows))
+    path = config.settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    old = {"scan_directories": [str(tmp_path)], "theme_mode": "dark"}
+    path.write_text(json.dumps(old), encoding="utf-8")
+    settings = config.get_settings()
+    assert settings.scan_excluded_directories == [str(temp), str(windows)]
+    assert settings.scan_directories == old["scan_directories"]
+    assert settings.theme_mode == "dark"
+
+    settings.scan_excluded_directories = []
+    config.save_settings(settings)
+    assert config.get_settings().scan_excluded_directories == []
+
+    monkeypatch.setattr(config.win32api, "GetWindowsDirectory", lambda: windows.anchor)
+    assert config.default_scan_exclusions() == [str(temp)]

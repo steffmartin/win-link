@@ -335,3 +335,53 @@ def test_status_permission_failure_is_inaccessible(tmp_path):
     junction = Junction(source=tmp_path, target=tmp_path, junction_type=JunctionType.JUNCTION)
     with patch.object(Path, "stat", side_effect=PermissionError("denied")):
         assert check_junction_status(junction) == JunctionStatus.INACCESSIBLE
+
+
+def test_excluded_subtree_is_not_opened_even_as_a_second_root(tmp_path, monkeypatch):
+    from winlink.core.operations import create_hard_link
+
+    excluded = tmp_path / "Cache"
+    sibling = tmp_path / "CacheAntigo"
+    hidden = excluded / "nested"
+    hidden.mkdir(parents=True)
+    sibling.mkdir()
+    data = tmp_path / "data"
+    data.write_text("data")
+    assert create_hard_link(data, hidden / "hidden")
+    assert create_hard_link(data, sibling / "visible")
+
+    opened = []
+    iterdir = Path.iterdir
+
+    def record_open(path):
+        opened.append(path)
+        return iterdir(path)
+
+    monkeypatch.setattr(Path, "iterdir", record_open)
+    spelling = Path(str(excluded).swapcase().replace("\\", "/")) / ".." / "CACHE"
+    result = scan_directories([tmp_path, hidden, excluded], excluded_directories=(spelling,))
+    assert sibling in opened
+    assert not any(path.is_relative_to(excluded) for path in opened)
+    assert sibling / "visible" in {link.target for link in result.junctions}
+    assert hidden / "hidden" not in {link.target for link in result.junctions}
+
+    refreshed = scan_directories([tmp_path])
+    assert hidden / "hidden" in {link.target for link in refreshed.junctions}
+
+
+def test_discovery_cache_is_invalidated_when_exclusions_change(tmp_path):
+    from winlink.core.operations import create_hard_link
+
+    excluded = tmp_path / "skip"
+    excluded.mkdir()
+    data = tmp_path / "data"
+    data.write_text("data")
+    link = excluded / "link"
+    assert create_hard_link(data, link)
+
+    first = scan_directories([tmp_path], use_cache=True)
+    assert link in {junction.target for junction in first.junctions}
+    filtered = scan_directories([tmp_path], use_cache=True, excluded_directories=(excluded,))
+    assert link not in {junction.target for junction in filtered.junctions}
+    restored = scan_directories([tmp_path], use_cache=True)
+    assert link in {junction.target for junction in restored.junctions}

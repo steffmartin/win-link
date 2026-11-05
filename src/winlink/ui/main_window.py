@@ -34,6 +34,7 @@ from winlink.core.models import (
     OperationType,
     UndoStrategy,
 )
+from winlink.core.scanner import discovery_path, is_discovery_excluded
 from winlink.ui.dialogs import (
     ProgressDialog,
     PropertiesDialog,
@@ -57,9 +58,12 @@ class ScanWorker(QThread):
         known_junctions: set[Path] | None = None,
         use_cache: bool = False,
         cache_max_age_seconds: float = 3600,
+        *,
+        excluded_directories: tuple[Path, ...] = (),
     ):
         super().__init__()
         self.directories = directories
+        self.excluded_directories = excluded_directories
         self.known_junctions = known_junctions or set()
         self.use_cache = use_cache
         self.cache_max_age_seconds = cache_max_age_seconds
@@ -73,6 +77,7 @@ class ScanWorker(QThread):
                 self.directories,
                 recursive=True,
                 known_junctions=self.known_junctions,
+                excluded_directories=self.excluded_directories,
             )
             self.result_ready.emit(result)
         except Exception as e:
@@ -104,8 +109,19 @@ class MainWindow(QMainWindow):
         from winlink.core.cache import CacheManager
 
         cached = CacheManager().load()
-        if cached and cached.scan_directories == self.settings.scan_directories:
-            self.junction_model.set_junctions(cached.to_junctions())
+        exclusions = self.discovery_exclusions()
+        if (
+            cached
+            and cached.scan_directories == self.settings.scan_directories
+            and cached.excluded_directories == [str(path) for path in exclusions]
+        ):
+            self.junction_model.set_junctions(
+                [
+                    j
+                    for j in cached.to_junctions()
+                    if not is_discovery_excluded(j.target, exclusions)
+                ]
+            )
         self.start_scan()
         self.logger.info("WinLink main window initialized")
 
@@ -419,6 +435,7 @@ class MainWindow(QMainWindow):
         )
 
     def settings_saved(self):
+        self.junction_model.remove_excluded(self.discovery_exclusions())
         self.view_mode.setCurrentIndex(self.view_mode.findData(self.settings.link_view_mode))
         self.apply_theme()
         self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
@@ -534,6 +551,9 @@ class MainWindow(QMainWindow):
         self.theme_manager.apply_theme(self.settings.theme_mode)
         self.refresh_presentation()
 
+    def discovery_exclusions(self) -> tuple[Path, ...]:
+        return tuple(discovery_path(Path(path)) for path in self.settings.scan_excluded_directories)
+
     def start_scan(self):
         """Start scanning for junctions"""
         if self._operation_active is True:
@@ -566,6 +586,7 @@ class MainWindow(QMainWindow):
         self.scan_worker = ScanWorker(
             directories,
             known_junctions,
+            excluded_directories=self.discovery_exclusions(),
             use_cache=False,
             cache_max_age_seconds=3600,  # 1 hour
         )
@@ -582,6 +603,9 @@ class MainWindow(QMainWindow):
     def on_scan_finished(self, result):
         """Handle scan completion"""
         from winlink.core.cache import CacheManager
+
+        if tuple(result.excluded_directories) != self.discovery_exclusions():
+            return
 
         if result.errors:
             self.scan_notice.setText(

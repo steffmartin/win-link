@@ -121,7 +121,9 @@ def test_scan_worker_passes_app_owned_paths(monkeypatch, tmp_path):
     known = {tmp_path / "link"}
     worker = main_window.ScanWorker([tmp_path], known)
     worker.run()
-    scan.assert_called_once_with([tmp_path], recursive=True, known_junctions=known)
+    scan.assert_called_once_with(
+        [tmp_path], recursive=True, known_junctions=known, excluded_directories=()
+    )
 
 
 @pytest.mark.parametrize("keep_source", [True, False])

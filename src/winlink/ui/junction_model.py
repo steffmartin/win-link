@@ -1,5 +1,7 @@
 """Table model for displaying junctions in QTableView"""
 
+from pathlib import Path
+
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt6.QtGui import QColor
 
@@ -173,6 +175,13 @@ class JunctionTableModel(QAbstractTableModel):
         self.beginResetModel()
         self._junctions = junctions
         self.endResetModel()
+
+    def remove_excluded(self, exclusions: tuple[Path, ...]) -> None:
+        from winlink.core.scanner import is_discovery_excluded
+
+        visible = [j for j in self._junctions if not is_discovery_excluded(j.target, exclusions)]
+        if len(visible) != len(self._junctions):
+            self.set_junctions(visible)
 
     def get_junction(self, index: QModelIndex) -> Junction | None:
         """

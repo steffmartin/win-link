@@ -98,6 +98,7 @@ class ScanResult(BaseModel):
 
     junctions: list[Junction] = Field(default_factory=list, description="Found junctions")
     scanned_directories: list[Path] = Field(default_factory=list, description="Directories scanned")
+    excluded_directories: list[Path] = Field(default_factory=list)
     scan_duration_seconds: float = Field(default=0.0, description="Time taken to scan")
     errors: list[str] = Field(default_factory=list, description="Errors encountered during scan")
 

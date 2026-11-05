@@ -256,7 +256,7 @@ def calculate_directory_size(path: Path) -> int:
     return total_size
 
 
-def check_junction_status(junction: Junction) -> JunctionStatus:
+def check_junction_status(junction: Junction, *, probe_directory: bool = True) -> JunctionStatus:
     """
     Check the status of a junction.
 
@@ -278,8 +278,9 @@ def check_junction_status(junction: Junction) -> JunctionStatus:
     try:
         # Try to access the target
         if junction.is_directory:
-            with os.scandir(junction.target) as entries:
-                next(entries, None)
+            if probe_directory:
+                with os.scandir(junction.target) as entries:
+                    next(entries, None)
         else:
             with junction.target.open("rb") as stream:
                 stream.read(1)
@@ -305,10 +306,22 @@ def classify_creator(junction: Junction, known_junctions: set[Path]) -> Creator:
     return Creator.EXISTING
 
 
+def discovery_path(path: Path) -> Path:
+    """Normalize lexically without resolving junctions or symbolic links."""
+    return Path(os.path.normpath(path))
+
+
+def is_discovery_excluded(path: Path, exclusions: tuple[Path, ...]) -> bool:
+    normalized = discovery_path(path)
+    return any(normalized.is_relative_to(directory) for directory in exclusions)
+
+
 def scan_directory(
     path: Path,
     recursive: bool = True,
     known_junctions: set[Path] | None = None,
+    *,
+    excluded_directories: tuple[Path, ...] = (),
 ) -> list[Junction]:
     """
     Scan a directory for junctions, symlinks, and hard links.
@@ -326,6 +339,9 @@ def scan_directory(
 
     junctions: list[Junction] = []
 
+    if is_discovery_excluded(path, excluded_directories):
+        return junctions
+
     if not path.exists() or not path.is_dir():
         logger.warning(f"Path does not exist or is not a directory: {path}")
         return junctions
@@ -333,6 +349,8 @@ def scan_directory(
     try:
         # Walk through directory
         for item in path.iterdir():
+            if is_discovery_excluded(item, excluded_directories):
+                continue
             try:
                 if is_reparse_point(item):
                     # Get junction type
@@ -359,7 +377,10 @@ def scan_directory(
                     )
 
                     # Check status
-                    junction.status = check_junction_status(junction)
+                    junction.status = check_junction_status(
+                        junction,
+                        probe_directory=not is_discovery_excluded(target, excluded_directories),
+                    )
 
                     # Classify creator
                     junction.creator = classify_creator(junction, known_junctions)
@@ -419,7 +440,14 @@ def scan_directory(
                 # Recursively scan subdirectories
                 elif recursive and item.is_dir():
                     try:
-                        junctions.extend(scan_directory(item, recursive, known_junctions))
+                        junctions.extend(
+                            scan_directory(
+                                item,
+                                recursive,
+                                known_junctions,
+                                excluded_directories=excluded_directories,
+                            )
+                        )
                     except Exception as e:
                         logger.warning(f"Error scanning subdirectory {item}: {e}")
                         continue
@@ -440,6 +468,8 @@ def scan_directories(
     known_junctions: set[Path] | None = None,
     use_cache: bool = False,
     cache_max_age_seconds: float = 3600,
+    *,
+    excluded_directories: tuple[Path, ...] = (),
 ) -> ScanResult:
     """
     Scan multiple directories for junctions, symlinks, and hard links.
@@ -454,6 +484,7 @@ def scan_directories(
     Returns:
         ScanResult with found junctions and metadata
     """
+    excluded_directories = tuple(discovery_path(path) for path in excluded_directories)
     start_time = time.time()
     all_junctions: list[Junction] = []
     scanned_dirs = []
@@ -469,14 +500,20 @@ def scan_directories(
             cached
             and recursive
             and cached.scan_directories == [str(d) for d in directories]
+            and cached.excluded_directories == [str(d) for d in excluded_directories]
             and cache_manager.is_cache_valid(cache_max_age_seconds)
         ):
-            junctions = cached.to_junctions()
+            junctions = [
+                j
+                for j in cached.to_junctions()
+                if not is_discovery_excluded(j.target, excluded_directories)
+            ]
             for junction in junctions:
                 junction.creator = classify_creator(junction, known_junctions)
             return ScanResult(
                 junctions=junctions,
                 scanned_directories=directories,
+                excluded_directories=list(excluded_directories),
                 scan_duration_seconds=time.time() - start_time,
             )
 
@@ -484,7 +521,9 @@ def scan_directories(
     for directory in directories:
         logger.info(f"Scanning directory: {directory}")
         try:
-            junctions = scan_directory(directory, recursive, known_junctions)
+            junctions = scan_directory(
+                directory, recursive, known_junctions, excluded_directories=excluded_directories
+            )
             existing = {j.target for j in all_junctions}
             all_junctions.extend(j for j in junctions if j.target not in existing)
             scanned_dirs.append(directory)
@@ -498,6 +537,7 @@ def scan_directories(
     result = ScanResult(
         junctions=all_junctions,
         scanned_directories=scanned_dirs,
+        excluded_directories=list(excluded_directories),
         scan_duration_seconds=duration,
         errors=errors,
     )

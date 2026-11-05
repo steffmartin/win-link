@@ -28,6 +28,7 @@ class JunctionCache(BaseModel):
     scan_directories: list[str] = Field(
         default_factory=list, description="Directories that were scanned"
     )
+    excluded_directories: list[str] = Field(default_factory=list)
     cached_at: datetime = Field(default_factory=datetime.now, description="When cache was created")
     version: str = Field(default="1.0", description="Cache format version")
 
@@ -101,6 +102,7 @@ class CacheManager:
             cache = JunctionCache(
                 entries=entries,
                 scan_directories=[str(d) for d in scan_result.scanned_directories],
+                excluded_directories=[str(d) for d in scan_result.excluded_directories],
                 cached_at=datetime.now(),
             )
 

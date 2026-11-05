@@ -269,10 +269,14 @@ def test_failed_scan_preserves_last_list(window, tmp_path):
         source=tmp_path / "data", target=tmp_path / "link", junction_type=JunctionType.JUNCTION
     )
     window.junction_model.set_junctions([junction])
-    window.on_scan_finished(ScanResult(errors=["Acesso negado"]))
+    window.on_scan_finished(
+        ScanResult(
+            errors=["Acesso negado"], excluded_directories=list(window.discovery_exclusions())
+        )
+    )
     assert window.junction_model.rowCount() == 1
     assert "preservada" in window.scan_notice.text()
-    window.on_scan_finished(ScanResult())
+    window.on_scan_finished(ScanResult(excluded_directories=list(window.discovery_exclusions())))
     assert window.junction_model.rowCount() == 0
     assert window.scan_notice.isHidden()
 
@@ -365,3 +369,27 @@ def test_properties_reversal_request_preserves_selection_until_confirmed(qtbot, 
         dialog.undo_btn.click()
     assert dialog.isVisible()
     assert dialog.junction == junction
+
+
+def test_stale_scan_cannot_restore_newly_excluded_links(window, tmp_path, monkeypatch):
+    from winlink.core.cache import CacheManager
+    from winlink.core.models import ScanResult
+
+    excluded = tmp_path / "excluded"
+    junction = Junction(
+        source=tmp_path / "data",
+        target=excluded / "link",
+        junction_type=JunctionType.JUNCTION,
+    )
+    previous = list(window.discovery_exclusions())
+    window.junction_model.set_junctions([junction])
+    window.settings.scan_excluded_directories = [str(excluded)]
+    window.settings_saved()
+    assert window.junction_model.rowCount() == 0
+
+    def unexpected_save(*args):
+        pytest.fail("stale scan must not replace cache")
+
+    monkeypatch.setattr(CacheManager, "save", unexpected_save)
+    window.on_scan_finished(ScanResult(junctions=[junction], excluded_directories=previous))
+    assert window.junction_model.rowCount() == 0

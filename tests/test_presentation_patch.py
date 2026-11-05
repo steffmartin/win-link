@@ -107,12 +107,19 @@ def test_settings_expand_with_the_available_window(window, qtbot):
     window.navigate(3)
     window.resize(760, 400)
     qtbot.wait(30)
-    small = window.settings_page.scan_list.width()
+    included = window.settings_page.scan_list
+    excluded = window.settings_page.excluded_list
+    assert (
+        included.mapTo(window.settings_page, included.rect().topLeft()).y()
+        < excluded.mapTo(window.settings_page, excluded.rect().topLeft()).y()
+    )
     assert window.pages.currentWidget().horizontalScrollBar().maximum() == 0
     window.resize(1280, 800)
     qtbot.wait(30)
-    assert window.settings_page.scan_list.width() > small + 150
-    assert window.pages.currentWidget().horizontalScrollBar().maximum() == 0
+    left = included.mapTo(window.settings_page, included.rect().topLeft())
+    right = excluded.mapTo(window.settings_page, excluded.rect().topLeft())
+    assert left.y() == right.y()
+    assert left.x() + included.width() < right.x()
 
 
 def test_about_retains_keyboard_accessible_project_link(window):

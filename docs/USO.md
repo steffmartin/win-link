@@ -54,3 +54,9 @@ Diálogos revisados:
 
 ![Prévia](arquivo/v0.1.0/validacao/capturas/previa-dark.png)
 ![Reversão](arquivo/v0.1.0/validacao/capturas/reversao-light.png)
+
+## Pastas incluídas e excluídas da descoberta
+
+Em **Configurações**, adicione as raízes em **Pastas incluídas** e use **Pastas excluídas** para pular diretórios inteiros. Por exemplo, incluir `C:/` e excluir `C:/tmp` percorre as demais subpastas de `C:/`. Uma exclusão prevalece mesmo se a pasta ou uma de suas subpastas também estiver na lista de inclusão. Um link cujo próprio caminho esteja excluído também é omitido.
+
+Configurações antigas sem uma lista de exclusões recebem os padrões, a pasta temporária e a pasta do Windows quando disponíveis. Revise ou remova essas entradas conforme precisar. **Restaurar Padrões** repõe a lista padrão no rascunho, **Descartar alterações** recupera a lista salva e **Salvar Alterações** aplica a seleção à descoberta. Uma lista vazia salva é preservada.

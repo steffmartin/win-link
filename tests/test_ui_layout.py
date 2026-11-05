@@ -205,3 +205,22 @@ def test_compact_paths_share_width_and_can_be_resized(window, qtbot, tmp_path):
     assert after[2:] == before[2:]
     table.horizontalHeader().resizeSection(0, after[0] + 20)
     assert table.columnWidth(0) == after[0] + 20
+
+def test_exclusion_draft_can_be_restored_discarded_and_saved(window):
+    from winlink.core import config
+
+    page = window.settings_page
+    saved = list(window.settings.scan_excluded_directories)
+    page.restore_defaults()
+    assert page.excluded_list.count() >= 1
+    page.discard_changes()
+    assert [page.excluded_list.item(i).text() for i in range(page.excluded_list.count())] == saved
+
+    while page.excluded_list.count():
+        page.excluded_list.setCurrentRow(0)
+        page.remove_excluded_directory()
+    page.save_settings()
+    assert config.get_settings().scan_excluded_directories == []
+    page.restore_defaults()
+    assert page.excluded_list.count() >= 1
+    assert config.get_settings().scan_excluded_directories == []

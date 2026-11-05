@@ -2,10 +2,12 @@
 
 import json
 import os
+import tempfile
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
+import win32api
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +18,26 @@ class ScanDirectory(StrEnum):
     USER_PROFILE = "USER_PROFILE"
     CACHE = "CACHE"
     CUSTOM = "CUSTOM"
+
+
+def default_scan_exclusions() -> list[str]:
+    """Use the process temporary directory and Windows directory when available."""
+    from winlink.utils.logger import get_logger
+
+    directories: list[str] = []
+    for label, locate in (
+        ("temporário", tempfile.gettempdir),
+        ("Windows", win32api.GetWindowsDirectory),
+    ):
+        try:
+            path = Path(locate())
+            if not path.is_absolute() or path == Path(path.anchor) or not path.is_dir():
+                raise ValueError("diretório inválido ou indisponível")
+            if str(path) not in directories:
+                directories.append(str(path))
+        except (OSError, ValueError, win32api.error) as exc:
+            get_logger(__name__).warning("Exclusão padrão indisponível (%s): %s", label, exc)
+    return directories
 
 
 class AppSettings(BaseSettings):
@@ -39,6 +61,8 @@ class AppSettings(BaseSettings):
             str(Path.home()),
         ]
     )
+
+    scan_excluded_directories: list[str] = Field(default_factory=default_scan_exclusions)
 
     # History
     max_history_entries: int = Field(default=1000, ge=1)
