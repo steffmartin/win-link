@@ -87,6 +87,31 @@ def field(layout, text, widget):
     return label
 
 
+def help_row(widget, title, description):
+    from PyQt6.QtWidgets import QToolButton, QToolTip
+
+    row = QWidget()
+    box = QHBoxLayout(row)
+    box.setContentsMargins(0, 0, 0, 0)
+    box.setSpacing(8)
+    box.addWidget(widget)
+    help_button = QToolButton()
+    set_button_icon(help_button, "info")
+    help_button.setAutoRaise(True)
+    help_button.setToolTip(description)
+    help_button.setAccessibleName(f"Ajuda: {title}")
+    help_button.setAccessibleDescription(description)
+    help_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    help_button.clicked.connect(
+        lambda: QToolTip.showText(
+            help_button.mapToGlobal(help_button.rect().bottomLeft()), description, help_button
+        )
+    )
+    box.addWidget(help_button)
+    box.addStretch()
+    return row
+
+
 def button_style(button, icon=None, primary=False, danger=False):
     button.setProperty("primary", primary)
     button.setProperty("danger", danger)

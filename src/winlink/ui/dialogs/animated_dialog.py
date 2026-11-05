@@ -32,7 +32,9 @@ class AnimatedDialog(QDialog):
             self.setMaximumHeight(int(available.height() * 0.9))
             for label in self.findChildren(QWidget):
                 if label.inherits("QLabel"):
-                    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                    label.setTextInteractionFlags(
+                        label.textInteractionFlags() | Qt.TextInteractionFlag.TextSelectableByMouse
+                    )
         super().showEvent(event)
         enabled = ctypes.c_int(0)
         if (

@@ -143,10 +143,11 @@ class MainWindow(QMainWindow):
         brand.setObjectName("brand")
         header.addWidget(brand)
         header.addStretch()
-        about = QPushButton("Sobre")
-        about.clicked.connect(self.show_about)
-        button_style(about)
-        header.addWidget(about)
+        self.about_button = button_style(QPushButton(), "help")
+        self.about_button.setAccessibleName("Sobre WinLink")
+        self.about_button.setToolTip("Sobre WinLink")
+        self.about_button.clicked.connect(self.show_about)
+        header.addWidget(self.about_button)
         self.quick_theme = QComboBox()
         for label, value in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
             self.quick_theme.addItem(label, value)
@@ -157,25 +158,7 @@ class MainWindow(QMainWindow):
         header.addWidget(self.quick_theme)
         self.theme_button = QToolButton()
         self.theme_button.setObjectName("themeButton")
-        self.theme_button.setAccessibleName("Alternar tema")
-        self.theme_button.setToolTip("Alternar tema; use a seta para Seguir sistema")
-        self.theme_button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self.theme_button.clicked.connect(
-            lambda: self.quick_theme.setCurrentIndex(
-                self.quick_theme.findData(
-                    "light" if self.theme_manager.current_theme == "dark" else "dark"
-                )
-            )
-        )
-        theme_menu = QMenu(self.theme_button)
-        for text, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
-            theme_menu.addAction(
-                text,
-                lambda checked=False, value=mode: self.quick_theme.setCurrentIndex(
-                    self.quick_theme.findData(value)
-                ),
-            )
-        self.theme_button.setMenu(theme_menu)
+        self.theme_button.clicked.connect(self.cycle_theme)
         header.addWidget(self.theme_button)
         shell.addWidget(header_frame)
         body = QHBoxLayout()
@@ -221,7 +204,6 @@ class MainWindow(QMainWindow):
         title_row.addWidget(title)
         for label, handler, icon in [
             ("Atualizar  F5", self.start_scan, "refresh"),
-            ("Início", self.on_home, "home"),
         ]:
             button = QPushButton(label)
             button.clicked.connect(handler)
@@ -234,7 +216,10 @@ class MainWindow(QMainWindow):
         # Navigation replaces the former toolbar.
         # Search bar
         right_header = QWidget()
-        search_layout = QHBoxLayout(right_header)
+        right_layout = QVBoxLayout(right_header)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout = QHBoxLayout()
+        right_layout.addLayout(search_layout)
         search_layout.setContentsMargins(0, 0, 0, 0)
         search_layout.setSpacing(8)
         self.search_edit = QLineEdit()
@@ -286,7 +271,16 @@ class MainWindow(QMainWindow):
         filters_button = QPushButton("Filtros")
         filters_button.clicked.connect(self.edit_filters)
         button_style(filters_button, "filter")
-        search_layout.addWidget(filters_button)
+        filter_actions = QHBoxLayout()
+        filter_actions.addWidget(filters_button)
+        self.reset_filters_btn = button_style(QPushButton("Limpar busca e filtros"), "refresh")
+        self.reset_filters_btn.setToolTip(
+            "Limpa a busca e os filtros e atualiza a lista; mantém a ordenação."
+        )
+        self.reset_filters_btn.clicked.connect(self.on_home)
+        filter_actions.addWidget(self.reset_filters_btn)
+        filter_actions.addStretch()
+        right_layout.addLayout(filter_actions)
         # Junction table
         self.table_view = QTableView()
         self.table_view.setModel(self.filter_model)
@@ -343,36 +337,6 @@ class MainWindow(QMainWindow):
         self.link_views.addWidget(empty)
         search_layout.insertWidget(0, view_mode)
         main_layout.insertWidget(0, Columns(left_header, right_header))
-        sort_row = QHBoxLayout()
-
-        sort_column = QComboBox()
-        sort_column.addItems(
-            ["Local dos dados", "Caminho do link", "Criador", "Tipo", "Tamanho", "Status"]
-        )
-        sort_direction = QComboBox()
-        sort_direction.addItems(["Crescente", "Decrescente"])
-
-        def sort_links():
-            self.filter_model.sort(
-                sort_column.currentIndex(),
-                (
-                    Qt.SortOrder.AscendingOrder
-                    if sort_direction.currentIndex() == 0
-                    else Qt.SortOrder.DescendingOrder
-                ),
-            )
-
-        sort_column.currentIndexChanged.connect(sort_links)
-        sort_direction.currentIndexChanged.connect(sort_links)
-        from winlink.ui.components import field
-
-        for text, control in [("Ordenar por", sort_column), ("Ordem", sort_direction)]:
-            column = QVBoxLayout()
-            column.setSpacing(6)
-            field(column, text, control)
-            sort_row.addLayout(column)
-        sort_row.addStretch()
-        main_layout.addLayout(sort_row)
         self.scan_notice = QLabel()
         self.scan_notice.setWordWrap(True)
         self.scan_notice.hide()
@@ -383,7 +347,7 @@ class MainWindow(QMainWindow):
         self.filter_model.rowsInserted.connect(self.update_list_summary)
         self.filter_model.rowsRemoved.connect(self.update_list_summary)
         main_layout.addWidget(self.link_views, 1)
-        sort_links()
+        self.filter_model.sort(0, Qt.SortOrder.AscendingOrder)
         self.table_view.doubleClicked.connect(self.open_selected_properties)
         self.table_view.verticalHeader().hide()
         self.table_view.verticalHeader().setDefaultSectionSize(36)
@@ -452,6 +416,15 @@ class MainWindow(QMainWindow):
         if source and target:
             self.create_link(target, source, self.create_page.get_link_type())
 
+    def reset_creation_form(self):
+        self.create_page.source_edit.clear()
+        self.create_page.target_edit.clear()
+        preference = self.settings.default_link_type
+        self.create_page.select_type(
+            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
+            preference == "symlink_file",
+        )
+
     def settings_saved(self):
         self.apply_theme()
         self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
@@ -474,6 +447,9 @@ class MainWindow(QMainWindow):
         try:
             save_settings(candidate)
         except OSError as exc:
+            self.quick_theme.blockSignals(True)
+            self.quick_theme.setCurrentIndex(self.quick_theme.findData(previous_mode))
+            self.quick_theme.blockSignals(False)
             QMessageBox.warning(self, "Tema não salvo", str(exc))
             return
         self.settings.theme_mode = candidate.theme_mode
@@ -496,9 +472,21 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(self.theme_manager.get_stylesheet())
         refresh_widget_icons(self)
         color = "#d1d5db" if self.theme_manager.current_theme == "dark" else "#4b5563"
+        modes = ("dark", "light", "auto")
+        mode = self.settings.theme_mode
+        names = {"dark": "Escuro", "light": "Claro", "auto": "Seguir sistema"}
+        next_mode = modes[(modes.index(mode) + 1) % len(modes)]
         self.theme_button.setIcon(
-            symbol_icon("sun" if self.theme_manager.current_theme == "dark" else "moon", color)
+            symbol_icon({"dark": "moon", "light": "sun", "auto": "system"}[mode], color)
         )
+        description = f"Tema: {names[mode]}. Alternar para {names[next_mode]}."
+        self.theme_button.setAccessibleName(description)
+        self.theme_button.setToolTip(description)
+
+    def cycle_theme(self):
+        modes = ("dark", "light", "auto")
+        mode = modes[(modes.index(self.settings.theme_mode) + 1) % len(modes)]
+        self.quick_theme.setCurrentIndex(self.quick_theme.findData(mode))
 
     def open_selected_properties(self, index):
         junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
@@ -775,7 +763,8 @@ class MainWindow(QMainWindow):
         finally:
             self._operation_active = False
             progress.set_operation_finished(success, error or "")
-            progress.close()
+            if not success:
+                progress.close()
         if (
             self.history_manager.add_operation(
                 operation_type, source, target, success=success, error_message=error
@@ -789,8 +778,7 @@ class MainWindow(QMainWindow):
             )
         if success:
             self.start_scan()
-            if self.settings.show_notifications is not False:
-                QMessageBox.information(self, "Sucesso", "Link de arquivo criado com sucesso!")
+            self.reset_creation_form()
 
     def create_directory_link(self, target: Path, source: Path, link_type: JunctionType):
         """Create a directory link (junction or symlink)"""
@@ -816,20 +804,22 @@ class MainWindow(QMainWindow):
                 original_signature = None
                 context.check_cancelled()
                 if target.is_junction() or target.is_symlink():
-                    raise OSError("O destino foi substituído por um link. Atualize a lista.")
+                    raise OSError(
+                        "O Ponto de Acesso foi substituído por um link. Atualize a lista."
+                    )
                 if target.exists():
                     original_signature = tree_signature(target)
                     context.report(10, "Copiando arquivos...")
                     if not copy_directory_with_metadata(
                         target, source, check_cancelled=context.check_cancelled
                     ):
-                        raise OSError("Falha na cópia; o destino foi preservado.")
+                        raise OSError("Falha na cópia; a pasta no Ponto de Acesso foi preservada.")
                     context.check_cancelled()
                     if tree_signature(target) != original_signature:
                         raise OSError(
-                            "Os arquivos foram alterados durante a cópia. O destino original foi preservado."
+                            "Os arquivos foram alterados durante a cópia. A pasta original no Ponto de Acesso foi preservada."
                         )
-                    context.report(50, "Preservando destino original...")
+                    context.report(50, "Preservando a pasta no Ponto de Acesso...")
                     backup = target.with_name(f"{target.name}.winlink-backup-{uuid4().hex}")
                     target.rename(backup)
                 try:
@@ -857,7 +847,7 @@ class MainWindow(QMainWindow):
                                 ) from rollback_error
                         else:
                             raise OSError(
-                                f"Falha na criação; destino original preservado em {backup}"
+                                f"Falha na criação; pasta original do Ponto de Acesso preservada em {backup}"
                             ) from None
                     raise
                 if backup is not None:
@@ -902,9 +892,7 @@ class MainWindow(QMainWindow):
                     "Link criado. Não foi possível limpar o backup:\n"
                     + "\n".join(preserved_backups),
                 )
-            if self.settings.show_notifications is not False:
-                link_name = "Symlink" if link_type == JunctionType.SYMLINK else "Junção"
-                QMessageBox.information(self, "Sucesso", f"{link_name} criado com sucesso!")
+            self.reset_creation_form()
         except Exception as e:
             self.logger.error(f"Error creating link: {e}")
             progress.set_operation_finished(False, str(e))
@@ -968,6 +956,22 @@ class MainWindow(QMainWindow):
             field.setCurrentIndex(original.currentIndex())
             layout.addWidget(field)
             copies.append((original, field))
+        layout.addWidget(QLabel("Ordenar por"))
+        sort_column = QComboBox()
+        sort_column.setAccessibleName("Ordenar por")
+        sort_column.addItems(
+            ["Dados Físicos", "Ponto de Acesso", "Criador", "Tipo", "Tamanho", "Status"]
+        )
+        sort_column.setCurrentIndex(max(0, self.filter_model.sortColumn()))
+        layout.addWidget(sort_column)
+        layout.addWidget(QLabel("Ordem"))
+        sort_direction = QComboBox()
+        sort_direction.setAccessibleName("Ordem")
+        sort_direction.addItems(["Crescente", "Decrescente"])
+        sort_direction.setCurrentIndex(
+            0 if self.filter_model.sortOrder() == Qt.SortOrder.AscendingOrder else 1
+        )
+        layout.addWidget(sort_direction)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel
         )
@@ -981,6 +985,14 @@ class MainWindow(QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             for original, field in copies:
                 original.setCurrentIndex(field.currentIndex())
+            self.filter_model.sort(
+                sort_column.currentIndex(),
+                (
+                    Qt.SortOrder.AscendingOrder
+                    if sort_direction.currentIndex() == 0
+                    else Qt.SortOrder.DescendingOrder
+                ),
+            )
 
     def update_list_summary(self):
         count = self.filter_model.rowCount()
@@ -1099,7 +1111,9 @@ class MainWindow(QMainWindow):
                     if junction.source.resolve() == junction.source.resolve().parent:
                         raise OSError("Não é permitido migrar a raiz de um volume.")
                     if not junction.source.is_dir():
-                        raise OSError("A origem não está disponível para restaurar os arquivos.")
+                        raise OSError(
+                            "Os Dados Físicos não estão disponíveis para restaurar os arquivos."
+                        )
                     if junction.target.is_junction() or junction.target.is_symlink():
                         if not junction.source.samefile(junction.target):
                             raise OSError(
@@ -1126,7 +1140,7 @@ class MainWindow(QMainWindow):
                         context.check_cancelled()
                         if tree_signature(junction.source) != source_signature:
                             raise OSError(
-                                "A origem foi alterada durante a cópia. O link e a origem foram preservados."
+                                "Os Dados Físicos foram alterados durante a cópia. O link e os Dados Físicos foram preservados."
                             )
                         if not remove_junction(junction.target):
                             raise OSError("Não foi possível remover a junção.")
@@ -1138,11 +1152,11 @@ class MainWindow(QMainWindow):
                         if strategy == UndoStrategy.MOVE_BACK and not keep_source:
                             if tree_signature(junction.source) != source_signature:
                                 raise OSError(
-                                    "Arquivos restaurados; origem preservada porque houve alterações externas."
+                                    "Arquivos restaurados; Dados Físicos preservados porque houve alterações externas."
                                 )
                             if not delete_directory(junction.source):
                                 raise OSError(
-                                    "Arquivos restaurados; origem preservada porque a limpeza falhou."
+                                    "Arquivos restaurados; Dados Físicos preservados porque a limpeza falhou."
                                 )
                     finally:
                         if staging.exists():
@@ -1185,7 +1199,7 @@ class MainWindow(QMainWindow):
                 elif "Arquivos restaurados" in str(e):
                     QMessageBox.warning(
                         self,
-                        "Restauração realizada; origem preservada",
+                        "Restauração realizada; Dados Físicos preservados",
                         f"{e}\nNão repita a reversão. Confira os caminhos preservados.",
                     )
                     self.start_scan()
@@ -1215,7 +1229,7 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Remover link de arquivo",
-            f"Remover apenas {junction.target}? O arquivo de origem será preservado.",
+            f"Ponto de Acesso: {junction.target}\nDados Físicos: {junction.source}\n\nRemover apenas o Ponto de Acesso? O arquivo de Dados Físicos será preservado.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -1225,7 +1239,7 @@ class MainWindow(QMainWindow):
 
             if junction.source == junction.target or not verify_junction_integrity(junction):
                 raise OSError(
-                    "O link foi alterado ou a origem não está disponível. Atualize a lista."
+                    "O link foi alterado ou os Dados Físicos não estão disponíveis. Atualize a lista."
                 )
             junction.target.unlink()
         except OSError as exc:
@@ -1256,10 +1270,18 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.1\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.2\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)
+        project_link = QLabel(
+            '<a href="https://github.com/steffmartin/win-link">GitHub do projeto WinLink</a>'
+        )
+        project_link.setOpenExternalLinks(True)
+        project_link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        project_link.setAccessibleName("GitHub do projeto WinLink")
+        project_link.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        layout.addWidget(project_link)
         close = button_style(QPushButton("Fechar"), "close")
         close.clicked.connect(dialog.accept)
         layout.addWidget(close, 0, Qt.AlignmentFlag.AlignRight)

@@ -67,7 +67,11 @@ if len(sys.argv) > 1:
         import _winapi
 
         _winapi.CreateJunction(str(payload), str(link))
-    for delete_history in (False, True):
+    languages = ("brazilianportuguese", "english")
+    for language, delete_history in [
+        (language, delete) for language in languages for delete in (False, True)
+    ]:
+        DATA.mkdir(exist_ok=True)
         subprocess.run(
             [
                 str(installer),
@@ -76,6 +80,7 @@ if len(sys.argv) > 1:
                 "/NORESTART",
                 "/NOICONS",
                 f"/DIR={INSTALL}",
+                f"/LANG={language}",
             ],
             check=True,
             timeout=90,
@@ -110,9 +115,8 @@ if len(sys.argv) > 1:
         "uninstall_keep_history": True,
         "uninstall_delete_history": True,
         "junction_preserved": True,
+        "languages": list(languages),
     }
 results["clean_machine"] = "not tested; host has Python installed"
-(WORK / "distribution-report.json").write_text(
-    json.dumps(results, indent=2), encoding="utf-8"
-)
+(WORK / "distribution-report.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 print(json.dumps(results, indent=2))

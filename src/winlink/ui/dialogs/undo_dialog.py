@@ -53,7 +53,7 @@ class UndoDialog(AnimatedDialog):
         info_label = QLabel("Junção selecionada:")
         layout.addWidget(info_label)
 
-        junction_label = QLabel(f"{self.target} -> {self.source}")
+        junction_label = QLabel(f"Ponto de Acesso: {self.target}\nDados Físicos: {self.source}")
         junction_label.setWordWrap(True)
         junction_label.setStyleSheet("font-weight: bold; margin: 5px 0;")
         layout.addWidget(junction_label)
@@ -68,13 +68,13 @@ class UndoDialog(AnimatedDialog):
         # Remove only option
         self.remove_only_radio = QRadioButton("Remover apenas a junção")
         self.remove_only_radio.setToolTip(
-            "A junção será removida, deixando uma pasta vazia no destino. Os arquivos permanecem na origem."
+            "O link será removido, deixando uma pasta vazia no Ponto de Acesso. Os arquivos permanecem nos Dados Físicos."
         )
         self.strategy_group.addButton(self.remove_only_radio, 0)
         layout.addWidget(self.remove_only_radio)
 
         remove_only_desc = QLabel(
-            "A junção será removida, deixando uma pasta vazia no destino. Os arquivos permanecem na origem."
+            "O link será removido, deixando uma pasta vazia no Ponto de Acesso. Os arquivos permanecem nos Dados Físicos."
         )
         remove_only_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         remove_only_desc.setWordWrap(True)
@@ -85,13 +85,13 @@ class UndoDialog(AnimatedDialog):
         self.move_back_radio = QRadioButton("Mover arquivos de volta")
         self.move_back_radio.setChecked(True)
         self.move_back_radio.setToolTip(
-            "Os arquivos serão movidos da origem para o destino, e a junção será removida."
+            "Os arquivos voltarão dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. A opção de backup preserva os Dados Físicos."
         )
         self.strategy_group.addButton(self.move_back_radio, 1)
         layout.addWidget(self.move_back_radio)
 
         move_back_desc = QLabel(
-            "Os arquivos serão movidos da origem para o destino, e a junção será removida."
+            "Os arquivos voltarão dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. A opção de backup preserva os Dados Físicos."
         )
         move_back_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         move_back_desc.setWordWrap(True)
@@ -101,13 +101,13 @@ class UndoDialog(AnimatedDialog):
         # Duplicate option
         self.duplicate_radio = QRadioButton("Duplicar arquivos")
         self.duplicate_radio.setToolTip(
-            "Os arquivos serão copiados da origem para o destino. A junção será removida. A origem permanece com os arquivos."
+            "Os arquivos serão copiados dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. Os Dados Físicos permanecem com os arquivos."
         )
         self.strategy_group.addButton(self.duplicate_radio, 2)
         layout.addWidget(self.duplicate_radio)
 
         duplicate_desc = QLabel(
-            "Os arquivos serão copiados da origem para o destino. A junção será removida. A origem permanece com os arquivos."
+            "Os arquivos serão copiados dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. Os Dados Físicos permanecem com os arquivos."
         )
         duplicate_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         duplicate_desc.setWordWrap(True)
@@ -115,8 +115,8 @@ class UndoDialog(AnimatedDialog):
         layout.addWidget(duplicate_desc)
 
         # Keep source checkbox
-        self.keep_source_checkbox = QCheckBox("Manter origem como backup")
-        self.keep_source_checkbox.setToolTip("Mantém os arquivos na origem como backup.")
+        self.keep_source_checkbox = QCheckBox("Manter Dados Físicos como backup")
+        self.keep_source_checkbox.setToolTip("Mantém os arquivos nos Dados Físicos como backup.")
         layout.addWidget(self.keep_source_checkbox)
 
         layout.addSpacing(12)

@@ -1,4 +1,4 @@
-#define AppVersion "0.1.1"
+﻿#define AppVersion "0.1.2"
 #ifndef InstallerAppId
 #define InstallerAppId "WinLink-D58F7460-EDC0-4563-98B7-2FB51900B813"
 #endif
@@ -6,7 +6,7 @@
 #define UserDataDir "{userappdata}\WinLink"
 #endif
 #ifndef OutputBase
-#define OutputBase "WinLink-Setup-0.1.1"
+#define OutputBase "WinLink-Setup-0.1.2"
 #endif
 [Setup]
 LicenseFile=..\LICENSE
@@ -27,16 +27,24 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\WinLink.exe
 [Languages]
-Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"; LicenseFile: "..\resources\license-pt.txt"
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "..\LICENSE"
+[CustomMessages]
+brazilianportuguese.DesktopShortcut=Criar atalho na área de trabalho
+english.DesktopShortcut=Create a desktop shortcut
+brazilianportuguese.LaunchWinLink=Abrir WinLink
+english.LaunchWinLink=Launch WinLink
+brazilianportuguese.DeleteHistory=Deseja apagar também o histórico de operações? As junções e seus arquivos serão preservados.
+english.DeleteHistory=Also delete the operation history? Links and their files will be preserved.
 [Tasks]
-Name: "desktopicon"; Description: "Criar atalho na área de trabalho"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
 [Files]
 Source: "..\dist\WinLink\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{group}\WinLink"; Filename: "{app}\WinLink.exe"
 Name: "{userdesktop}\WinLink"; Filename: "{app}\WinLink.exe"; Tasks: desktopicon
 [Run]
-Filename: "{app}\WinLink.exe"; Description: "Abrir WinLink"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\WinLink.exe"; Description: "{cm:LaunchWinLink}"; Flags: nowait postinstall skipifsilent
 [Code]
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var DataDir: String; DeleteHistory: Boolean; I: Integer;
@@ -55,7 +63,7 @@ begin
     for I := 1 to ParamCount do
       if CompareText(ParamStr(I), '/DELETEHISTORY') = 0 then DeleteHistory := True;
     if not UninstallSilent then
-      DeleteHistory := MsgBox('Deseja apagar também o histórico de operações? As junções e seus arquivos serão preservados.', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+      DeleteHistory := MsgBox(CustomMessage('DeleteHistory'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
     if DeleteHistory then DeleteFile(DataDir + 'history.json');
     RemoveDir(DataDir);
   end;

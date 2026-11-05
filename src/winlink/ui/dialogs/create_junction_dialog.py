@@ -106,27 +106,27 @@ class CreateJunctionDialog(AnimatedDialog):
         source_row.setSpacing(8)
         self.source_browse_btn = button_style(QPushButton("Procurar"), "folder")
         self.source_browse_btn.clicked.connect(self.browse_source)
-        self.source_label = QLabel("1. Local dos dados (Origem)")
+        self.source_label = QLabel("2. Dados Físicos")
         self.source_label.setObjectName("fieldLabel")
         self.source_label.setBuddy(self.source_edit)
-        form_layout.addWidget(self.source_label)
         source_row.addWidget(self.source_edit, 1)
         source_row.addWidget(self.source_browse_btn)
-        form_layout.addLayout(source_row)
-        form_layout.addSpacing(8)
         self.target_edit = QLineEdit()
         self.target_edit.setObjectName("pathInput")
         target_row = QHBoxLayout()
         target_row.setSpacing(8)
         self.target_browse_btn = button_style(QPushButton("Procurar"), "folder")
         self.target_browse_btn.clicked.connect(self.browse_target)
-        self.target_label = QLabel("2. Caminho do novo link (Destino)")
+        self.target_label = QLabel("1. Ponto de Acesso")
         self.target_label.setObjectName("fieldLabel")
         self.target_label.setBuddy(self.target_edit)
         form_layout.addWidget(self.target_label)
         target_row.addWidget(self.target_edit, 1)
         target_row.addWidget(self.target_browse_btn)
         form_layout.addLayout(target_row)
+        form_layout.addSpacing(8)
+        form_layout.addWidget(self.source_label)
+        form_layout.addLayout(source_row)
         self.info_label = QLabel()
         self.info_label.setObjectName("muted")
         self.info_label.setWordWrap(True)
@@ -160,8 +160,8 @@ class CreateJunctionDialog(AnimatedDialog):
         )
         preview.content.addStretch()
         nodes = QHBoxLayout()
-        self.structure_target = QLabel("[Destino vazio]")
-        self.structure_source = QLabel("[Origem vazia]")
+        self.structure_target = QLabel("[Ponto de Acesso vazio]")
+        self.structure_source = QLabel("[Dados Físicos vazios]")
         for label, title, icon in [
             (self.structure_target, "PONTO DE ACESSO", "link"),
             (self.structure_source, "DADOS FÍSICOS", "folder"),
@@ -197,11 +197,11 @@ class CreateJunctionDialog(AnimatedDialog):
         self.source_edit.textChanged.connect(self.validate_inputs)
         self.target_edit.textChanged.connect(self.update_structure)
         self.source_edit.textChanged.connect(self.update_structure)
-        self.source_browse_btn.setAccessibleName("Selecionar local dos dados")
-        self.target_browse_btn.setAccessibleName("Selecionar caminho do novo link")
-        self.setTabOrder(self.source_edit, self.source_browse_btn)
-        self.setTabOrder(self.source_browse_btn, self.target_edit)
+        self.source_browse_btn.setAccessibleName("Selecionar Dados Físicos")
+        self.target_browse_btn.setAccessibleName("Selecionar Ponto de Acesso")
         self.setTabOrder(self.target_edit, self.target_browse_btn)
+        self.setTabOrder(self.target_browse_btn, self.source_edit)
+        self.setTabOrder(self.source_edit, self.source_browse_btn)
         self.on_type_changed(0)
 
     def update_structure(self):
@@ -211,8 +211,8 @@ class CreateJunctionDialog(AnimatedDialog):
         self.structure_source_icon.setPixmap(
             symbol_icon("file" if file else "folder", "#3b82f6").pixmap(32, 32)
         )
-        self.structure_target.setText(self.target_edit.text() or "[Destino vazio]")
-        self.structure_source.setText(self.source_edit.text() or "[Origem vazia]")
+        self.structure_target.setText(self.target_edit.text() or "[Ponto de Acesso vazio]")
+        self.structure_source.setText(self.source_edit.text() or "[Dados Físicos vazios]")
         self.structure_summary.setText(
             "Os dois nomes representarão o mesmo arquivo, no mesmo volume."
             if self._link_type == JunctionType.HARDLINK
@@ -236,22 +236,22 @@ class CreateJunctionDialog(AnimatedDialog):
             link_type == JunctionType.SYMLINK and self.file_symlink.isChecked()
         ):
             # Hard links are for files only
-            self.target_label.setText("2. Caminho do novo link (Destino)")
-            self.source_label.setText("1. Local dos dados (arquivo existente)")
-            self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\document.txt")
-            self.source_edit.setPlaceholderText("Ex: D:\\Cache\\document.txt")
+            self.target_label.setText("1. Ponto de Acesso")
+            self.source_label.setText("2. Dados Físicos (arquivo existente)")
+            self.target_edit.setPlaceholderText("Ex: C:\\Links\\documento.txt")
+            self.source_edit.setPlaceholderText("Ex: D:\\Dados\\documento.txt")
             self.info_label.setText(
-                "Escolha um arquivo de origem existente e um novo caminho para o link. "
+                "Escolha um arquivo existente para os Dados Físicos e um novo caminho para o link. "
                 "Hard links exigem o mesmo volume; symlinks podem exigir Modo de Desenvolvedor ou administrador."
             )
         else:
             # Junctions and symlinks are for directories
-            self.target_label.setText("2. Caminho do novo link (Destino)")
-            self.source_label.setText("1. Local dos dados (Origem)")
-            self.target_edit.setPlaceholderText("Ex: C:\\Users\\steff\\.vscode")
-            self.source_edit.setPlaceholderText("Ex: D:\\Cache\\.vscode")
+            self.target_label.setText("1. Ponto de Acesso")
+            self.source_label.setText("2. Dados Físicos")
+            self.target_edit.setPlaceholderText("Ex: C:\\Links\\Projetos")
+            self.source_edit.setPlaceholderText("Ex: D:\\Dados\\Projetos")
             self.info_label.setText(
-                "Se o destino já existir, os arquivos serão copiados para a origem antes de criar o link."
+                "Se o Ponto de Acesso contiver uma pasta normal, seus arquivos serão preservados nos Dados Físicos antes da criação do link."
             )
 
         for card_index, card in enumerate(self.type_cards):
@@ -281,14 +281,14 @@ class CreateJunctionDialog(AnimatedDialog):
         if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
             # Browse for file
             file_path, _ = QFileDialog.getSaveFileName(
-                self, "Novo caminho do link", self.browse_start(self.target_edit.text(), file=True)
+                self, "Novo Ponto de Acesso", self.browse_start(self.target_edit.text(), file=True)
             )
             if file_path:
                 self.target_edit.setText(file_path)
         else:
             # Browse for directory
             directory = QFileDialog.getExistingDirectory(
-                self, "Selecionar Destino", self.browse_start(self.target_edit.text())
+                self, "Selecionar Ponto de Acesso", self.browse_start(self.target_edit.text())
             )
             if directory:
                 self.target_edit.setText(directory)
@@ -298,14 +298,16 @@ class CreateJunctionDialog(AnimatedDialog):
         if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
             # Browse for file
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "Selecionar Origem", self.browse_start(self.source_edit.text(), file=True)
+                self,
+                "Selecionar Dados Físicos",
+                self.browse_start(self.source_edit.text(), file=True),
             )
             if file_path:
                 self.source_edit.setText(file_path)
         else:
             # Browse for directory
             directory = QFileDialog.getExistingDirectory(
-                self, "Selecionar Origem", self.browse_start(self.source_edit.text())
+                self, "Selecionar Dados Físicos", self.browse_start(self.source_edit.text())
             )
             if directory:
                 self.source_edit.setText(directory)
@@ -364,21 +366,23 @@ class CreateJunctionDialog(AnimatedDialog):
         source = self.get_source_path()
 
         if not target or not source:
-            QMessageBox.warning(self, "Aviso", "Preencha ambos os campos (origem e destino).")
+            QMessageBox.warning(self, "Aviso", "Preencha Ponto de Acesso e Dados Físicos.")
             return
 
         # Validate paths are different
         if target == source:
-            QMessageBox.warning(self, "Aviso", "Origem e destino não podem ser iguais.")
+            QMessageBox.warning(
+                self, "Aviso", "Ponto de Acesso e Dados Físicos não podem ser iguais."
+            )
             return
 
         # Validate paths are absolute
         if not target.is_absolute():
-            QMessageBox.warning(self, "Aviso", "O destino deve ser um caminho absoluto.")
+            QMessageBox.warning(self, "Aviso", "O Ponto de Acesso deve ser um caminho absoluto.")
             return
 
         if not source.is_absolute():
-            QMessageBox.warning(self, "Aviso", "A origem deve ser um caminho absoluto.")
+            QMessageBox.warning(self, "Aviso", "Os Dados Físicos devem ter um caminho absoluto.")
             return
 
         self.logger.info(f"Creating junction: {target} -> {source}")

@@ -25,7 +25,7 @@ Domínio e acesso ao disco permanecem em `core/operations.py`, `file_ops.py`, `v
 - Fonte do sistema, preferindo Segoe UI no Windows. Referência visual: corpo 14–16 px, títulos 20–24 px em negrito e caminhos em monospace. Respeitar métricas e escala do Qt; não fixar alturas que cortem texto.
 - Espaçamentos de referência: 4, 8, 12, 16, 24 e 32 px; margens centrais de 24 px; bordas finas e cantos de 6–12 px. Usar layouts flexíveis e componentes compartilhados.
 - Sidebar atual: 256 px em desktop e 192 px abaixo de 1100 px de largura. Reutilizar o comportamento responsivo implementado; não impor largura mínima que force a janela a exceder a tela.
-- Criação usa quatro cartões em grade 2×2 na largura adequada; adaptar colunas e ações ao espaço disponível. Configurações têm largura de leitura limitada. Histórico pode rolar sua tabela horizontalmente quando necessário.
+- Criação usa quatro cartões em grade 2×2 na largura adequada; adaptar colunas e ações ao espaço disponível. Configurações acompanham a largura disponível, com textos explicativos curtos e controles alinhados. Histórico pode rolar sua tabela horizontalmente quando necessário.
 - Ícones vetoriais consistentes com `ui/icons.py`, acompanhados de rótulo ou descrição acessível. Não substituir por emojis nem criar outro sistema visual.
 
 Usar `ThemeColors`, `ThemeManager` e os estilos existentes como fonte de cores, sem espalhar novas cores fixas nos widgets:
@@ -48,8 +48,8 @@ Estados normal, hover, foco, seleção e desabilitado precisam continuar legíve
 | Área | Contrato de interação |
 |---|---|
 | Lista | Cartões e visão compacta; busca nos dois caminhos; filtros combinados de criador, status e tipo; ordenação crescente/decrescente; distinguir lista vazia de ausência de resultados. |
-| Descoberta | Atualizar/F5 repete scan; Início limpa busca/filtros e atualiza na versão inicial. Cache pode ser mostrado durante atualização; falha parcial não apaga dados válidos. Indicar quando a lista pode estar desatualizada. |
-| Filtros | Editar rascunho; Aplicar confirma; Cancelar/X/Escape/clique fora descartam. Preferência de filtro inicial é proposta em Issue, ainda não um contrato implementado. |
+| Descoberta | Atualizar/F5 repete scan; Limpar busca e filtros fica ao lado de Filtros, limpa busca/filtros e atualiza; mantém a ordenação. Cache pode ser mostrado durante atualização; falha parcial não apaga dados válidos. Indicar quando a lista pode estar desatualizada. |
+| Filtros | Filtros e ordenação editam rascunho; Aplicar confirma; Cancelar/X/Escape/clique fora descartam. Preferência de filtro inicial é proposta em Issue, ainda não um contrato implementado. |
 | Criação | Labels explícitos, seleção adequada de arquivos/pastas, validações reais e tipo padrão persistente. Prévia mostra os caminhos completos e o efeito de migração antes de confirmar. |
 | Prévia | Informar espaço necessário/disponível, conflitos, aninhamento e processos bloqueadores. Não confirmar enquanto cálculo obrigatório estiver pendente, houver espaço insuficiente ou bloqueios impeditivos. |
 | Progresso | Executar em worker; distinguir executando, cancelando/preservando, cancelado, falha, sucesso e sucesso com aviso. Cancelamento é cooperativo: aguardar a preservação antes de liberar nova operação. |
@@ -62,7 +62,7 @@ Durante operações, preservar os bloqueios existentes contra ações conflitant
 
 ## Linguagem e acessibilidade
 
-Usar português claro e ações com verbos. Preferir **Local dos dados** e **Caminho do novo link** a origem/destino isolados. Exemplo: dados em `D:\Projetos`, ligação em `C:\Projetos`. Na migração, explicar separadamente onde os dados estão antes e onde ficarão depois. Hard links são nomes equivalentes dos mesmos dados, não uma cópia nem um atalho comum.
+Usar português claro e ações com verbos. Usar **Ponto de Acesso** para o caminho do link e **Dados Físicos** para o local dos dados. A criação apresenta Ponto de Acesso primeiro e Dados Físicos depois, sem alterar os parâmetros dos serviços. Exemplo: Dados Físicos em `D:\Dados\Projetos`, Ponto de Acesso em `C:\Links\Projetos`. Na migração, explicar separadamente onde os dados estão antes e onde ficarão depois. Hard links são nomes equivalentes dos mesmos dados, não uma cópia nem um atalho comum.
 
 Mostrar ambos os caminhos completos nas propriedades, prévia e confirmação. Truncar apenas na lista, mantendo acesso ao valor completo. Mostrar caminhos de backup e recuperação; explicar necessidade de permissões sem prometer elevação automática.
 

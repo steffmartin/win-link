@@ -12,8 +12,8 @@ class JunctionTableModel(QAbstractTableModel):
     _junctions: list[Junction]
 
     COLUMNS = [
-        "Origem",
-        "Destino",
+        "Dados Físicos",
+        "Ponto de Acesso",
         "Criador",
         "Tipo",
         "Tamanho",

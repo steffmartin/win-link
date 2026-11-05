@@ -80,8 +80,8 @@ class PropertiesDialog(AnimatedDialog):
         self.target_label = QPlainTextEdit()
         self.source_label = QPlainTextEdit()
         for title, label in [
-            ("Ponto de Acesso (Destino)", self.target_label),
-            ("Alvo / Local dos dados (Origem)", self.source_label),
+            ("Ponto de Acesso", self.target_label),
+            ("Dados Físicos", self.source_label),
         ]:
             from PyQt6.QtGui import QTextOption
 
@@ -101,9 +101,9 @@ class PropertiesDialog(AnimatedDialog):
         statistics.addRow("Arquivos:", self.file_count_label)
         statistics.addRow("Pastas:", self.folder_count_label)
         panel.content.addLayout(statistics)
-        self.source_button = button_style(QPushButton("Abrir origem"), "folder")
+        self.source_button = button_style(QPushButton("Abrir dados"), "folder")
         self.source_button.clicked.connect(self.open_source)
-        self.target_button = button_style(QPushButton("Abrir destino"), "external")
+        self.target_button = button_style(QPushButton("Abrir acesso"), "external")
         self.target_button.clicked.connect(self.open_target)
         self.recalculate_btn = button_style(QPushButton("Recalcular"), "refresh")
         self.recalculate_btn.clicked.connect(self.recalculate)
@@ -312,7 +312,7 @@ def count_entries(source: Path) -> tuple[int, int]:
     if source.is_file():
         return 1, 0
     if not source.is_dir():
-        raise OSError("Origem indisponível")
+        raise OSError("Dados Físicos indisponíveis")
     files = folders = 0
     for root, directories, filenames in os.walk(source):
         folders += len(directories)

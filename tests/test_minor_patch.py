@@ -76,8 +76,8 @@ def test_preview_describes_both_paths_once(monkeypatch, tmp_path, source_exists,
     text, valid = build_preview(target, source)
     assert valid
     assert text.count("Criar junção:") == 1
-    assert (f"Local dos dados já existente: {source}" in text) == source_exists
-    assert (f"Criar local dos dados: {source}" in text) == (not source_exists)
+    assert (f"Dados Físicos já existentes: {source}" in text) == source_exists
+    assert (f"Criar pasta de Dados Físicos: {source}" in text) == (not source_exists)
     assert ("Copiar arquivos de" in text) == target_exists
     if target_exists:
         assert f"Copiar arquivos de {target}" in text
@@ -116,6 +116,9 @@ def test_double_click_opens_properties_once_and_enter_still_works(
     index = window.filter_model.index(0, 0)
     view.scrollTo(index)
     point = view.visualRect(index).topLeft() + QPoint(100, 30)
+    from PyQt6.QtGui import QCursor
+
+    QCursor.setPos(view.viewport().mapToGlobal(point))
     qtbot.mouseClick(view.viewport(), Qt.MouseButton.LeftButton, pos=point)
     qtbot.mouseDClick(view.viewport(), Qt.MouseButton.LeftButton, pos=point)
     assert callback.call_count == 1

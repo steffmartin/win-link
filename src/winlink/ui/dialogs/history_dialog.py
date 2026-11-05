@@ -31,7 +31,7 @@ class HistoryTableModel(QAbstractTableModel):
     COLUMNS = [
         "Data / Hora",
         "Ação Realizada",
-        "Caminho Afetado (Destino)",
+        "Ponto de Acesso",
         "Status",
         "Recuperação",
     ]
@@ -103,9 +103,9 @@ class HistoryTableModel(QAbstractTableModel):
         tooltip = f"Tipo: {operation.operation_type.value}\n"
         tooltip += f"Data: {operation.timestamp.isoformat()}\n"
         if operation.source:
-            tooltip += f"Origem: {operation.source}\n"
+            tooltip += f"Dados Físicos: {operation.source}\n"
         if operation.target:
-            tooltip += f"Destino: {operation.target}\n"
+            tooltip += f"Ponto de Acesso: {operation.target}\n"
         if operation.error_message:
             tooltip += f"Erro: {operation.error_message}"
         return tooltip

@@ -36,7 +36,7 @@ class SettingsDialog(AnimatedDialog):
     def init_ui(self):
         from PyQt6.QtWidgets import QWidget
 
-        from winlink.ui.components import ActionRow, Panel, button_style, field, heading
+        from winlink.ui.components import ActionRow, Panel, button_style, field, heading, help_row
 
         self.setWindowTitle("Configurações do WinLink")
         self.setModal(True)
@@ -49,7 +49,7 @@ class SettingsDialog(AnimatedDialog):
             "Salve para aplicar. Restaurar padrões prepara os campos e também exige salvar.",
         )
         content = QWidget()
-        content.setMaximumWidth(672)
+        content.setObjectName("settingsContent")
         fields = QVBoxLayout(content)
         fields.setContentsMargins(0, 0, 0, 0)
         fields.setSpacing(12)
@@ -65,7 +65,14 @@ class SettingsDialog(AnimatedDialog):
             ("Hardlink", "hardlink"),
         ]:
             self.default_type_combo.addItem(label, value)
-        field(fields, "Tipo de link padrão", self.default_type_combo)
+        fields.addWidget(
+            help_row(
+                QLabel("Tipo de link padrão"),
+                "Tipo de link padrão",
+                "Escolhe o tipo pré-selecionado ao iniciar uma criação com formulário vazio. Não altera links existentes.",
+            )
+        )
+        fields.addWidget(self.default_type_combo)
         fields.addSpacing(8)
         directories = Panel()
         directories.content.setContentsMargins(16, 16, 16, 16)
@@ -86,7 +93,13 @@ class SettingsDialog(AnimatedDialog):
         fields.addSpacing(8)
         self.confirm_checkbox = QCheckBox("Confirmar operações destrutivas (obrigatório)")
         self.confirm_checkbox.setEnabled(False)
-        fields.addWidget(self.confirm_checkbox)
+        fields.addWidget(
+            help_row(
+                self.confirm_checkbox,
+                "Confirmação obrigatória",
+                "A prévia e a confirmação de operações destrutivas são sempre obrigatórias e não podem ser desativadas.",
+            )
+        )
         note = QLabel("A prévia e a confirmação permanecem obrigatórias para proteger os dados.")
         note.setWordWrap(True)
         note.setObjectName("muted")
@@ -95,7 +108,12 @@ class SettingsDialog(AnimatedDialog):
         self.notify_checkbox = QCheckBox("Exibir notificações")
         self.warn_nested_checkbox = QCheckBox("Avisar sobre links aninhados")
         for checkbox in [self.backup_checkbox, self.notify_checkbox, self.warn_nested_checkbox]:
-            fields.addWidget(checkbox)
+            descriptions = {
+                self.backup_checkbox: "Pré-seleciona a preservação dos Dados Físicos como backup ao desfazer um link de diretório. Confira a estratégia na confirmação.",
+                self.notify_checkbox: "Controla avisos adicionais de sucesso quando disponíveis. Progresso, erros, confirmação e avisos de recuperação continuam visíveis.",
+                self.warn_nested_checkbox: "Na prévia, avisa se os Dados Físicos contêm outros links. Não altera esses links.",
+            }
+            fields.addWidget(help_row(checkbox, checkbox.text(), descriptions[checkbox]))
         fields.addSpacing(8)
         self.log_level_combo = QComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])

@@ -161,6 +161,7 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
         return "\n".join(validation.errors), False
     valid = True
     preview_lines = []
+    preview_lines.append(f"Ponto de Acesso: {target}\nDados Físicos: {source}\n")
     preview_lines.append("O que será feito:")
     preview_lines.append("")
 
@@ -170,18 +171,18 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
 
     if link_type == JunctionType.SYMLINK and source.is_file():
         return (
-            f"Criar link simbólico de arquivo: {target} -> {source}\nO arquivo original será preservado.",
+            f"Ponto de Acesso: {target}\nDados Físicos: {source}\nCriar link simbólico de arquivo: {target} -> {source}\nO arquivo original será preservado.",
             True,
         )
 
     # Handle hard links differently
     if link_type == JunctionType.HARDLINK:
         if not source_exists:
-            return "⚠️ O arquivo de origem deve existir para criar hard links.", False
+            return "⚠️ O arquivo de Dados Físicos deve existir para criar hard links.", False
 
         if target_exists:
             return (
-                "⚠️ O destino já existe. Hard links não podem substituir arquivos existentes.",
+                "⚠️ O Ponto de Acesso já existe. Hard links não podem substituir arquivos existentes.",
                 False,
             )
 
@@ -195,12 +196,12 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
 
     # Junctions and symlinks (directories)
     if source_exists:
-        preview_lines.append(f"Local dos dados já existente: {source}")
+        preview_lines.append(f"Dados Físicos já existentes: {source}")
     else:
-        preview_lines.append(f"Criar local dos dados: {source}")
+        preview_lines.append(f"Criar pasta de Dados Físicos: {source}")
 
     if target_exists:
-        preview_lines.append(f"Caminho do link contém a pasta a migrar: {target}")
+        preview_lines.append(f"Ponto de Acesso contém a pasta a migrar: {target}")
         # Target exists, need to copy files
         from winlink.core.file_ops import (
             calculate_directory_size_recursive,
@@ -237,7 +238,7 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
             preview_lines.append(f"⚠️ Erro ao calcular tamanho: {e}")
             valid = False
     else:
-        preview_lines.append(f"Caminho do novo link ainda não existe: {target}")
+        preview_lines.append(f"Ponto de Acesso ainda não existe: {target}")
 
     preview_lines.append("")
     preview_lines.append(
@@ -255,7 +256,7 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
             # scan_directory returns a list of Junction objects
             if isinstance(scan_result, list) and scan_result:
                 preview_lines.append("")
-                preview_lines.append("⚠️ Aviso: A pasta de origem contém junções:")
+                preview_lines.append("⚠️ Aviso: A pasta de Dados Físicos contém junções:")
 
                 for junction in scan_result:
                     preview_lines.append(f"   • {junction.target.name} -> {junction.source}")

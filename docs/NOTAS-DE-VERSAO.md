@@ -1,3 +1,34 @@
+# WinLink 0.1.2 — 05/11/2026
+
+Patch de melhorias na apresentação dos fluxos existentes.
+
+## Melhorias
+
+- Nomenclatura Ponto de Acesso / Dados Físicos em criação, prévia, propriedades, histórico, reversão e manual. O Ponto de Acesso aparece primeiro no formulário, mantendo os parâmetros e a semântica dos serviços ([#13](https://github.com/steffmartin/win-link/issues/13)).
+- Configurações acompanha a largura da janela, com rolagem em janela reduzida ([#24](https://github.com/steffmartin/win-link/issues/24)).
+- Tipo padrão e quatro opções de Configurações têm explicações por ícones de informação, acessíveis por clique e teclado ([#25](https://github.com/steffmartin/win-link/issues/25)).
+- Sobre usa ícone de interrogação no cabeçalho e inclui link acessível ao GitHub do projeto ([#26](https://github.com/steffmartin/win-link/issues/26)).
+- Botão de tema alterna diretamente Escuro → Claro → Seguir sistema, com ícone do modo atual e indicação do próximo modo ([#27](https://github.com/steffmartin/win-link/issues/27)).
+- Criação concluída mantém o resultado no progresso, sem diálogo de sucesso duplicado; limpa os campos e restaura o tipo padrão. Falhas/cancelamento mantêm o formulário; avisos de histórico e recuperação permanecem ([#28](https://github.com/steffmartin/win-link/issues/28)).
+- Ordenação fica em Filtros e segue Aplicar/Cancelar. Limpar busca e filtros fica ao lado, preserva a ordenação e atualiza a descoberta ([#30](https://github.com/steffmartin/win-link/issues/30)).
+- Instalador oferece português e inglês, selecionando licença traduzida ou original conforme idioma. Tradução portuguesa identificada e acompanhada do original, com copyright preservado ([#32](https://github.com/steffmartin/win-link/issues/32)).
+
+Captura principal do README atualizada a partir do aplicativo real, usando apenas links e dados temporários isolados.
+
+## Validação e limites
+
+332 testes Python passaram; Ruff, Black e mypy aprovados. Os 19 testes de layout/interação afetados também passaram com QT_SCALE_FACTOR=2. Capturas reais em temas claro/escuro, janela 1280×800 e reduzida 760×400, também em alta escala; alternância e persistência do modo sistema verificadas.
+
+Build por PyInstaller e instalador offline Inno Setup. Validação local do portátil e da instalação/desinstalação isolada em português e inglês, com e sem histórico, preservando junction e dados descartáveis. Portátil completo, instalador e SHA256SUMS.txt nos assets da release.
+
+Configurações e histórico existentes são preservados; nenhuma nova operação de arquivos, sincronização, monitoramento ou elevação automática foi adicionada. Os seis bugs reservados para investigação continuam abertos na [#36](https://github.com/steffmartin/win-link/issues/36). A sugestão de adicionar pastas não escaneadas foi apenas registrada na [#38](https://github.com/steffmartin/win-link/issues/38).
+
+A inspeção manual da página de licença no assistente não foi concluída; a verificação dos idiomas cobre os textos, o build e os testes automatizados de instalação/desinstalação.
+
+Pacotes sem assinatura digital. Windows 10, máquina limpa sem Python e sucesso de symlink com privilégios elevados continuam não homologados. Nenhuma tag ou asset de versões anteriores foi alterado.
+
+---
+
 # WinLink 0.1.1 — 04/11/2026
 
 Patch de correções locais identificado nos testes manuais da v0.1.0.

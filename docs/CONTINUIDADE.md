@@ -1,6 +1,6 @@
 # Continuidade do WinLink
 
-Documento ativo de manutenção a partir da versão 0.1.0. O patch atual é a v0.1.1, descrito nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a divisão dos patches ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
+Documento ativo de manutenção a partir da versão 0.1.0. O patch atual é a v0.1.2, descrito nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a divisão dos patches ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
 
 ## Base da entrega inicial
 
