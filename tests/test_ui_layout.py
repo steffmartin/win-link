@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import QLabel, QScrollArea
 
 from winlink.core.config import AppSettings, save_settings
 from winlink.core.models import OperationType
-from winlink.ui.components import Columns
 from winlink.ui.main_window import MainWindow
 
 
@@ -45,8 +44,9 @@ def test_creation_cards_have_readable_children_and_two_columns(window, qtbot):
     window.navigate(1)
     qtbot.wait(30)
     cards = window.create_page.type_cards
-    assert cards[0].y() == cards[1].y()
-    assert cards[2].y() > cards[0].y()
+    positions = [card.mapTo(window.create_page, QPoint()) for card in cards]
+    assert positions[0].y() == positions[1].y()
+    assert positions[2].y() > positions[0].y()
     for card in cards:
         assert card.height() >= 100
         for label in card.findChildren(QLabel):
@@ -78,16 +78,18 @@ def test_icons_present_on_navigation_and_primary_actions(window):
         assert not button.icon().isNull()
 
 
-def test_list_header_reflows_without_overlapping_controls(window, qtbot):
-    window.resize(760, 400)
+def test_list_search_controls_fit_both_window_sizes(window, qtbot):
     window.navigate(0)
-    qtbot.wait(30)
-    area = window.pages.currentWidget()
-    area.verticalScrollBar().setValue(0)
-    header = area.widget().findChild(Columns)
-    assert header.height() >= 110
-    assert window.search_edit.height() >= 36
-    assert window.search_edit.mapTo(area.widget(), QPoint(0, 0)).y() >= header.y()
+    row = window.search_controls
+    for width, height in [(1280, 800), (760, 400)]:
+        window.resize(width, height)
+        qtbot.wait(30)
+        for control in row.buttons:
+            assert row.rect().contains(control.geometry())
+        for left, right in zip(row.buttons, row.buttons[1:]):
+            assert not left.geometry().intersects(right.geometry())
+        if row.width() >= sum(control.sizeHint().width() for control in row.buttons) + 36:
+            assert len({control.geometry().center().y() for control in row.buttons}) <= 2
 
 
 def test_history_row_actions_choose_the_clicked_record(window, qtbot, tmp_path, monkeypatch):
@@ -142,3 +144,41 @@ def test_empty_state_remains_visible_when_switching_view_mode(window):
     window.view_mode.setCurrentIndex(1)
     assert window.link_views.currentIndex() == 2
     assert window.empty_title.text() == "Nenhum link configurado"
+
+
+def test_settings_density_keeps_unsaved_values(window, qtbot):
+    from PyQt6.QtWidgets import QComboBox
+
+    window.navigate(3)
+    page = window.settings_page
+    density = next(combo for combo in page.findChildren(QComboBox) if combo.itemText(0) == "Normal")
+    page.log_level_combo.setCurrentText("DEBUG")
+    normal_height = page.scan_list.minimumHeight()
+    density.setCurrentIndex(1)
+    qtbot.wait(20)
+    assert page.scan_list.minimumHeight() < normal_height
+    assert page.log_level_combo.currentText() == "DEBUG"
+    density.setCurrentIndex(0)
+    assert page.scan_list.minimumHeight() == normal_height
+    assert page.log_level_combo.currentText() == "DEBUG"
+
+
+def test_compact_paths_share_width_and_can_be_resized(window, qtbot, tmp_path):
+    from winlink.core.models import Junction, JunctionType
+
+    window.junction_model.set_junctions(
+        [Junction(source=tmp_path, target=tmp_path / "link", junction_type=JunctionType.JUNCTION)]
+    )
+    window.view_mode.setCurrentIndex(1)
+    window.resize(760, 500)
+    qtbot.wait(30)
+    table = window.table_view
+    before = [table.columnWidth(column) for column in range(6)]
+    window.resize(1280, 800)
+    qtbot.wait(30)
+    after = [table.columnWidth(column) for column in range(6)]
+    assert after[0] > before[0]
+    assert abs((after[0] - before[0]) - (after[1] - before[1])) <= 1
+    assert after[2:] == before[2:]
+    table.horizontalHeader().resizeSection(0, after[0] + 20)
+    assert table.columnWidth(0) == after[0] + 20

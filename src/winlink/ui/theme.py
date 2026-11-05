@@ -474,10 +474,11 @@ class ThemeManager(QObject):
         QComboBox {{ padding-right: 28px; }}
         QComboBox::drop-down {{ width: 24px; border: none; }}
         QComboBox::down-arrow {{ image: url("{arrow}"); width: 16px; height: 16px; }}
-        QToolButton#themeButton::menu-button {{ border: none; width: 12px; background: transparent; }}
-        QToolButton#themeButton::menu-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
+        QToolButton#headerIcon::menu-button {{ border: none; width: 12px; background: transparent; }}
+        QToolButton#headerIcon::menu-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
         QComboBox QAbstractItemView {{ padding: 4px; selection-background-color: {primary_container}; }}
-        QToolButton#themeButton {{ min-width: 28px; min-height: 28px; border-radius: 16px; padding: 4px; }}
+        QToolButton#headerIcon {{ min-width: 28px; min-height: 28px; border: 1px solid transparent; border-radius: 16px; padding: 4px; }}
+        QToolButton#headerIcon:focus {{ border-color: #2563eb; }}
         QWidget#fieldContainer {{ background: transparent; }}
         QFrame#panel, QFrame#structurePanel {{ background: {surface}; border: 1px solid {border}; border-radius: 12px; }}
         QFrame#structureNode {{ background: {bg}; border: 1px solid {border}; border-radius: 10px; }}

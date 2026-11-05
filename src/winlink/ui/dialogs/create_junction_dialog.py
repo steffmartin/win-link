@@ -45,7 +45,14 @@ class CreateJunctionDialog(AnimatedDialog):
     def init_ui(self):
         from PyQt6.QtWidgets import QSizePolicy, QWidget
 
-        from winlink.ui.components import Columns, Panel, TypeButton, button_style, heading
+        from winlink.ui.components import (
+            Columns,
+            Panel,
+            TypeButton,
+            button_style,
+            heading,
+            help_row,
+        )
         from winlink.ui.icons import symbol_icon
 
         self.setWindowTitle("Criar Novo Link")
@@ -78,6 +85,12 @@ class CreateJunctionDialog(AnimatedDialog):
         cards = QGridLayout()
         cards.setSpacing(12)
         self.type_cards = []
+        type_help = (
+            "Conceito: redireciona uma pasta para outra. Use para manter o Ponto de Acesso antigo após mover os Dados Físicos. Limite: pastas locais, sem destino de rede.",
+            "Conceito: ligação simbólica para uma pasta. Use para acessar Dados Físicos locais ou de rede por outro caminho. Criar pode exigir Modo de Desenvolvedor ou privilégios e acessar depende das permissões do destino.",
+            "Conceito: ligação simbólica para um arquivo. Use para manter outro Ponto de Acesso para o arquivo. Criar pode exigir Modo de Desenvolvedor ou privilégios e acessar depende das permissões do destino.",
+            "Conceito: nomes equivalentes para os mesmos Dados Físicos. Use para acessar um arquivo por dois nomes. Os nomes precisam estar no mesmo volume e alterações que substituem o arquivo podem separar os nomes.",
+        )
         for n, (title, desc, icon, index, file) in enumerate(
             [
                 ("Junction", "Atalho de pasta local (padrão).", "folder", 0, False),
@@ -94,7 +107,7 @@ class CreateJunctionDialog(AnimatedDialog):
         ):
             button = TypeButton(title, desc, icon)
             button.clicked.connect(lambda checked=False, i=index, f=file: self.select_type(i, f))
-            cards.addWidget(button, n // 2, n % 2)
+            cards.addWidget(help_row(button, title, type_help[n], expand=True), n // 2, n % 2)
             self.type_cards.append(button)
         cards.setColumnStretch(0, 1)
         cards.setColumnStretch(1, 1)

@@ -39,7 +39,7 @@ _SYMBOLS = {
     "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 1v2M12 21v2M1 12h2M21 12h2M4 4l2 2M18 18l2 2M4 20l2-2M18 6l2-2"/>',
     "moon": '<path d="M20 14A9 9 0 0 1 10 3a9 9 0 1 0 10 11z"/>',
     "help": '<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5M12 17h.01"/>',
-    "system": '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M12 4v13"/>',
+    "system": '<circle cx="8" cy="8" r="3"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M4 4l.5.5M12 4l-.5.5M4 12l.5-.5M22 16a6 6 0 0 1-7-7 6.5 6.5 0 1 0 7 7Z"/>',
     "info": '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
     "arrow": '<path d="M4 12h16m-6-6 6 6-6 6"/>',
     "back": '<path d="M20 12H4m6-6-6 6 6 6"/>',

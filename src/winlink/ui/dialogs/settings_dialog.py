@@ -48,6 +48,9 @@ class SettingsDialog(AnimatedDialog):
             "Configurações do WinLink",
             "Salve para aplicar. Restaurar padrões prepara os campos e também exige salvar.",
         )
+        density = QComboBox()
+        density.addItems(["Normal", "Compacta"])
+        field(layout, "Apresentação das configurações", density)
         content = QWidget()
         content.setObjectName("settingsContent")
         fields = QVBoxLayout(content)
@@ -132,6 +135,16 @@ class SettingsDialog(AnimatedDialog):
         self.cancel_btn.hide()
         fields.addWidget(ActionRow([self.defaults_btn, self.discard_btn, self.save_btn]))
         fields.addWidget(self.cancel_btn)
+
+        def update_density(index):
+            compact = index == 1
+            layout.setSpacing(12 if compact else 20)
+            fields.setSpacing(6 if compact else 12)
+            directories.content.setContentsMargins(*(8 if compact else 16,) * 4)
+            self.scan_list.setMinimumHeight(64 if compact else 96)
+            self.scan_list.setMaximumHeight(96 if compact else 160)
+
+        density.currentIndexChanged.connect(update_density)
         layout.addWidget(content)
         layout.addStretch()
 

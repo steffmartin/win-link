@@ -1,3 +1,11 @@
+# WinLink 0.1.4 — 05/11/2026
+
+- Cabeçalho com ícones para Sobre e para o tema do sistema (#40 e #41).
+- Busca com ação Limpar, colunas de caminhos com espaço distribuído e margem ao lado dos cartões (#42, #43 e #51).
+- Ajuda contextual para os quatro tipos de link (#39).
+- Modos normal e compacto em Configurações, com preferência local à página durante a sessão (#50).
+- Arte do instalador baseada na identidade visual do aplicativo (#55).
+
 # WinLink 0.1.3 — 05/11/2026
 
 - Configurações mantém a explicação da confirmação obrigatória na ajuda contextual ([#45](https://github.com/steffmartin/win-link/issues/45)).

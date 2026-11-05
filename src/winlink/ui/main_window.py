@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListView,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -113,7 +112,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize UI components"""
         self.setWindowTitle("WinLink")
-        from winlink.ui.components import Columns, button_style
+        from winlink.ui.components import ActionRow, button_style
         from winlink.ui.icons import application_icon, symbol_icon
 
         self.setWindowIcon(application_icon())
@@ -143,7 +142,9 @@ class MainWindow(QMainWindow):
         brand.setObjectName("brand")
         header.addWidget(brand)
         header.addStretch()
-        self.about_button = button_style(QPushButton(), "help")
+        self.about_button = QToolButton()
+        self.about_button.setObjectName("headerIcon")
+        self.about_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.about_button.setAccessibleName("Sobre WinLink")
         self.about_button.setToolTip("Sobre WinLink")
         self.about_button.clicked.connect(self.show_about)
@@ -157,7 +158,8 @@ class MainWindow(QMainWindow):
         self.quick_theme.hide()
         header.addWidget(self.quick_theme)
         self.theme_button = QToolButton()
-        self.theme_button.setObjectName("themeButton")
+        self.theme_button.setObjectName("headerIcon")
+        self.theme_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.theme_button.clicked.connect(self.cycle_theme)
         header.addWidget(self.theme_button)
         shell.addWidget(header_frame)
@@ -212,23 +214,12 @@ class MainWindow(QMainWindow):
         title_row.addStretch()
         main_layout.setContentsMargins(24, 24, 24, 24)
         main_layout.setSpacing(20)
-        # Create toolbar
-        # Navigation replaces the former toolbar.
-        # Search bar
-        right_header = QWidget()
-        right_layout = QVBoxLayout(right_header)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        search_layout = QHBoxLayout()
-        right_layout.addLayout(search_layout)
-        search_layout.setContentsMargins(0, 0, 0, 0)
-        search_layout.setSpacing(8)
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("Buscar (Ex: hosts)...")
         self.search_edit.setAccessibleName("Buscar links")
         self.search_edit.setMinimumWidth(100)
         self.search_edit.addAction(symbol_icon("search"), QLineEdit.ActionPosition.LeadingPosition)
         self.search_edit.textChanged.connect(self.on_search_changed)
-        search_layout.addWidget(self.search_edit, 1)
         # Header controls are arranged together after all controls exist.
         # Filter bar
         filter_layout = QHBoxLayout()
@@ -271,32 +262,28 @@ class MainWindow(QMainWindow):
         filters_button = QPushButton("Filtros")
         filters_button.clicked.connect(self.edit_filters)
         button_style(filters_button, "filter")
-        filter_actions = QHBoxLayout()
-        filter_actions.addWidget(filters_button)
-        self.reset_filters_btn = button_style(QPushButton("Limpar busca e filtros"), "refresh")
+        self.reset_filters_btn = button_style(QPushButton("Limpar"), "refresh")
+        self.reset_filters_btn.setAccessibleName("Limpar busca e filtros")
         self.reset_filters_btn.setToolTip(
             "Limpa a busca e os filtros e atualiza a lista; mantém a ordenação."
         )
         self.reset_filters_btn.clicked.connect(self.on_home)
-        filter_actions.addWidget(self.reset_filters_btn)
-        filter_actions.addStretch()
-        right_layout.addLayout(filter_actions)
-        # Junction table
+        from winlink.ui.link_cards import LinkCardDelegate, LinkCardView, LinkTableHeader
+
         self.table_view = QTableView()
+        self.table_view.setHorizontalHeader(LinkTableHeader(Qt.Orientation.Horizontal))
         self.table_view.setModel(self.filter_model)
         self.table_view.setSortingEnabled(True)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table_view.customContextMenuRequested.connect(self.show_context_menu)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
-        self.table_view.horizontalHeader().setResizeContentsPrecision(100)
-        self.table_view.resizeColumnsToContents()
-        for column, width in enumerate((300, 300, 110, 120, 100)):
+        header = self.table_view.horizontalHeader()
+        header.setMinimumSectionSize(100)
+        for column, width in enumerate((160, 160, 110, 190, 100, 115)):
             self.table_view.setColumnWidth(column, width)
         self.link_views = QStackedWidget()
-        self.card_view = QListView()
+        self.card_view = LinkCardView()
         self.card_view.setModel(self.filter_model)
-        from winlink.ui.link_cards import LinkCardDelegate
 
         self.card_view.setItemDelegate(LinkCardDelegate(self.card_view))
         self.card_view.setUniformItemSizes(True)
@@ -335,8 +322,12 @@ class MainWindow(QMainWindow):
         empty_box.addWidget(self.empty_title)
         empty_box.addWidget(empty_hint)
         self.link_views.addWidget(empty)
-        search_layout.insertWidget(0, view_mode)
-        main_layout.insertWidget(0, Columns(left_header, right_header))
+        main_layout.insertWidget(0, left_header)
+        self.search_controls = ActionRow(
+            [view_mode, self.search_edit, filters_button, self.reset_filters_btn]
+        )
+        self.search_controls.box.setStretch(1, 1)
+        main_layout.insertWidget(1, self.search_controls)
         self.scan_notice = QLabel()
         self.scan_notice.setWordWrap(True)
         self.scan_notice.hide()
@@ -476,6 +467,7 @@ class MainWindow(QMainWindow):
         mode = self.settings.theme_mode
         names = {"dark": "Escuro", "light": "Claro", "auto": "Seguir sistema"}
         next_mode = modes[(modes.index(mode) + 1) % len(modes)]
+        self.about_button.setIcon(symbol_icon("help", color))
         self.theme_button.setIcon(
             symbol_icon({"dark": "moon", "light": "sun", "auto": "system"}[mode], color)
         )
@@ -1270,7 +1262,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.3\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.4\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

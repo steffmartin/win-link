@@ -1,4 +1,4 @@
-﻿#define AppVersion "0.1.3"
+﻿#define AppVersion "0.1.4"
 #ifndef InstallerAppId
 #define InstallerAppId "WinLink-D58F7460-EDC0-4563-98B7-2FB51900B813"
 #endif
@@ -6,7 +6,7 @@
 #define UserDataDir "{userappdata}\WinLink"
 #endif
 #ifndef OutputBase
-#define OutputBase "WinLink-Setup-0.1.3"
+#define OutputBase "WinLink-Setup-0.1.4"
 #endif
 [Setup]
 LicenseFile=..\LICENSE
@@ -25,6 +25,8 @@ SetupIconFile=..\resources\winlink.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+WizardImageFile=..\resources\wizard-side.bmp
+WizardSmallImageFile=..\resources\wizard-header.bmp
 UninstallDisplayIcon={app}\WinLink.exe
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"; LicenseFile: "..\resources\license-pt.txt"

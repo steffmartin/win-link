@@ -48,7 +48,7 @@ Estados normal, hover, foco, seleção e desabilitado precisam continuar legíve
 | Área | Contrato de interação |
 |---|---|
 | Lista | Cartões e visão compacta; busca nos dois caminhos; filtros combinados de criador, status e tipo; ordenação crescente/decrescente; distinguir lista vazia de ausência de resultados. |
-| Descoberta | Atualizar/F5 repete scan; Limpar busca e filtros fica ao lado de Filtros, limpa busca/filtros e atualiza; mantém a ordenação. Cache pode ser mostrado durante atualização; falha parcial não apaga dados válidos. Indicar quando a lista pode estar desatualizada. |
+| Descoberta | Atualizar/F5 repete scan; **Limpar** fica ao lado de **Filtros**, limpa busca/filtros e atualiza; mantém a ordenação. Cache pode ser mostrado durante atualização; falha parcial não apaga dados válidos. Indicar quando a lista pode estar desatualizada. |
 | Filtros | Filtros e ordenação editam rascunho; Aplicar confirma; Cancelar/X/Escape/clique fora descartam. Preferência de filtro inicial é proposta em Issue, ainda não um contrato implementado. |
 | Criação | Labels explícitos, seleção adequada de arquivos/pastas, validações reais e tipo padrão persistente. Prévia mostra os caminhos completos e o efeito de migração antes de confirmar. |
 | Prévia | Informar espaço necessário/disponível, conflitos, aninhamento e processos bloqueadores. Não confirmar enquanto cálculo obrigatório estiver pendente, houver espaço insuficiente ou bloqueios impeditivos. |
@@ -56,7 +56,7 @@ Estados normal, hover, foco, seleção e desabilitado precisam continuar legíve
 | Propriedades | Caminhos completos, criador, data, estatísticas, indisponível/calculando e recalcular. Abrir pasta usa integração nativa; Reverter usa o mesmo fluxo protegido das demais entradas. |
 | Reversão | Revalidar identidade; diretórios oferecem remover link, mover de volta ou duplicar, com opção de backup. Arquivos removem somente o nome verificado. Não interpretar inacessível como vazio ou tamanho zero. |
 | Histórico | Distinguir operação e tipo de link; combinar resultado e datas inclusivas; marcar criação já desfeita; exportar todos os registros independentemente dos filtros. Limpar exige confirmação e não modifica links. |
-| Configurações | Salvar persiste; Restaurar padrões prepara rascunho; Descartar recarrega o salvo. Manter compatibilidade com preferências antigas e não apagar histórico/log personalizados ao restaurar preferências. |
+| Configurações | Salvar persiste; Restaurar padrões prepara rascunho; Descartar recarrega o salvo. Os modos normal e compacto ajustam a densidade da página durante a sessão e preservam o rascunho. Manter compatibilidade com preferências antigas e não apagar histórico/log personalizados ao restaurar preferências. |
 
 Durante operações, preservar os bloqueios existentes contra ações conflitantes. Distinguir falha principal de falha apenas ao registrar histórico: uma criação bem-sucedida com erro no registro não deve incentivar repetição. Se a restauração já ocorreu e a limpeza falhou, informar os caminhos restaurado e preservado e orientar conferência, sem sugerir repetir a reversão.
 

@@ -2,9 +2,38 @@
 
 from PyQt6.QtCore import QRect, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QPen
-from PyQt6.QtWidgets import QStyle, QStyledItemDelegate
+from PyQt6.QtWidgets import QHeaderView, QListView, QStyle, QStyledItemDelegate
 
 from winlink.ui.icons import symbol_icon
+
+
+class LinkTableHeader(QHeaderView):
+    """Share changes in available width while keeping columns user-resizable."""
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.count() < 2:
+            return
+        minimum = self.minimumSectionSize()
+        fixed = sum(self.sectionSize(column) for column in range(2, self.count()))
+        previous = max(2 * minimum, event.oldSize().width() - fixed)
+        available = max(2 * minimum, event.size().width() - fixed)
+        delta = available - previous
+        if not delta:
+            return
+        current = self.sectionSize(0) + self.sectionSize(1)
+        total = max(2 * minimum, current + delta) if event.oldSize().isValid() else available
+        first = max(
+            minimum, min(total - minimum, (total + self.sectionSize(0) - self.sectionSize(1)) // 2)
+        )
+        self.resizeSection(0, first)
+        self.resizeSection(1, total - first)
+
+
+class LinkCardView(QListView):
+    def __init__(self):
+        super().__init__()
+        self.setViewportMargins(0, 0, 8, 0)
 
 
 class LinkCardDelegate(QStyledItemDelegate):
