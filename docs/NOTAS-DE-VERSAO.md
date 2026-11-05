@@ -1,3 +1,8 @@
+# WinLink 0.1.3 — 05/11/2026
+
+- Configurações mantém a explicação da confirmação obrigatória na ajuda contextual ([#45](https://github.com/steffmartin/win-link/issues/45)).
+- O botão Abrir pasta de logs acompanha o campo Nível de logs na mesma linha quando há espaço e passa para a linha seguinte em larguras menores ([#47](https://github.com/steffmartin/win-link/issues/47)).
+
 # WinLink 0.1.2 — 05/11/2026
 
 Patch de melhorias na apresentação dos fluxos existentes.
