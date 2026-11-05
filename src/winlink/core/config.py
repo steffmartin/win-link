@@ -50,6 +50,7 @@ class AppSettings(BaseSettings):
     log_to_console: bool = True
 
     # UI
+    link_view_mode: Literal["normal", "compact"] = "normal"
     window_width: int = 1200
     window_height: int = 800
     remember_window_size: bool = True

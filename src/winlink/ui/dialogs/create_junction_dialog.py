@@ -51,7 +51,6 @@ class CreateJunctionDialog(AnimatedDialog):
             TypeButton,
             button_style,
             heading,
-            help_row,
         )
         from winlink.ui.icons import symbol_icon
 
@@ -105,9 +104,9 @@ class CreateJunctionDialog(AnimatedDialog):
                 ("Hardlink", "Nomes equivalentes do mesmo arquivo e volume.", "file", 2, False),
             ]
         ):
-            button = TypeButton(title, desc, icon)
+            button = TypeButton(title, desc, icon, type_help[n])
             button.clicked.connect(lambda checked=False, i=index, f=file: self.select_type(i, f))
-            cards.addWidget(help_row(button, title, type_help[n], expand=True), n // 2, n % 2)
+            cards.addWidget(button, n // 2, n % 2)
             self.type_cards.append(button)
         cards.setColumnStretch(0, 1)
         cards.setColumnStretch(1, 1)

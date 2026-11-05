@@ -48,9 +48,6 @@ class SettingsDialog(AnimatedDialog):
             "Configurações do WinLink",
             "Salve para aplicar. Restaurar padrões prepara os campos e também exige salvar.",
         )
-        density = QComboBox()
-        density.addItems(["Normal", "Compacta"])
-        field(layout, "Apresentação das configurações", density)
         content = QWidget()
         content.setObjectName("settingsContent")
         fields = QVBoxLayout(content)
@@ -60,6 +57,10 @@ class SettingsDialog(AnimatedDialog):
         for label, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
             self.theme_combo.addItem(label, mode)
         field(fields, "Tema", self.theme_combo)
+        self.link_view_combo = QComboBox()
+        self.link_view_combo.addItem("Normal", "normal")
+        self.link_view_combo.addItem("Compacta", "compact")
+        field(fields, "Apresentação de Meus Links", self.link_view_combo)
         self.default_type_combo = QComboBox()
         for label, value in [
             ("Junction", "junction"),
@@ -136,15 +137,6 @@ class SettingsDialog(AnimatedDialog):
         fields.addWidget(ActionRow([self.defaults_btn, self.discard_btn, self.save_btn]))
         fields.addWidget(self.cancel_btn)
 
-        def update_density(index):
-            compact = index == 1
-            layout.setSpacing(12 if compact else 20)
-            fields.setSpacing(6 if compact else 12)
-            directories.content.setContentsMargins(*(8 if compact else 16,) * 4)
-            self.scan_list.setMinimumHeight(64 if compact else 96)
-            self.scan_list.setMaximumHeight(96 if compact else 160)
-
-        density.currentIndexChanged.connect(update_density)
         layout.addWidget(content)
         layout.addStretch()
 
@@ -166,6 +158,8 @@ class SettingsDialog(AnimatedDialog):
         theme_index = self.theme_combo.findData(settings.theme_mode)
         if theme_index >= 0:
             self.theme_combo.setCurrentIndex(theme_index)
+
+        self.link_view_combo.setCurrentIndex(self.link_view_combo.findData(settings.link_view_mode))
 
         # Scan directories
         self.scan_list.clear()
@@ -233,6 +227,7 @@ class SettingsDialog(AnimatedDialog):
         # Update settings
         candidate.default_link_type = self.default_type_combo.currentData()
         candidate.theme_mode = self.theme_combo.currentData()
+        candidate.link_view_mode = self.link_view_combo.currentData()
         candidate.scan_directories = self._scan_directories
         candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()
         candidate.auto_backup_before_undo = self.backup_checkbox.isChecked()

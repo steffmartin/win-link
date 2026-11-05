@@ -87,14 +87,9 @@ def field(layout, text, widget):
     return label
 
 
-def help_row(widget, title, description, *, expand=False):
+def contextual_help(title, description):
     from PyQt6.QtWidgets import QToolButton, QToolTip
 
-    row = QWidget()
-    box = QHBoxLayout(row)
-    box.setContentsMargins(0, 0, 0, 0)
-    box.setSpacing(8)
-    box.addWidget(widget, int(expand))
     help_button = QToolButton()
     set_button_icon(help_button, "info")
     help_button.setAutoRaise(True)
@@ -107,9 +102,17 @@ def help_row(widget, title, description, *, expand=False):
             help_button.mapToGlobal(help_button.rect().bottomLeft()), description, help_button
         )
     )
-    box.addWidget(help_button)
-    if not expand:
-        box.addStretch()
+    return help_button
+
+
+def help_row(widget, title, description):
+    row = QWidget()
+    box = QHBoxLayout(row)
+    box.setContentsMargins(0, 0, 0, 0)
+    box.setSpacing(8)
+    box.addWidget(widget)
+    box.addWidget(contextual_help(title, description))
+    box.addStretch()
     return row
 
 
@@ -160,7 +163,7 @@ class Panel(QFrame):
 
 
 class TypeButton(QPushButton):
-    def __init__(self, title, description, icon):
+    def __init__(self, title, description, icon, help_text):
         super().__init__(title)
         from PyQt6.QtWidgets import QStyle, QStyleOptionButton, QStylePainter
 
@@ -180,6 +183,7 @@ class TypeButton(QPushButton):
         name.setObjectName("fieldLabel")
         row.addWidget(name)
         row.addStretch()
+        row.addWidget(contextual_help(title, help_text))
         box.addLayout(row)
         desc = QLabel(description)
         desc.setObjectName("muted")

@@ -146,21 +146,44 @@ def test_empty_state_remains_visible_when_switching_view_mode(window):
     assert window.empty_title.text() == "Nenhum link configurado"
 
 
-def test_settings_density_keeps_unsaved_values(window, qtbot):
-    from PyQt6.QtWidgets import QComboBox
+def test_settings_persist_default_link_view(window):
+    from winlink.core.config import get_settings
 
-    window.navigate(3)
     page = window.settings_page
-    density = next(combo for combo in page.findChildren(QComboBox) if combo.itemText(0) == "Normal")
-    page.log_level_combo.setCurrentText("DEBUG")
-    normal_height = page.scan_list.minimumHeight()
-    density.setCurrentIndex(1)
-    qtbot.wait(20)
-    assert page.scan_list.minimumHeight() < normal_height
-    assert page.log_level_combo.currentText() == "DEBUG"
-    density.setCurrentIndex(0)
-    assert page.scan_list.minimumHeight() == normal_height
-    assert page.log_level_combo.currentText() == "DEBUG"
+    assert window.view_mode.currentData() == "normal"
+    page.link_view_combo.setCurrentIndex(1)
+    assert get_settings().link_view_mode == "normal"
+    page.discard_changes()
+    assert page.link_view_combo.currentData() == "normal"
+
+    page.link_view_combo.setCurrentIndex(1)
+    page.save_settings()
+    assert get_settings().link_view_mode == "compact"
+    assert window.view_mode.currentData() == "compact"
+    assert window.link_views.currentIndex() == 2
+    reopened = MainWindow()
+    try:
+        assert reopened.view_mode.currentData() == "compact"
+    finally:
+        reopened.close()
+
+
+def test_type_help_is_inside_card_and_activates_without_selecting(window, qtbot):
+    from PyQt6.QtWidgets import QToolButton
+
+    window.navigate(1)
+    cards = window.create_page.type_cards
+    selected = [card.isChecked() for card in cards]
+    for card in cards:
+        help_button = card.findChild(QToolButton)
+        assert help_button is not None
+        assert card.rect().contains(help_button.geometry())
+        card.setFocus()
+        qtbot.keyClick(card, Qt.Key.Key_Tab)
+        assert help_button.hasFocus()
+        with qtbot.waitSignal(help_button.clicked):
+            qtbot.keyClick(help_button, Qt.Key.Key_Space)
+        assert [item.isChecked() for item in cards] == selected
 
 
 def test_compact_paths_share_width_and_can_be_resized(window, qtbot, tmp_path):

@@ -297,7 +297,9 @@ class MainWindow(QMainWindow):
         self.link_views.addWidget(self.card_view)
         self.link_views.addWidget(self.table_view)
         view_mode = QComboBox()
-        view_mode.addItems(["Visão normal", "Compacta"])
+        view_mode.addItem("Visão normal", "normal")
+        view_mode.addItem("Compacta", "compact")
+        view_mode.setCurrentIndex(view_mode.findData(self.settings.link_view_mode))
         self.view_mode = view_mode
         view_mode.currentIndexChanged.connect(
             lambda index: self.link_views.setCurrentIndex(
@@ -417,6 +419,7 @@ class MainWindow(QMainWindow):
         )
 
     def settings_saved(self):
+        self.view_mode.setCurrentIndex(self.view_mode.findData(self.settings.link_view_mode))
         self.apply_theme()
         self.quick_theme.setCurrentIndex(self.quick_theme.findData(self.settings.theme_mode))
         from winlink.utils.logger import setup_logger
