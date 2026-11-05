@@ -23,7 +23,7 @@ Build por PyInstaller e instalador offline Inno Setup. Validação local do port
 
 Configurações e histórico existentes são preservados; nenhuma nova operação de arquivos, sincronização, monitoramento ou elevação automática foi adicionada. Os seis bugs reservados para investigação continuam abertos na [#36](https://github.com/steffmartin/win-link/issues/36). A sugestão de adicionar pastas não escaneadas foi apenas registrada na [#38](https://github.com/steffmartin/win-link/issues/38).
 
-A inspeção manual da página de licença no assistente não foi concluída; a verificação dos idiomas cobre os textos, o build e os testes automatizados de instalação/desinstalação.
+Em 05/11/2026, o mantenedor confirmou manualmente que, após selecionar inglês ou português, a licença aparece no idioma correto. Essa confirmação complementa a conferência dos textos, o build e os testes automatizados de instalação/desinstalação.
 
 Pacotes sem assinatura digital. Windows 10, máquina limpa sem Python e sucesso de symlink com privilégios elevados continuam não homologados. Nenhuma tag ou asset de versões anteriores foi alterado.
 
