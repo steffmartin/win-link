@@ -82,6 +82,11 @@ class AppSettings(BaseSettings):
     list_filter_status: int = 0
     list_filter_creator: int = 0
     list_filter_type: int = 0
+    list_filter_status_values: list[str] | None = None
+    list_filter_creator_values: list[str] | None = None
+    list_filter_type_values: list[str] | None = None
+    list_filter_tags: list[str] | None = None
+    list_filter_include_empty_tag: bool = False
     list_sort_column: int = 0
     list_sort_ascending: bool = True
 

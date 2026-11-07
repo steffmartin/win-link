@@ -13,13 +13,14 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._filter_status: JunctionStatus | None = None
-        self._filter_creator: Creator | None = None
-        self._filter_type: JunctionType | None = None
+        self._filter_statuses: set[JunctionStatus] | None = None
+        self._filter_creators: set[Creator] | None = None
+        self._filter_types: set[tuple[JunctionType, bool]] | None = None
+        self._legacy_filter_type: JunctionType | None = None
+        self._legacy_filter_directory: bool | None = None
         self._search_text: str = ""
-        self._filter_directory: bool | None = None
-        self._filter_tag: str | None = None
-        self._exclude_tag = False
+        self._filter_tags: set[str] | None = None
+        self._filter_empty_tag = False
 
     def set_filter_status(self, status: JunctionStatus | None) -> None:
         """
@@ -28,7 +29,10 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         Args:
             status: JunctionStatus to filter by, or None for no filter
         """
-        self._filter_status = status
+        self.set_filter_statuses(None if status is None else {status})
+
+    def set_filter_statuses(self, statuses: set[JunctionStatus] | None) -> None:
+        self._filter_statuses = statuses
         self.invalidateFilter()
 
     def set_filter_creator(self, creator: Creator | None) -> None:
@@ -38,7 +42,10 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         Args:
             creator: Creator to filter by, or None for no filter
         """
-        self._filter_creator = creator
+        self.set_filter_creators(None if creator is None else {creator})
+
+    def set_filter_creators(self, creators: set[Creator] | None) -> None:
+        self._filter_creators = creators
         self.invalidateFilter()
 
     def set_filter_type(self, junction_type: JunctionType | None) -> None:
@@ -48,11 +55,29 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         Args:
             junction_type: JunctionType to filter by, or None for no filter
         """
-        self._filter_type = junction_type
+        self._legacy_filter_type = junction_type
+        self._set_legacy_type_filter()
+
+    def set_filter_types(self, types: set[tuple[JunctionType, bool]] | None) -> None:
+        self._legacy_filter_type = None
+        self._legacy_filter_directory = None
+        self._filter_types = types
         self.invalidateFilter()
 
     def set_filter_directory(self, is_directory: bool | None):
-        self._filter_directory = is_directory
+        self._legacy_filter_directory = is_directory
+        self._set_legacy_type_filter()
+
+    def _set_legacy_type_filter(self) -> None:
+        if self._legacy_filter_type is None:
+            self._filter_types = None
+        elif self._legacy_filter_directory is None:
+            self._filter_types = {
+                (self._legacy_filter_type, True),
+                (self._legacy_filter_type, False),
+            }
+        else:
+            self._filter_types = {(self._legacy_filter_type, self._legacy_filter_directory)}
         self.invalidateFilter()
 
     def set_search_text(self, text: str) -> None:
@@ -65,20 +90,24 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._search_text = text.lower()
         self.invalidateFilter()
 
-    def set_filter_tag(self, tag: str | None, *, exclude: bool = False) -> None:
-        self._filter_tag = tag
-        self._exclude_tag = exclude
+    def set_filter_tag(self, tag: str | None) -> None:
+        self.set_filter_tags(None if tag is None else {tag})
+
+    def set_filter_tags(self, tags: set[str] | None, *, include_empty: bool = False) -> None:
+        self._filter_tags = tags
+        self._filter_empty_tag = include_empty
         self.invalidateFilter()
 
     def clear_filters(self) -> None:
         """Clear all filters"""
-        self._filter_status = None
-        self._filter_creator = None
-        self._filter_type = None
-        self._filter_directory = None
+        self._filter_statuses = None
+        self._filter_creators = None
+        self._filter_types = None
+        self._legacy_filter_type = None
+        self._legacy_filter_directory = None
         self._search_text = ""
-        self._filter_tag = None
-        self._exclude_tag = False
+        self._filter_tags = None
+        self._filter_empty_tag = False
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
@@ -103,23 +132,32 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
             return False
 
         # Filter by status
-        if self._filter_status and junction.status != self._filter_status:
+        if self._filter_statuses is not None and junction.status not in self._filter_statuses:
             return False
 
         # Filter by creator
-        if self._filter_creator and junction.creator != self._filter_creator:
+        if self._filter_creators is not None and junction.creator not in self._filter_creators:
             return False
 
         # Filter by type
-        if self._filter_type and junction.junction_type != self._filter_type:
+        if (
+            self._filter_types is not None
+            and (
+                junction.junction_type,
+                junction.is_directory,
+            )
+            not in self._filter_types
+        ):
             return False
 
-        if self._filter_directory is not None and junction.is_directory != self._filter_directory:
-            return False
-
-        if self._filter_tag is not None:
-            has_tag = self._filter_tag.casefold() in {tag.casefold() for tag in junction.tags}
-            if has_tag == self._exclude_tag:
+        if self._filter_tags is not None:
+            if not self._filter_tags and not self._filter_empty_tag:
+                return False
+            junction_tags = {tag.casefold() for tag in junction.tags}
+            selected_tags = {tag.casefold() for tag in self._filter_tags}
+            has_selected_tag = bool(junction_tags & selected_tags)
+            matches_empty = self._filter_empty_tag and not junction_tags
+            if not has_selected_tag and not matches_empty:
                 return False
 
         # Filter by search text

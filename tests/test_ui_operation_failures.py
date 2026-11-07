@@ -103,9 +103,20 @@ def test_window_exposes_type_filter_and_sorting(qtbot, monkeypatch, tmp_path):
         ]
     )
     assert window.table_view.isSortingEnabled()
-    window.type_filter.setCurrentIndex(2)
+    window._selected_types = {"symlink_dir"}
+    window._apply_active_filters()
     assert window.filter_model.rowCount() == 1
-    window.clear_filters()
+
+    from PyQt6.QtCore import QTimer
+    from PyQt6.QtWidgets import QApplication
+
+    def clear():
+        dialog = QApplication.activeModalWidget()
+        dialog.clear_button.click()
+        dialog.accept()
+
+    QTimer.singleShot(20, clear)
+    window.edit_filters()
     assert window.filter_model.rowCount() == 2
 
 
@@ -334,7 +345,8 @@ def test_history_dialog_filters_and_clears(qtbot, tmp_path):
     dialog = HistoryDialog(manager)
     qtbot.addWidget(dialog)
     assert dialog.table_model.rowCount() == 2
-    dialog.type_combo.setCurrentIndex(dialog.type_combo.findData(OperationType.CREATE_JUNCTION))
+    dialog._filter_types = {OperationType.CREATE_JUNCTION}
+    dialog.load_history()
     assert dialog.table_model.rowCount() == 1
     dialog.clear_filters()
     assert dialog.table_model.rowCount() == 2
@@ -543,15 +555,23 @@ def test_history_date_filters_exclude_old_records(qtbot, tmp_path):
         OperationRecord(
             operation_type=OperationType.UNDO_OPERATION, timestamp=now - timedelta(days=90)
         ),
+        OperationRecord(
+            operation_type=OperationType.UNDO_OPERATION, timestamp=now - timedelta(days=400)
+        ),
     ]
     dialog = HistoryDialog(manager)
     qtbot.addWidget(dialog)
-    for label in ["Hoje", "Última semana", "Último mês"]:
-        dialog.date_combo.setCurrentText(label)
+    for period in ["today", "week", "month"]:
+        dialog._filter_date_range = period
+        dialog.load_history()
         assert dialog.table_model.rowCount() == 1
         assert dialog.table_model.get_operation(dialog.table_model.index(0, 0)).timestamp == now
-    dialog.clear_filters()
+    dialog._filter_date_range = "year"
+    dialog.load_history()
     assert dialog.table_model.rowCount() == 2
+    dialog._filter_date_range = None
+    dialog.clear_filters()
+    assert dialog.table_model.rowCount() == 3
 
 
 def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
@@ -607,10 +627,52 @@ def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
     proxy.clear_filters()
     proxy.set_filter_tag("photos")
     assert proxy.rowCount() == 2
-    proxy.set_filter_tag("work", exclude=True)
-    assert proxy.rowCount() == 1
+    proxy.set_filter_tags({"photos", "work"})
+    assert proxy.rowCount() == 3
+    proxy.set_filter_tag("work")
+    assert proxy.rowCount() == 2
+    proxy.set_filter_tags(set())
+    assert proxy.rowCount() == 0
     proxy.clear_filters()
     assert proxy.rowCount() == 3
+
+
+def test_tag_filter_can_include_untagged_items_and_named_tags(tmp_path):
+    from winlink.core.models import Junction, JunctionType
+    from winlink.ui.junction_filter import JunctionFilterProxyModel
+    from winlink.ui.junction_model import JunctionTableModel
+
+    model = JunctionTableModel()
+    proxy = JunctionFilterProxyModel()
+    proxy.setSourceModel(model)
+    model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "tagged",
+                target=tmp_path / "tagged-link",
+                junction_type=JunctionType.JUNCTION,
+                tags=["photos", "work"],
+            ),
+            Junction(
+                source=tmp_path / "other",
+                target=tmp_path / "other-link",
+                junction_type=JunctionType.JUNCTION,
+                tags=["other"],
+            ),
+            Junction(
+                source=tmp_path / "untagged",
+                target=tmp_path / "untagged-link",
+                junction_type=JunctionType.JUNCTION,
+            ),
+        ]
+    )
+
+    proxy.set_filter_tags(set(), include_empty=True)
+    assert proxy.rowCount() == 1
+    proxy.set_filter_tags({"photos"}, include_empty=True)
+    assert proxy.rowCount() == 2
+    proxy.set_filter_tags({"photos"}, include_empty=False)
+    assert proxy.rowCount() == 1
 
 
 def test_active_operation_prevents_reentry():

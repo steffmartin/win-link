@@ -8,7 +8,6 @@ from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -41,10 +40,13 @@ from winlink.ui.dialogs import (
     PropertiesDialog,
     UndoDialog,
 )
+from winlink.ui.dialogs.filter_selection_dialog import FilterSelectionDialog
 from winlink.ui.junction_filter import JunctionFilterProxyModel
 from winlink.ui.junction_model import JunctionTableModel
 from winlink.ui.theme import ThemeManager
 from winlink.utils.logger import get_logger
+
+EMPTY_TAG_FILTER = object()
 
 
 class ScanWorker(QThread):
@@ -108,6 +110,26 @@ class MainWindow(QMainWindow):
         self._operation_active = False
         self._scan_pending = False
         self._closing_after_scan = False
+        self._selected_statuses = self._load_filter_selection(
+            self.settings.list_filter_status_values,
+            self.settings.list_filter_status,
+            [status.value for status in JunctionStatus],
+        )
+        self._selected_creators = self._load_filter_selection(
+            self.settings.list_filter_creator_values,
+            self.settings.list_filter_creator,
+            [creator.value for creator in Creator],
+        )
+        self._filter_type_options = self._type_filter_options()
+        self._selected_types = self._load_filter_selection(
+            self.settings.list_filter_type_values,
+            self.settings.list_filter_type,
+            [value for _, value in self._filter_type_options],
+        )
+        self._selected_tags = (
+            None if self.settings.list_filter_tags is None else set(self.settings.list_filter_tags)
+        )
+        self._selected_empty_tag = self.settings.list_filter_include_empty_tag
         self.init_ui()
         self.apply_theme()
         self.theme_manager.theme_changed.connect(self.refresh_presentation)
@@ -251,79 +273,11 @@ class MainWindow(QMainWindow):
         self.search_edit.addAction(symbol_icon("search"), QLineEdit.ActionPosition.LeadingPosition)
         self.search_edit.textChanged.connect(self.on_search_changed)
         # Header controls are arranged together after all controls exist.
-        # Filter bar
-        filter_layout = QHBoxLayout()
-        filter_layout.setContentsMargins(10, 5, 10, 5)
-        filter_label = QLabel("Filtros:")
-        self.status_filter = QComboBox()
-        self.status_filter.addItem("Todos os Status")
-        self.status_filter.addItem("Ativas")
-        self.status_filter.addItem("Quebradas")
-        self.status_filter.addItem("Inacessíveis")
-        self.status_filter.currentIndexChanged.connect(self.on_filter_changed)
-        self.creator_filter = QComboBox()
-        self.creator_filter.addItem("Todos os Criadores")
-        self.creator_filter.addItem("App")
-        self.creator_filter.addItem("Existente")
-        self.creator_filter.addItem("Manual")
-        self.creator_filter.currentIndexChanged.connect(self.on_filter_changed)
-        self.type_filter = QComboBox()
-        self.type_filter.addItem("Todos os Tipos", None)
-        from winlink.ui.type_labels import link_type_label
-
-        for label, link_type in [
-            (link_type_label(JunctionType.JUNCTION, True), JunctionType.JUNCTION),
-            (link_type_label(JunctionType.SYMLINK, True), JunctionType.SYMLINK),
-            (link_type_label(JunctionType.HARDLINK, False), JunctionType.HARDLINK),
-            (link_type_label(JunctionType.SYMLINK, False), JunctionType.SYMLINK),
-        ]:
-            self.type_filter.addItem(label, link_type)
-        self.type_filter.currentIndexChanged.connect(self.on_filter_changed)
-        self.tag_filter = QComboBox()
-        self.tag_filter.addItem("Todas as tags", None)
-        self.tag_filter.currentIndexChanged.connect(self.on_filter_changed)
-        self.tag_mode_filter = QComboBox()
-        self.tag_mode_filter.addItem("Com tag")
-        self.tag_mode_filter.addItem("Sem tag")
-        self.tag_mode_filter.currentIndexChanged.connect(self.on_filter_changed)
-        saved_filters = (
-            self.settings.list_filter_status,
-            self.settings.list_filter_creator,
-            self.settings.list_filter_type,
-        )
+        # Filters are edited in a draft dialog so the list header stays compact.
         saved_sort = (self.settings.list_sort_column, self.settings.list_sort_ascending)
-        self.status_filter.setCurrentIndex(
-            min(max(0, saved_filters[0]), self.status_filter.count() - 1)
-        )
-        self.creator_filter.setCurrentIndex(
-            min(max(0, saved_filters[1]), self.creator_filter.count() - 1)
-        )
-        self.type_filter.setCurrentIndex(
-            min(max(0, saved_filters[2]), self.type_filter.count() - 1)
-        )
-        self.clear_filter_btn = QPushButton("Limpar Filtros")
-        self.clear_filter_btn.clicked.connect(self.clear_filters)
-        filter_layout.addWidget(filter_label)
-        filter_layout.addWidget(self.status_filter)
-        filter_layout.addWidget(self.creator_filter)
-        filter_layout.addWidget(self.type_filter)
-        filter_layout.addWidget(self.tag_filter)
-        filter_layout.addWidget(self.tag_mode_filter)
-        filter_layout.addWidget(self.clear_filter_btn)
-        filter_layout.addStretch()
-        filter_container = QWidget()
-        filter_container.setLayout(filter_layout)
-        filter_container.hide()
-        main_layout.addWidget(filter_container)
         filters_button = QPushButton("Filtros")
         filters_button.clicked.connect(self.edit_filters)
         button_style(filters_button, "filter")
-        self.reset_filters_btn = button_style(QPushButton("Limpar"), "refresh")
-        self.reset_filters_btn.setAccessibleName("Limpar busca e filtros")
-        self.reset_filters_btn.setToolTip(
-            "Limpa a busca e os filtros e atualiza a lista; mantém a ordenação."
-        )
-        self.reset_filters_btn.clicked.connect(self.on_home)
         from winlink.ui.link_cards import LinkCardDelegate, LinkCardView, LinkTableHeader
 
         self.table_view = QTableView()
@@ -381,9 +335,7 @@ class MainWindow(QMainWindow):
         empty_box.addWidget(empty_hint)
         self.link_views.addWidget(empty)
         main_layout.insertWidget(0, left_header)
-        self.search_controls = ActionRow(
-            [view_mode, self.search_edit, filters_button, self.reset_filters_btn]
-        )
+        self.search_controls = ActionRow([view_mode, self.search_edit, filters_button])
         self.search_controls.box.setStretch(1, 1)
         main_layout.insertWidget(1, self.search_controls)
         self.scan_notice = QLabel()
@@ -400,6 +352,7 @@ class MainWindow(QMainWindow):
             min(max(0, saved_sort[0]), self.filter_model.columnCount() - 1),
             (Qt.SortOrder.AscendingOrder if saved_sort[1] else Qt.SortOrder.DescendingOrder),
         )
+        self._apply_active_filters()
         self.table_view.doubleClicked.connect(self.open_selected_properties)
         self.table_view.verticalHeader().hide()
         self.table_view.verticalHeader().setDefaultSectionSize(36)
@@ -670,7 +623,7 @@ class MainWindow(QMainWindow):
         if tuple(result.excluded_directories) != self.discovery_exclusions():
             return
 
-        self._apply_saved_tags(result.junctions)
+        self._apply_saved_tags(result.junctions, update_options=False)
         if result.cancelled:
             if self.scan_worker is not None:
                 CacheManager().save(result, requested_directories=self.scan_worker.directories)
@@ -684,13 +637,13 @@ class MainWindow(QMainWindow):
             self.scan_notice.show()
             if self.junction_model.rowCount() == 0:
                 self.junction_model.set_junctions(result.junctions)
-                self.update_tag_filter_options()
+                self.update_tag_filter_options(clear_missing=False)
             self.status_bar.showMessage("Descoberta incompleta; consulte o aviso da lista.")
             return
         self.scan_notice.hide()
         CacheManager().save(result)
         self.junction_model.set_junctions(result.junctions)
-        self.update_tag_filter_options()
+        self.update_tag_filter_options(clear_missing=False)
         self.status_bar.showMessage(
             f"Escaneamento concluído: {len(result.junctions)} junções encontradas"
         )
@@ -715,12 +668,13 @@ class MainWindow(QMainWindow):
         from winlink.core.operations import verify_junction_integrity
 
         self._data_version += 1
-        self._apply_saved_tags([junction])
+        self._apply_saved_tags([junction], update_options=False)
         try:
             verify_junction_integrity(junction)
         except Exception as exc:
             self.logger.warning(f"Could not verify new link status: {exc}")
         self.junction_model.upsert_junction(junction)
+        self.update_tag_filter_options()
         CacheManager().upsert_junction(junction)
 
     def _remove_junction_entry(self, target: Path):
@@ -736,36 +690,35 @@ class MainWindow(QMainWindow):
                 self, "Tags", f"O link foi removido, mas as tags não puderam ser atualizadas: {exc}"
             )
         self.junction_model.remove_junction_target(target)
+        self.update_tag_filter_options()
         CacheManager().remove_junction(target)
 
-    def _apply_saved_tags(self, junctions: list[Junction]):
+    def _apply_saved_tags(self, junctions: list[Junction], *, update_options: bool = True):
         try:
             self.tag_manager.apply_tags(junctions)
         except (OSError, ValueError) as exc:
             self.logger.error("Could not load link tags: %s", exc)
             QMessageBox.warning(self, "Tags", f"Não foi possível carregar as tags dos links: {exc}")
-        self.update_tag_filter_options()
+        if update_options:
+            self.update_tag_filter_options()
 
-    def update_tag_filter_options(self):
-        if not hasattr(self, "tag_filter"):
-            return
-        selected = self.tag_filter.currentData()
-        tags = sorted(
-            {tag for junction in self.junction_model._junctions for tag in junction.tags},
-            key=str.casefold,
-        )
-        self.tag_filter.blockSignals(True)
-        self.tag_filter.clear()
-        self.tag_filter.addItem("Todas as tags", None)
-        for tag in tags:
-            self.tag_filter.addItem(tag, tag)
-        selected_index = self.tag_filter.findData(selected)
-        self.tag_filter.setCurrentIndex(max(0, selected_index))
-        self.tag_filter.blockSignals(False)
-        self.filter_model.set_filter_tag(
-            self.tag_filter.currentData(),
-            exclude=self.tag_mode_filter.currentIndex() == 1,
-        )
+    def update_tag_filter_options(self, *, clear_missing: bool = True):
+        if clear_missing and self._selected_tags is not None:
+            available_tags = {
+                tag.casefold(): tag
+                for junction in self.junction_model._junctions
+                for tag in junction.tags
+            }
+            previous = set(self._selected_tags)
+            remaining = {
+                available_tags[tag.casefold()]
+                for tag in previous
+                if tag.casefold() in available_tags
+            }
+            self._selected_tags = remaining if remaining or not previous else None
+            if self._selected_tags != previous:
+                self._persist_list_filters()
+        self._apply_active_filters()
 
     def _post_creation_success(self, junction: Junction, tags: list[str]):
         """Persist tags and optionally add an uncovered access-point folder to discovery."""
@@ -827,43 +780,107 @@ class MainWindow(QMainWindow):
         """Handle search text change"""
         self.filter_model.set_search_text(text)
 
-    def on_filter_changed(self):
-        """Handle filter change"""
-        self.filter_model.set_filter_type(self.type_filter.currentData())
-        self.filter_model.set_filter_directory(
-            {2: True, 4: False}.get(self.type_filter.currentIndex())
+    @staticmethod
+    def _load_filter_selection(saved: list[str] | None, legacy_index: int, values: list[str]):
+        if saved is not None:
+            return set(saved)
+        if legacy_index <= 0 or legacy_index > len(values):
+            return None
+        return {values[legacy_index - 1]}
+
+    @staticmethod
+    def _type_filter_options():
+        from winlink.ui.type_labels import link_type_label
+
+        return [
+            (link_type_label(JunctionType.JUNCTION, True), "junction_dir"),
+            (link_type_label(JunctionType.SYMLINK, True), "symlink_dir"),
+            (link_type_label(JunctionType.HARDLINK, False), "hardlink_file"),
+            (link_type_label(JunctionType.SYMLINK, False), "symlink_file"),
+        ]
+
+    @staticmethod
+    def _status_filter_options():
+        return [
+            ("Ativas", JunctionStatus.ACTIVE.value),
+            ("Quebradas", JunctionStatus.BROKEN.value),
+            ("Inacessíveis", JunctionStatus.INACCESSIBLE.value),
+        ]
+
+    @staticmethod
+    def _creator_filter_options():
+        return [
+            ("App", Creator.APP.value),
+            ("Existente", Creator.EXISTING.value),
+            ("Manual", Creator.MANUAL.value),
+        ]
+
+    def _apply_active_filters(self):
+        statuses = (
+            None
+            if self._selected_statuses is None
+            else {status for status in JunctionStatus if status.value in self._selected_statuses}
         )
-        self.filter_model.set_filter_tag(
-            self.tag_filter.currentData(),
-            exclude=self.tag_mode_filter.currentIndex() == 1,
+        creators = (
+            None
+            if self._selected_creators is None
+            else {creator for creator in Creator if creator.value in self._selected_creators}
         )
-        # Status filter
-        status_index = self.status_filter.currentIndex()
-        if status_index == 0:
-            self.filter_model.set_filter_status(None)
-        elif status_index == 1:
-            self.filter_model.set_filter_status(JunctionStatus.ACTIVE)
-        elif status_index == 2:
-            self.filter_model.set_filter_status(JunctionStatus.BROKEN)
-        elif status_index == 3:
-            self.filter_model.set_filter_status(JunctionStatus.INACCESSIBLE)
-        # Creator filter
-        creator_index = self.creator_filter.currentIndex()
-        if creator_index == 0:
-            self.filter_model.set_filter_creator(None)
-        elif creator_index == 1:
-            self.filter_model.set_filter_creator(Creator.APP)
-        elif creator_index == 2:
-            self.filter_model.set_filter_creator(Creator.EXISTING)
-        elif creator_index == 3:
-            self.filter_model.set_filter_creator(Creator.MANUAL)
-        self._persist_list_filters()
+        type_mapping = {
+            "junction_dir": (JunctionType.JUNCTION, True),
+            "symlink_dir": (JunctionType.SYMLINK, True),
+            "hardlink_file": (JunctionType.HARDLINK, False),
+            "symlink_file": (JunctionType.SYMLINK, False),
+        }
+        selected_types = (
+            None
+            if self._selected_types is None
+            else {type_mapping[value] for value in self._selected_types if value in type_mapping}
+        )
+        self.filter_model.set_filter_statuses(statuses)
+        self.filter_model.set_filter_creators(creators)
+        self.filter_model.set_filter_types(selected_types)
+        self.filter_model.set_filter_tags(
+            self._selected_tags, include_empty=self._selected_empty_tag
+        )
 
     def _persist_list_filters(self):
         """Remember the last applied list filters for the next session."""
-        self.settings.list_filter_status = self.status_filter.currentIndex()
-        self.settings.list_filter_creator = self.creator_filter.currentIndex()
-        self.settings.list_filter_type = self.type_filter.currentIndex()
+        self.settings.list_filter_status_values = (
+            None if self._selected_statuses is None else sorted(self._selected_statuses)
+        )
+        self.settings.list_filter_creator_values = (
+            None if self._selected_creators is None else sorted(self._selected_creators)
+        )
+        self.settings.list_filter_type_values = (
+            None if self._selected_types is None else sorted(self._selected_types)
+        )
+        self.settings.list_filter_tags = (
+            None if self._selected_tags is None else sorted(self._selected_tags, key=str.casefold)
+        )
+        self.settings.list_filter_include_empty_tag = self._selected_empty_tag
+        legacy_indexes = {
+            "list_filter_status": (
+                self._selected_statuses,
+                [value for _, value in self._status_filter_options()],
+            ),
+            "list_filter_creator": (
+                self._selected_creators,
+                [value for _, value in self._creator_filter_options()],
+            ),
+            "list_filter_type": (
+                self._selected_types,
+                [value for _, value in self._filter_type_options],
+            ),
+        }
+        for field, (selected, values) in legacy_indexes.items():
+            index = 0
+            if selected is not None and len(selected) == 1:
+                try:
+                    index = values.index(next(iter(selected))) + 1
+                except ValueError:
+                    pass
+            setattr(self.settings, field, index)
         self.settings.list_sort_column = self.filter_model.sortColumn()
         self.settings.list_sort_ascending = (
             self.filter_model.sortOrder() == Qt.SortOrder.AscendingOrder
@@ -874,21 +891,6 @@ class MainWindow(QMainWindow):
             save_settings(self.settings)
         except OSError as exc:
             self.logger.error(f"Could not save list filter preferences: {exc}")
-
-    def clear_filters(self):
-        """Clear all filters"""
-        self.status_filter.setCurrentIndex(0)
-        self.creator_filter.setCurrentIndex(0)
-        self.type_filter.setCurrentIndex(0)
-        self.tag_filter.setCurrentIndex(0)
-        self.tag_mode_filter.setCurrentIndex(0)
-        self.search_edit.clear()
-
-    def on_home(self):
-        """Handle home action"""
-        self.navigate(0)
-        self.clear_filters()
-        self.start_scan()
 
     def on_new_junction(self):
         """Handle new junction action"""
@@ -1203,61 +1205,69 @@ class MainWindow(QMainWindow):
         self.navigate(2)
 
     def edit_filters(self):
-        from winlink.ui.components import button_style, heading
-        from winlink.ui.dialogs.animated_dialog import AnimatedDialog
-
-        dialog = AnimatedDialog(self)
-        dialog.preferred_width = 448
-        dialog.setWindowTitle("Filtros da lista")
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-        heading(layout, "Filtrar Links", icon="filter")
-        copies = []
-        for label, original in [
-            ("Status", self.status_filter),
-            ("Criador", self.creator_filter),
-            ("Tipo", self.type_filter),
-            ("Tag", self.tag_filter),
-            ("Aplicar tag como", self.tag_mode_filter),
-        ]:
-            layout.addWidget(QLabel(label))
-            field = QComboBox()
-            field.setAccessibleName(label)
-            for index in range(original.count()):
-                field.addItem(original.itemText(index), original.itemData(index))
-            field.setCurrentIndex(original.currentIndex())
-            layout.addWidget(field)
-            copies.append((original, field))
-        layout.addWidget(QLabel("Ordenar por"))
+        dialog = FilterSelectionDialog("Filtros da lista", self)
+        dialog.add_multi_group(
+            "status", "Status", self._status_filter_options(), self._selected_statuses
+        )
+        dialog.add_multi_group(
+            "creator", "Criador", self._creator_filter_options(), self._selected_creators
+        )
+        dialog.add_multi_group("type", "Tipo", self._filter_type_options, self._selected_types)
+        available_tags = {
+            tag for junction in self.junction_model._junctions for tag in junction.tags
+        }
+        tag_options = [("(Vazio)", EMPTY_TAG_FILTER)] + [
+            (tag, tag) for tag in sorted(available_tags, key=str.casefold)
+        ]
+        selected_tags = self._selected_tags
+        if selected_tags is not None:
+            tags_by_casefold = {tag.casefold(): tag for tag in available_tags}
+            selected_tags = {
+                tags_by_casefold[tag.casefold()]
+                for tag in selected_tags
+                if tag.casefold() in tags_by_casefold
+            }
+            if not selected_tags and self._selected_tags:
+                selected_tags = None
+        selected_tag_options = (
+            None
+            if selected_tags is None
+            else selected_tags | ({EMPTY_TAG_FILTER} if self._selected_empty_tag else set())
+        )
+        tag_group = dialog.add_multi_group("tags", "Tag", tag_options, selected_tag_options)
         sort_column = QComboBox()
         sort_column.setAccessibleName("Ordenar por")
         sort_column.addItems(
             ["Dados Físicos", "Ponto de Acesso", "Criador", "Tipo", "Tamanho", "Tags", "Status"]
         )
         sort_column.setCurrentIndex(max(0, self.filter_model.sortColumn()))
-        layout.addWidget(sort_column)
-        layout.addWidget(QLabel("Ordem"))
+        dialog.add_control_group("sort_column", "Ordenar por", sort_column)
         sort_direction = QComboBox()
         sort_direction.setAccessibleName("Ordem")
         sort_direction.addItems(["Crescente", "Decrescente"])
         sort_direction.setCurrentIndex(
             0 if self.filter_model.sortOrder() == Qt.SortOrder.AscendingOrder else 1
         )
-        layout.addWidget(sort_direction)
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.button(QDialogButtonBox.StandardButton.Apply).setText("Aplicar filtros")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
-        buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(dialog.accept)
-        button_style(buttons.button(QDialogButtonBox.StandardButton.Apply), "filter", primary=True)
-        button_style(buttons.button(QDialogButtonBox.StandardButton.Cancel), "close")
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
+        dialog.add_control_group("sort_direction", "Ordem", sort_direction)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            for original, field in copies:
-                original.setCurrentIndex(field.currentIndex())
+            self._selected_statuses = dialog.selected("status")
+            self._selected_creators = dialog.selected("creator")
+            self._selected_types = dialog.selected("type")
+            selected_tag_options = dialog.selected("tags")
+            if selected_tag_options is None:
+                selected_tag_options = set(tag_group.option_values())
+            selected_tag_values = {tag for tag in selected_tag_options if isinstance(tag, str)}
+            if selected_tag_options == {EMPTY_TAG_FILTER} and not available_tags:
+                self._selected_tags = set()
+            elif (
+                available_tags
+                and selected_tag_values == available_tags
+                and EMPTY_TAG_FILTER in selected_tag_options
+            ):
+                self._selected_tags = None
+            else:
+                self._selected_tags = selected_tag_values
+            self._selected_empty_tag = EMPTY_TAG_FILTER in selected_tag_options
             self.filter_model.sort(
                 sort_column.currentIndex(),
                 (
@@ -1266,6 +1276,7 @@ class MainWindow(QMainWindow):
                     else Qt.SortOrder.DescendingOrder
                 ),
             )
+            self._apply_active_filters()
             self._persist_list_filters()
 
     def update_list_summary(self):
@@ -1566,7 +1577,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.8\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.9\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

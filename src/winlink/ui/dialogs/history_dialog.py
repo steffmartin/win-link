@@ -6,13 +6,13 @@ from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
     QTableView,
     QTextEdit,
     QVBoxLayout,
@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from winlink.core.history import HistoryManager, creation_was_undone
 from winlink.core.models import OperationRecord, OperationType
 from winlink.ui.dialogs.animated_dialog import AnimatedDialog
+from winlink.ui.dialogs.filter_selection_dialog import FilterSelectionDialog
 from winlink.utils.logger import get_logger
 
 
@@ -187,14 +188,17 @@ class HistoryDialog(AnimatedDialog):
         self.logger = get_logger()
         self.history_manager = history_manager
 
-        self._filter_type: OperationType | None = None
+        self._filter_types: set[OperationType] | None = None
         self._filter_date_range: str | None = None
+        self._filter_results: set[str] | None = None
+        self._sort_column = 0
+        self._sort_ascending = False
 
         self.init_ui()
         self.load_history()
 
     def init_ui(self):
-        from winlink.ui.components import Panel, button_style, heading
+        from winlink.ui.components import button_style, heading
 
         self.setWindowTitle("Histórico de Operações")
         self.setModal(True)
@@ -207,6 +211,9 @@ class HistoryDialog(AnimatedDialog):
         self.clear_history_btn = button_style(QPushButton("Apagar histórico"), "trash")
         self.clear_history_btn.clicked.connect(self.clear_history)
         history_actions = QHBoxLayout()
+        self.filters_btn = button_style(QPushButton("Filtros"), "filter")
+        self.filters_btn.clicked.connect(self.edit_filters)
+        history_actions.addWidget(self.filters_btn)
         history_actions.addStretch()
         history_actions.addWidget(self.export_btn)
         history_actions.addWidget(self.clear_history_btn)
@@ -217,45 +224,6 @@ class HistoryDialog(AnimatedDialog):
         note.setWordWrap(True)
         note.setObjectName("muted")
         layout.addWidget(note)
-        self.type_combo = QComboBox()
-        self.type_combo.addItem("Todas")
-        for op in OperationType:
-            self.type_combo.addItem(HistoryTableModel()._get_type_display(op), op)
-        self.type_combo.currentTextChanged.connect(self.on_filter_changed)
-        self.date_combo = QComboBox()
-        self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês"])
-        self.date_combo.currentTextChanged.connect(self.on_filter_changed)
-        self.result_combo = QComboBox()
-        self.result_combo.addItems(
-            ["Todos os resultados", "Sucesso", "Falha", "Cancelado", "Criação desfeita"]
-        )
-        self.result_combo.setAccessibleName("Resultado")
-        self.result_combo.currentIndexChanged.connect(self.on_filter_changed)
-        panel = Panel()
-        panel.content.setContentsMargins(16, 16, 16, 16)
-        panel.content.addWidget(QLabel("Filtrar histórico"))
-        self.clear_filter_btn = button_style(QPushButton("Limpar"), "refresh")
-        self.clear_filter_btn.setAccessibleName("Limpar filtros")
-        self.clear_filter_btn.clicked.connect(self.clear_filters)
-        filters = QHBoxLayout()
-        filters.setContentsMargins(0, 0, 0, 0)
-        filters.setSpacing(12)
-        for label, control in [
-            ("Operação", self.type_combo),
-            ("Período", self.date_combo),
-            ("Resultado", self.result_combo),
-        ]:
-            control.setMinimumWidth(0)
-            control.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-            column = QVBoxLayout()
-            column.setContentsMargins(0, 0, 0, 0)
-            column.setSpacing(6)
-            column.addWidget(QLabel(label))
-            column.addWidget(control)
-            filters.addLayout(column, 1)
-        filters.addWidget(self.clear_filter_btn, 0, Qt.AlignmentFlag.AlignBottom)
-        panel.content.addLayout(filters)
-        layout.addWidget(panel)
         self.total_label = QLabel()
         self.total_label.setObjectName("muted")
         layout.addWidget(self.total_label)
@@ -382,67 +350,136 @@ class HistoryDialog(AnimatedDialog):
         operations = self.history_manager.get_history()
         self.apply_filters(operations)
 
-    def on_filter_changed(self):
-        """Handle filter change"""
-        type_text = self.type_combo.currentData()
-        date_text = self.date_combo.currentText()
-
-        # Parse type filter
-        if type_text is None:
-            self._filter_type = None
-        else:
-            try:
-                self._filter_type = OperationType(type_text)
-            except ValueError:
-                self._filter_type = None
-
-        # Parse date filter
-        self._filter_date_range = date_text if date_text != "Todos" else None
-
-        # Reload with filters
+    def edit_filters(self):
+        dialog = FilterSelectionDialog("Filtros do histórico", self)
+        dialog.clear_button.setText("Limpar")
+        type_options = [
+            (HistoryTableModel()._get_type_display(operation), operation)
+            for operation in OperationType
+        ]
+        dialog.add_multi_group(
+            "type",
+            "Operação",
+            type_options,
+            self._filter_types,
+        )
+        date_range = QComboBox()
+        date_range.setAccessibleName("Período")
+        date_range.addItem("Todo período", None)
+        date_range.addItem("Hoje", "today")
+        date_range.addItem("Última semana", "week")
+        date_range.addItem("Último mês", "month")
+        date_range.addItem("Último ano", "year")
+        index = date_range.findData(self._filter_date_range)
+        date_range.setCurrentIndex(max(0, index))
+        dialog.add_control_group("date", "Período", date_range)
+        dialog.clear_button.clicked.connect(lambda: date_range.setCurrentIndex(0))
+        dialog.add_multi_group(
+            "result",
+            "Resultado",
+            [(result, result) for result in ["Sucesso", "Falha", "Cancelado", "Criação desfeita"]],
+            self._filter_results,
+        )
+        sort_column = QComboBox()
+        sort_column.setAccessibleName("Ordenar por")
+        sort_column.addItems(HistoryTableModel.COLUMNS)
+        sort_column.setCurrentIndex(self._sort_column)
+        dialog.add_control_group("sort_column", "Ordenar por", sort_column)
+        sort_order = QComboBox()
+        sort_order.setAccessibleName("Ordem")
+        sort_order.addItems(["Crescente", "Decrescente"])
+        sort_order.setCurrentIndex(0 if self._sort_ascending else 1)
+        dialog.add_control_group("sort_order", "Ordem", sort_order)
+        dialog.clear_button.clicked.connect(lambda: sort_column.setCurrentIndex(0))
+        dialog.clear_button.clicked.connect(lambda: sort_order.setCurrentIndex(1))
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self._filter_types = dialog.selected("type")
+        self._filter_date_range = date_range.currentData()
+        self._filter_results = dialog.selected("result")
+        self._sort_column = sort_column.currentIndex()
+        self._sort_ascending = sort_order.currentIndex() == 0
         self.load_history()
 
     def apply_filters(self, operations: list[OperationRecord]):
         """Apply filters to operations"""
         self.table_model.all_operations = operations
         filtered = operations
-        result = self.result_combo.currentText()
-        if result == "Sucesso":
-            filtered = [op for op in filtered if op.success]
-        elif result == "Falha":
+        if self._filter_results is not None:
+            selected_results = self._filter_results
             filtered = [
-                op for op in filtered if not op.success and op.metadata.get("result") != "cancelled"
+                op
+                for op in filtered
+                if (
+                    ("Sucesso" in selected_results and op.success)
+                    or (
+                        "Falha" in selected_results
+                        and not op.success
+                        and op.metadata.get("result") != "cancelled"
+                    )
+                    or (
+                        "Cancelado" in selected_results and op.metadata.get("result") == "cancelled"
+                    )
+                    or (
+                        "Criação desfeita" in selected_results
+                        and creation_was_undone(op, operations)
+                    )
+                )
             ]
-        elif result == "Cancelado":
-            filtered = [op for op in filtered if op.metadata.get("result") == "cancelled"]
-        elif result == "Criação desfeita":
-            filtered = [op for op in filtered if creation_was_undone(op, operations)]
         # Filter by type
-        if self._filter_type:
-            filtered = [op for op in filtered if op.operation_type == self._filter_type]
+        if self._filter_types is not None:
+            filtered = [op for op in filtered if op.operation_type in self._filter_types]
 
         # Filter by date
-        if self._filter_date_range:
+        if self._filter_date_range is not None:
             now = datetime.now()
-            if self._filter_date_range == "Hoje":
-                start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                filtered = [op for op in filtered if op.timestamp >= start_date]
-            elif self._filter_date_range == "Última semana":
-                start_date = now - timedelta(days=7)
-                filtered = [op for op in filtered if op.timestamp >= start_date]
-            elif self._filter_date_range == "Último mês":
-                start_date = now - timedelta(days=30)
-                filtered = [op for op in filtered if op.timestamp >= start_date]
+            date_limits = {
+                "today": now.replace(hour=0, minute=0, second=0, microsecond=0),
+                "week": now - timedelta(days=7),
+                "month": now - timedelta(days=30),
+                "year": now - timedelta(days=365),
+            }
+            filtered = [
+                op for op in filtered if op.timestamp >= date_limits[self._filter_date_range]
+            ]
+
+        filtered = self._sort_operations(filtered)
 
         # Update model
         self.table_model.set_operations(filtered)
         self.total_label.setText(f"Total: {len(filtered)} de {len(operations)} operações")
 
+    def _sort_operations(self, operations: list[OperationRecord]) -> list[OperationRecord]:
+        def sort_key(operation: OperationRecord):
+            if self._sort_column == 0:
+                return operation.timestamp
+            if self._sort_column == 1:
+                return self.table_model._get_type_display(operation).casefold()
+            if self._sort_column == 2:
+                return str(operation.target or operation.source or "").casefold()
+            if self._sort_column == 3:
+                return self.table_model._get_display_data(operation, 3).casefold()
+            undone = creation_was_undone(operation, self.table_model.all_operations)
+            recoverable = (
+                operation.success
+                and operation.operation_type
+                in (
+                    OperationType.CREATE_JUNCTION,
+                    OperationType.CREATE_SYMLINK,
+                    OperationType.CREATE_HARDLINK,
+                )
+                and not undone
+            )
+            return (0 if recoverable else 1 if undone else 2, operation.timestamp)
+
+        return sorted(operations, key=sort_key, reverse=not self._sort_ascending)
+
     def clear_filters(self):
         """Clear all filters"""
-        self.type_combo.setCurrentText("Todas")
-        self.date_combo.setCurrentText("Todos")
-        self.result_combo.setCurrentIndex(0)
+        self._filter_types = None
+        self._filter_date_range = None
+        self._filter_results = None
+        self.load_history()
 
     def clear_history(self):
         """Clear all history"""

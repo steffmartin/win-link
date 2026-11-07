@@ -44,35 +44,50 @@ def test_sorting_is_a_filter_draft_and_uses_current_table_sort(window, apply):
 
     def edit():
         dialog = QApplication.activeModalWidget()
-        combos = dialog.findChildren(QComboBox)
-        observations.append((combos[5].currentIndex(), combos[6].currentIndex()))
-        combos[0].setCurrentIndex(2)
-        combos[5].setCurrentIndex(5)
-        combos[6].setCurrentIndex(0)
+        sort_column = next(
+            combo
+            for combo in dialog.findChildren(QComboBox)
+            if combo.accessibleName() == "Ordenar por"
+        )
+        sort_direction = next(
+            combo for combo in dialog.findChildren(QComboBox) if combo.accessibleName() == "Ordem"
+        )
+        observations.append((sort_column.currentIndex(), sort_direction.currentIndex()))
+        status = dialog._groups["status"]
+        status.set_selected({"BROKEN"})
+        sort_column.setCurrentIndex(5)
+        sort_direction.setCurrentIndex(0)
         dialog.accept() if apply else dialog.reject()
 
     QTimer.singleShot(20, edit)
     window.edit_filters()
     assert observations == [(1, 1)]
-    assert window.status_filter.currentIndex() == (2 if apply else 0)
+    assert window._selected_statuses == ({"BROKEN"} if apply else None)
     assert window.filter_model.sortColumn() == (5 if apply else 1)
     assert window.filter_model.sortOrder() == (
         Qt.SortOrder.AscendingOrder if apply else Qt.SortOrder.DescendingOrder
     )
 
 
-def test_clear_action_preserves_sort_and_refreshes(window, monkeypatch):
+def test_filter_dialog_clear_clears_filters_without_clearing_search(window):
     window.search_edit.setText("example")
-    window.status_filter.setCurrentIndex(2)
+    window._selected_statuses = {"BROKEN"}
+    window._apply_active_filters()
     window.filter_model.sort(1, Qt.SortOrder.DescendingOrder)
-    refresh = Mock()
-    monkeypatch.setattr(window, "start_scan", refresh)
-    window.reset_filters_btn.click()
-    assert not window.search_edit.text()
-    assert window.status_filter.currentIndex() == 0
+
+    def clear():
+        dialog = QApplication.activeModalWidget()
+        dialog.clear_button.click()
+        dialog.accept()
+
+    assert not hasattr(window, "reset_filters_btn")
+    QTimer.singleShot(20, clear)
+    window.edit_filters()
+
+    assert window.search_edit.text() == "example"
+    assert window._selected_statuses is None
     assert window.filter_model.sortColumn() == 1
     assert window.filter_model.sortOrder() == Qt.SortOrder.DescendingOrder
-    refresh.assert_called_once()
 
 
 def test_settings_help_is_available_by_keyboard_without_toggling_option(window, qtbot, monkeypatch):

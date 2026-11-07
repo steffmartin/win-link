@@ -1,4 +1,21 @@
-﻿# WinLink 0.1.8 — 07/11/2026
+﻿# WinLink 0.1.9 — 07/11/2026
+
+Filtros atualizados para Meus Links e Histórico, com validação manual aprovada pelo mantenedor.
+
+## Melhorias e correções
+
+- Meus Links permite selecionar status, criadores, tipos e tags em dropdowns compactos com opções marcáveis; a altura do diálogo não cresce com a quantidade de valores. O filtro de tags inclui “(Vazio)” para links sem tags, combinável com outras tags. As opções escolhidas se combinam como os demais filtros; o controle “Aplicar tag como” foi removido. Os filtros continuam aplicados junto com busca e ordenação, salvos como listas e migrados das configurações legadas. Tags que não existem após uma descoberta completa deixam de ser filtros ativos (#65, #67).
+- Os filtros do Histórico foram movidos para uma janela responsiva em até três colunas, liberando espaço para a tabela. Operação e resultado aceitam múltiplas seleções; período aceita uma opção: Todo período (padrão), Hoje, Última semana, Último mês ou Último ano. Ordenação pode ser escolhida por qualquer coluna, crescente ou decrescente; o padrão é Data / Hora decrescente. Aplicar confirma e Cancelar/fechar/Escape descartam. Limpar restaura os filtros e ordenação padrão no rascunho; exportar continua incluindo todo o histórico, sem considerar filtros (#68).
+- As opções de filtro começam marcadas; marcar todas não restringe os resultados, enquanto desmarcar todas não retorna registros. Opções dentro de um grupo combinam por união; grupos diferentes combinam por interseção.
+- O botão **Limpar** foi removido de Meus Links. **Limpar filtros** no diálogo remove os critérios de filtro sem apagar a busca nem alterar a ordenação.
+
+## Validação
+
+402 testes Python passaram; Ruff, Black e mypy aprovados. Os 22 testes de layout passaram com `QT_SCALE_FACTOR=2`. PyInstaller/Inno Setup 7 geraram `dist/WinLink-Portable-0.1.9.zip`, `dist/WinLink-Setup-0.1.9.exe` e `dist/SHA256SUMS.txt`; o smoke test portátil e a validação isolada de instalação/desinstalação em português e inglês passaram, preservando a junction de teste. O mantenedor aprovou a validação manual. Windows limpo sem Python não foi testado.
+
+---
+
+# WinLink 0.1.8 — 07/11/2026
 
 Melhorias de apresentação e fluxo para histórico, tags, cálculo de armazenamento e criação de links.
 
