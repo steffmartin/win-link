@@ -6,6 +6,7 @@ Patch com correções dos bugs #58 e #29, conforme a triagem da #36.
 
 - A descoberta percorre destinos de junctions de diretório para encontrar junctions aninhadas, evitando ciclos e duplicidade e respeitando exclusões e cancelamento ([#58](https://github.com/steffmartin/win-link/issues/58)).
 - Falhas de criação de symlink com WinError 1314 agora orientam sobre Modo de Desenvolvedor ou execução como administrador, sem elevação automática; as opções de symlink exibem indicador acessível de privilégio possível ([#29](https://github.com/steffmartin/win-link/issues/29)).
+- O instalador adapta o tema claro/escuro do Windows e preserva as imagens personalizadas do assistente nos dois modos.
 
 ## Validação e limites
 

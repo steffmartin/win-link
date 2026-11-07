@@ -10,7 +10,7 @@ Aplicativo Python/PyQt6 empacotado por PyInstaller (`winlink.spec`) e instalador
 - Dados padrão em `%APPDATA%\WinLink`: configuração, histórico, cache e logs JSON/arquivo.
 - Sem serviço, banco de dados ou monitoramento automático como dependência da aplicação atual.
 
-As imagens do assistente usam a marca do aplicativo. Para regerá-las após atualizar a identidade visual, execute `.venv\Scripts\python.exe resources\wizard_artwork.py` e confira o assistente em português e inglês.
+As imagens do assistente usam a marca do aplicativo nos modos claro e escuro do Inno Setup. Para regerá-las após atualizar a identidade visual, execute `.venv\Scripts\python.exe resources\wizard_artwork.py` e confira o assistente em português e inglês.
 
 ## Build e validação
 

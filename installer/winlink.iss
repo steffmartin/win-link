@@ -24,9 +24,11 @@ OutputBaseFilename={#OutputBase}
 SetupIconFile=..\resources\winlink.ico
 Compression=lzma2
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dynamic
 WizardImageFile=..\resources\wizard-side.bmp
+WizardImageFileDynamicDark=..\resources\wizard-side.bmp
 WizardSmallImageFile=..\resources\wizard-header.bmp
+WizardSmallImageFileDynamicDark=..\resources\wizard-header.bmp
 UninstallDisplayIcon={app}\WinLink.exe
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"; LicenseFile: "..\resources\license-pt.txt"
