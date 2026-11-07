@@ -57,3 +57,5 @@ $checksums = foreach ($package in $packages) {
 ```
 
 Publicar somente o ZIP portátil, o instalador e o arquivo de checksums como assets da release. Não anexar `WinLink-Validation-Setup.exe`.
+
+Ao editar o texto da release no Windows, preservar UTF-8 explicitamente ao ler e gravar arquivos com caracteres acentuados; a codificação padrão do PowerShell pode corrompê-los. Depois de atualizar a release, confira o texto retornado pela API do GitHub em UTF-8. A renderização do terminal pode exibir caracteres incorretos mesmo quando o conteúdo remoto está correto.
