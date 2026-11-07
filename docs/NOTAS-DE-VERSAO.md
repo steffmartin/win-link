@@ -1,4 +1,25 @@
-﻿# WinLink 0.1.7 — 06/11/2026
+﻿# WinLink 0.1.8 — 07/11/2026
+
+Melhorias de apresentação e fluxo para histórico, tags, cálculo de armazenamento e criação de links.
+
+## Melhorias
+
+- Filtros do histórico em uma linha, alinhados, com ação distinta para apagar o histórico (#64).
+- Tags múltiplas por link, edição em Propriedades e exibição em cartões/visão compacta; rótulos de tipos padronizados em toda a interface (#62).
+- Preferência para desativar cálculos automáticos de armazenamento sem afetar o recálculo manual (#61).
+- Seleção de Pasta/Arquivo antes do tipo de link; o tipo padrão também pré-seleciona a categoria correspondente (#44).
+- A criação pode oferecer a inclusão do Ponto de Acesso na descoberta quando ele estiver fora das pastas monitoradas (#38).
+- Propriedades mantém os caminhos completos selecionáveis em campos de até duas linhas; ícones dos menus de contexto ficam em coluna compacta junto aos rótulos.
+
+## Validação e limites
+
+390 testes Python passaram; Ruff, Black e mypy aprovados. Os testes de interface foram executados com `QT_SCALE_FACTOR=2`. O smoke test do pacote portátil confirmou inicialização, ícones e estado da descoberta. PyInstaller e Inno Setup 7 geraram o pacote portátil e o instalador v0.1.8; a validação automatizada de instalação/desinstalação não pôde iniciar o instalador temporário porque o Windows Application Control bloqueou sua execução. Essa etapa permanece não validada neste host.
+
+Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados continuam não homologados. Pacotes sem assinatura digital.
+
+---
+
+# WinLink 0.1.7 — 06/11/2026
 
 Patch com correções dos bugs #58 e #29, conforme a triagem da #36.
 

@@ -88,7 +88,7 @@ class HistoryTableModel(QAbstractTableModel):
         if column == 0:  # Data
             return operation.timestamp.strftime("%d/%m/%Y %H:%M")
         elif column == 1:  # Tipo
-            return self._get_type_display(operation.operation_type)
+            return self._get_type_display(operation)
         elif column == 2:  # Detalhes
             return str(operation.target or operation.source or "—")
         elif column == 3:
@@ -101,7 +101,7 @@ class HistoryTableModel(QAbstractTableModel):
 
     def _get_tooltip_data(self, operation: OperationRecord) -> str:
         """Get tooltip data"""
-        tooltip = f"Tipo: {operation.operation_type.value}\n"
+        tooltip = f"Tipo: {self._get_type_display(operation)}\n"
         tooltip += f"Data: {operation.timestamp.isoformat()}\n"
         if operation.source:
             tooltip += f"Dados Físicos: {operation.source}\n"
@@ -117,17 +117,39 @@ class HistoryTableModel(QAbstractTableModel):
             return QColor("#C42B1A")
         return None
 
-    def _get_type_display(self, operation_type: OperationType) -> str:
+    def _get_type_display(self, operation: OperationRecord | OperationType) -> str:
         """Get display text for operation type"""
+        from winlink.core.models import JunctionType
+        from winlink.ui.type_labels import link_type_label
+
+        operation_type = (
+            operation.operation_type if isinstance(operation, OperationRecord) else operation
+        )
         type_names = {
-            OperationType.CREATE_JUNCTION: "Criar Junção",
-            OperationType.CREATE_SYMLINK: "Criar Symlink",
-            OperationType.CREATE_HARDLINK: "Criar HardLink",
             OperationType.REMOVE_JUNCTION: "Remover Junção",
             OperationType.UNDO_OPERATION: "Desfazer",
             OperationType.MOVE_FILES: "Mover Arquivos",
             OperationType.COPY_FILES: "Copiar Arquivos",
         }
+        if operation_type in (
+            OperationType.CREATE_JUNCTION,
+            OperationType.CREATE_SYMLINK,
+            OperationType.CREATE_HARDLINK,
+        ):
+            is_directory = (
+                operation.metadata.get("is_directory")
+                if isinstance(operation, OperationRecord)
+                else operation_type != OperationType.CREATE_HARDLINK
+            )
+            if not isinstance(is_directory, bool):
+                source = operation.source if isinstance(operation, OperationRecord) else None
+                is_directory = source.is_dir() if source and source.exists() else True
+            link_type = {
+                OperationType.CREATE_JUNCTION: JunctionType.JUNCTION,
+                OperationType.CREATE_SYMLINK: JunctionType.SYMLINK,
+                OperationType.CREATE_HARDLINK: JunctionType.HARDLINK,
+            }[operation_type]
+            return f"Criar {link_type_label(link_type, is_directory)}"
         return type_names.get(operation_type, operation_type.value)
 
     def _get_details_display(self, operation: OperationRecord) -> str:
@@ -231,7 +253,7 @@ class HistoryDialog(AnimatedDialog):
             column.addWidget(QLabel(label))
             column.addWidget(control)
             filters.addLayout(column, 1)
-        filters.addWidget(self.clear_filter_btn)
+        filters.addWidget(self.clear_filter_btn, 0, Qt.AlignmentFlag.AlignBottom)
         panel.content.addLayout(filters)
         layout.addWidget(panel)
         self.total_label = QLabel()

@@ -38,32 +38,38 @@ class LinkCardView(QListView):
 
 class LinkCardDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index):
-        proxy = index.model()
-        junction = proxy.sourceModel().get_junction(proxy.mapToSource(index))
-        if junction is None or not junction.tags:
-            return QSize(400, 120)
-        width = option.rect.width() or 400
-        available = max(120, width - 40)
-        metrics = option.fontMetrics
-        rows = self._tag_rows(junction.tags, available, metrics)
-        return QSize(400, 140 + max(0, len(rows) - 1) * 22)
+        return QSize(400, 120)
 
     @staticmethod
-    def _tag_rows(tags, width, metrics):
-        rows = []
-        current: list[tuple[str, int]] = []
-        used = 0
-        for tag in tags:
-            pill_width = min(width, metrics.horizontalAdvance(tag) + 16)
-            if current and used + pill_width > width:
-                rows.append(current)
-                current = []
-                used = 0
-            current.append((tag, pill_width))
-            used += pill_width
-        if current:
-            rows.append(current)
-        return rows
+    def _fit_tags(tags, available_width, metrics):
+        gap = 4
+        widths = [min(160, metrics.horizontalAdvance(tag) + 16) for tag in tags]
+        if sum(widths) + gap * max(0, len(widths) - 1) <= available_width:
+            return list(zip(tags, widths, strict=True))
+
+        for visible_count in range(len(tags), -1, -1):
+            hidden_count = len(tags) - visible_count
+            overflow = f"+{hidden_count}" if hidden_count else ""
+            overflow_width = metrics.horizontalAdvance(overflow) + 16 if overflow else 0
+            used = sum(widths[:visible_count]) + gap * max(0, visible_count - 1)
+            if hidden_count and visible_count:
+                used += gap
+            if hidden_count:
+                used += overflow_width
+            if used <= available_width:
+                fitted = list(zip(tags[:visible_count], widths[:visible_count], strict=True))
+                if hidden_count:
+                    fitted.append((overflow, overflow_width))
+                return fitted
+        return []
+
+    @staticmethod
+    def _tag_pill_rects(tag_pills, right_edge, y):
+        rects = []
+        for _, pill_width in reversed(tag_pills):
+            rects.append(QRect(right_edge - pill_width + 1, y, pill_width, 18))
+            right_edge -= pill_width + 4
+        return list(reversed(rects))
 
     def paint(self, painter, option, index):
         proxy = index.model()
@@ -114,16 +120,23 @@ class LinkCardDelegate(QStyledItemDelegate):
             f"{creator} · {size}",
         )
         path = f"{junction.source}  →  {junction.target}"
+        path_width = rect.width() - 112
+        tag_pills = []
+        if junction.tags:
+            metrics = painter.fontMetrics()
+            available = max(0, rect.width() - 80 - 14 - 100 - 8)
+            available = min(available, int(rect.width() * 0.45))
+            tag_pills = self._fit_tags(junction.tags, available, metrics)
+            tag_width = sum(width for _, width in tag_pills) + 4 * max(0, len(tag_pills) - 1)
+            path_width = max(60, rect.width() - 80 - 14 - tag_width - 8)
         painter.drawText(
-            QRect(left, rect.top() + 68, rect.width() - 112, 20),
+            QRect(left, rect.top() + 68, path_width, 20),
             Qt.AlignmentFlag.AlignVCenter,
-            painter.fontMetrics().elidedText(
-                path, Qt.TextElideMode.ElideMiddle, rect.width() - 112
-            ),
+            painter.fontMetrics().elidedText(path, Qt.TextElideMode.ElideMiddle, path_width),
         )
-        kind = model._get_type_display(junction.junction_type)
-        if junction.junction_type.value == "SYMLINK":
-            kind += " (diretório)" if junction.is_directory else " (arquivo)"
+        from winlink.ui.type_labels import link_type_label
+
+        kind = link_type_label(junction.junction_type, junction.is_directory)
         right = QRect(rect.right() - 214, rect.top() + 20, 164, 22)
         painter.drawText(right, Qt.AlignmentFlag.AlignRight, kind)
         status = {"ACTIVE": "Ativo", "BROKEN": "Quebrado", "INACCESSIBLE": "Inacessível"}[
@@ -141,28 +154,20 @@ class LinkCardDelegate(QStyledItemDelegate):
         status_icon(junction.status, tone).paint(
             painter, QRect(status_rect.right() - width - 22, status_rect.top(), 16, 16)
         )
-        if junction.tags:
-            tag_rows = self._tag_rows(
-                junction.tags, max(120, rect.width() - 40), painter.fontMetrics()
-            )
-            right_edge = rect.right() - 14
+        if tag_pills:
+            y = rect.top() + 69
             painter.setFont(option.font)
-            for row_index, row in enumerate(reversed(tag_rows)):
-                y = rect.bottom() - 9 - row_index * 22
-                right = right_edge
-                for tag, pill_width in reversed(row):
-                    pill = QRect(right - pill_width, y - 16, pill_width, 18)
-                    painter.setPen(colors.mid().color())
-                    painter.setBrush(colors.alternateBase().color())
-                    painter.drawRoundedRect(pill, 8, 8)
-                    painter.setPen(foreground)
-                    text = painter.fontMetrics().elidedText(
-                        tag, Qt.TextElideMode.ElideRight, max(1, pill_width - 12)
-                    )
-                    painter.drawText(
-                        pill.adjusted(6, 0, -6, 0), Qt.AlignmentFlag.AlignVCenter, text
-                    )
-                    right -= pill_width + 4
+            for (tag, _), pill in zip(
+                tag_pills, self._tag_pill_rects(tag_pills, status_rect.right(), y), strict=True
+            ):
+                painter.setPen(colors.mid().color())
+                painter.setBrush(colors.alternateBase().color())
+                painter.drawRoundedRect(pill, 8, 8)
+                painter.setPen(foreground)
+                text = painter.fontMetrics().elidedText(
+                    tag, Qt.TextElideMode.ElideRight, max(1, pill.width() - 12)
+                )
+                painter.drawText(pill.adjusted(6, 0, -6, 0), Qt.AlignmentFlag.AlignVCenter, text)
         symbol_icon("more", "#9ca3af").paint(
             painter, QRect(rect.right() - 32, rect.top() + 40, 20, 20)
         )

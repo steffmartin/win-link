@@ -75,7 +75,7 @@ def test_preview_describes_both_paths_once(monkeypatch, tmp_path, source_exists,
     monkeypatch.setattr(file_ops, "get_available_disk_space", lambda path: 1024 * 1024)
     text, valid = build_preview(target, source)
     assert valid
-    assert text.count("Criar junção:") == 1
+    assert text.count("Criar Junção:") == 1
     assert (f"Dados Físicos já existentes: {source}" in text) == source_exists
     assert (f"Criar pasta de Dados Físicos: {source}" in text) == (not source_exists)
     assert ("Copiar arquivos de" in text) == target_exists
@@ -161,6 +161,7 @@ def test_properties_long_unbroken_paths_stay_inside_viewport(qtbot, monkeypatch,
     for label in [dialog.source_label, dialog.target_label]:
         assert label.toPlainText() == value
         assert label.isReadOnly()
+        assert label.height() <= label.fontMetrics().lineSpacing() * 2 + 28
         label.selectAll()
         assert label.textCursor().selectedText() == value
         assert label.horizontalScrollBar().maximum() == 0
@@ -169,6 +170,24 @@ def test_properties_long_unbroken_paths_stay_inside_viewport(qtbot, monkeypatch,
     position = dialog.undo_btn.mapTo(area.viewport(), QPoint())
     assert position.y() >= 0
     assert position.y() + dialog.undo_btn.height() <= area.viewport().height()
+
+
+def test_context_menu_icons_use_centered_compact_column(window):
+    from winlink.ui.icons import context_menu_icon
+
+    menu = window._create_context_menu()
+    pixmap = context_menu_icon("info").pixmap(16, 16).toImage()
+    opaque = [
+        (x, y)
+        for x in range(pixmap.width())
+        for y in range(pixmap.height())
+        if pixmap.pixelColor(x, y).alpha()
+    ]
+
+    assert min(x for x, _ in opaque) >= 2
+    assert max(x for x, _ in opaque) <= 13
+    assert "padding: 6px 12px 6px 0px" in menu.styleSheet()
+    assert "spacing: 0px" in menu.styleSheet()
 
 
 def test_closing_window_destroys_theme_timer(qtbot, monkeypatch, tmp_path):

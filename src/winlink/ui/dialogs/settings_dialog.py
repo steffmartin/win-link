@@ -68,10 +68,10 @@ class SettingsDialog(AnimatedDialog):
         field(fields, "Apresentação de Meus Links", self.link_view_combo)
         self.default_type_combo = QComboBox()
         for label, value in [
-            ("Junction", "junction"),
-            ("Symlink (Dir)", "symlink_dir"),
-            ("Symlink (File)", "symlink_file"),
-            ("Hardlink", "hardlink"),
+            ("Pasta - Junção", "junction"),
+            ("Pasta - Symlink", "symlink_dir"),
+            ("Arquivo - Hardlink", "hardlink"),
+            ("Arquivo - Symlink", "symlink_file"),
         ]:
             self.default_type_combo.addItem(label, value)
         fields.addWidget(

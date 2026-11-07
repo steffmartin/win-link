@@ -269,11 +269,13 @@ class MainWindow(QMainWindow):
         self.creator_filter.currentIndexChanged.connect(self.on_filter_changed)
         self.type_filter = QComboBox()
         self.type_filter.addItem("Todos os Tipos", None)
+        from winlink.ui.type_labels import link_type_label
+
         for label, link_type in [
-            ("Junction", JunctionType.JUNCTION),
-            ("Symlink (diretório)", JunctionType.SYMLINK),
-            ("Hard link", JunctionType.HARDLINK),
-            ("Symlink (arquivo)", JunctionType.SYMLINK),
+            (link_type_label(JunctionType.JUNCTION, True), JunctionType.JUNCTION),
+            (link_type_label(JunctionType.SYMLINK, True), JunctionType.SYMLINK),
+            (link_type_label(JunctionType.HARDLINK, False), JunctionType.HARDLINK),
+            (link_type_label(JunctionType.SYMLINK, False), JunctionType.SYMLINK),
         ]:
             self.type_filter.addItem(label, link_type)
         self.type_filter.currentIndexChanged.connect(self.on_filter_changed)
@@ -454,6 +456,13 @@ class MainWindow(QMainWindow):
             self.navigation.setCurrentRow(self.pages.currentIndex())
             self.navigation.blockSignals(False)
             return
+        if (
+            index == 1
+            and hasattr(self, "create_page")
+            and not self.create_page.source_edit.text()
+            and not self.create_page.target_edit.text()
+        ):
+            self.create_page.select_default_type(self.settings.default_link_type)
         self.pages.setCurrentIndex(index)
         if self.navigation.currentRow() != index:
             self.navigation.setCurrentRow(index)
@@ -476,11 +485,7 @@ class MainWindow(QMainWindow):
         self.create_page.source_edit.clear()
         self.create_page.target_edit.clear()
         self.create_page.tags_edit.clear()
-        preference = self.settings.default_link_type
-        self.create_page.select_type(
-            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
-            preference in ("symlink_file", "hardlink"),
-        )
+        self.create_page.select_default_type(self.settings.default_link_type)
 
     def settings_saved(self):
         self.junction_model.remove_excluded(self.discovery_exclusions())
@@ -889,12 +894,6 @@ class MainWindow(QMainWindow):
         """Handle new junction action"""
         if self._operation_active:
             return
-        preference = self.settings.default_link_type
-        if not self.create_page.source_edit.text() and not self.create_page.target_edit.text():
-            self.create_page.select_type(
-                {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
-                preference in ("symlink_file", "hardlink"),
-            )
         self.navigate(1)
 
     def create_junction(self, target: Path, source: Path):
@@ -1014,7 +1013,12 @@ class MainWindow(QMainWindow):
                 progress.close()
         if (
             self.history_manager.add_operation(
-                operation_type, source, target, success=success, error_message=error
+                operation_type,
+                source,
+                target,
+                success=success,
+                error_message=error,
+                metadata={"is_directory": False},
             )
             is False
         ):
@@ -1132,7 +1136,7 @@ class MainWindow(QMainWindow):
                     source=source,
                     target=target,
                     success=True,
-                    metadata={"preserved_backups": preserved_backups},
+                    metadata={"preserved_backups": preserved_backups, "is_directory": True},
                 )
                 is False
             ):
@@ -1180,6 +1184,7 @@ class MainWindow(QMainWindow):
                     target=target,
                     success=False,
                     error_message=str(e),
+                    metadata={"is_directory": True},
                 )
                 is False
             ):
@@ -1270,19 +1275,28 @@ class MainWindow(QMainWindow):
         self.empty_title.setText("Busca sem resultados" if total else "Nenhum link configurado")
         self.link_views.setCurrentIndex(self.view_mode.currentIndex() if count else 2)
 
+    def _create_context_menu(self):
+        menu = QMenu(self)
+        menu.setStyleSheet("QMenu::item { padding: 6px 12px 6px 0px; spacing: 0px; }")
+        return menu
+
     def show_card_context_menu(self, position):
         index = self.card_view.indexAt(position)
         if not index.isValid():
             return
         junction = self.junction_model.get_junction(self.filter_model.mapToSource(index))
         if junction:
-            menu = QMenu(self)
-            from winlink.ui.icons import symbol_icon
+            menu = self._create_context_menu()
+            from winlink.ui.icons import context_menu_icon
 
             menu.addAction(
-                symbol_icon("info"), "Propriedades", lambda: self.show_properties(junction)
+                context_menu_icon("info"),
+                "Propriedades",
+                lambda: self.show_properties(junction),
             )
-            menu.addAction(symbol_icon("undo"), "Desfazer", lambda: self.undo_junction(junction))
+            menu.addAction(
+                context_menu_icon("undo"), "Desfazer", lambda: self.undo_junction(junction)
+            )
             menu.exec(self.card_view.viewport().mapToGlobal(position))
 
     def resizeEvent(self, event):
@@ -1300,14 +1314,14 @@ class MainWindow(QMainWindow):
         junction = self.junction_model.get_junction(source_index)
         if not junction:
             return
-        menu = QMenu(self)
+        menu = self._create_context_menu()
         # Properties action
-        from winlink.ui.icons import symbol_icon
+        from winlink.ui.icons import context_menu_icon
 
-        properties_action = menu.addAction(symbol_icon("info"), "Propriedades")
+        properties_action = menu.addAction(context_menu_icon("info"), "Propriedades")
         properties_action.triggered.connect(lambda: self.show_properties(junction))
         menu.addSeparator()
-        undo_action = menu.addAction(symbol_icon("undo"), "Desfazer")
+        undo_action = menu.addAction(context_menu_icon("undo"), "Desfazer")
         undo_action.triggered.connect(lambda: self.undo_junction(junction))
         menu.exec(self.table_view.viewport().mapToGlobal(position))
 
@@ -1552,7 +1566,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.7\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.8\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

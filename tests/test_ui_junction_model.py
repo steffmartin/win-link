@@ -81,7 +81,7 @@ def test_model_data_display(junction_model, sample_junctions):
 
     index = junction_model.index(0, 3)  # Type column
     data = junction_model.data(index, Qt.ItemDataRole.DisplayRole)
-    assert data == "Junction"
+    assert data == "Junção"
 
     index = junction_model.index(0, 4)  # Size column
     data = junction_model.data(index, Qt.ItemDataRole.DisplayRole)

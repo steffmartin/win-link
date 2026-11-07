@@ -6,7 +6,7 @@ Aplicativo Python/PyQt6 empacotado por PyInstaller (`winlink.spec`) e instalador
 
 - Instalador por usuário, sem elevação obrigatória, em `%LOCALAPPDATA%\Programs\WinLink`.
 - Portátil em `dist/WinLink`: distribuir a pasta inteira, incluindo `_internal`, não somente o executável.
-- Instalador em `dist/WinLink-Setup-0.1.7.exe`; inclui runtime Python e dependências.
+- Instalador em `dist/WinLink-Setup-0.1.8.exe`; inclui runtime Python e dependências.
 - Dados padrão em `%APPDATA%\WinLink`: configuração, histórico, cache e logs JSON/arquivo.
 - Sem serviço, banco de dados ou monitoramento automático como dependência da aplicação atual.
 
@@ -38,13 +38,13 @@ Em 04/11/2026, o mantenedor dispensou o teste manual de sucesso de symlinks com 
 
 ## Publicação
 
-Gerar `dist/WinLink-Portable-0.1.7.zip` com a pasta inteira `WinLink/` e publicar junto do instalador e de `SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. A tag `v0.1.7` deve apontar para o commit do patch validado; preservar as tags e os assets publicados de versões anteriores. A nova release deve usar as [notas de versão](NOTAS-DE-VERSAO.md).
+Gerar `dist/WinLink-Portable-0.1.8.zip` com a pasta inteira `WinLink/` e publicar junto do instalador e de `SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. A tag `v0.1.8` deve apontar para o commit do patch validado; preservar as tags e os assets publicados de versões anteriores. A nova release deve usar as [notas de versão](NOTAS-DE-VERSAO.md).
 
 Na raiz do repositório, após o build e a validação, gerar o ZIP portátil e os checksums:
 
 ```powershell
-Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.7.zip -CompressionLevel Optimal -Force
-$packages = @('.\dist\WinLink-Portable-0.1.7.zip', '.\dist\WinLink-Setup-0.1.7.exe')
+Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.8.zip -CompressionLevel Optimal -Force
+$packages = @('.\dist\WinLink-Portable-0.1.8.zip', '.\dist\WinLink-Setup-0.1.8.exe')
 $checksums = foreach ($package in $packages) {
     $hash = Get-FileHash $package -Algorithm SHA256
     '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), (Split-Path $package -Leaf)

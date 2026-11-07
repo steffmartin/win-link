@@ -81,6 +81,18 @@ def symbol_icon(name: str, color: str = "#64748b") -> QIcon:
     return icon
 
 
+def context_menu_icon(name: str, color: str = "#64748b") -> QIcon:
+    source = symbol_icon(name, color).pixmap(12, 12)
+    pixmap = QPixmap(16, 16)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.drawPixmap(2, 2, source)
+    painter.end()
+    icon = QIcon()
+    icon.addPixmap(pixmap)
+    return icon
+
+
 _STATUS_SYMBOLS = {
     "ACTIVE": "check",
     "BROKEN": "warning",

@@ -112,13 +112,11 @@ class PropertiesDialog(AnimatedDialog):
             label.setReadOnly(True)
             label.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
             label.setMinimumWidth(0)
-            label.setMinimumHeight(80)
-            label.setMaximumHeight(120)
             label.setObjectName("pathBlock")
+            label.setFixedHeight(label.fontMetrics().lineSpacing() * 2 + 28)
             field(panel.content, title, label)
         self.tags_edit = QLineEdit()
         self.tags_edit.setAccessibleName("Tags do link")
-        self.tags_edit.setPlaceholderText("minha-pasta, minhas-fotos")
         field(panel.content, "Tags (separadas por vírgula)", self.tags_edit)
         self.save_tags_btn = button_style(QPushButton("Salvar tags"), "save")
         self.save_tags_btn.clicked.connect(self.save_tags)
@@ -176,10 +174,9 @@ class PropertiesDialog(AnimatedDialog):
     def load_junction_data(self):
         """Load junction data into UI"""
         # Type
-        type_text = self.get_type_display(self.junction.junction_type)
-        if self.junction.junction_type.value == "SYMLINK":
-            type_text += " (diretório)" if self.junction.is_directory else " (arquivo)"
-        self.type_label.setText(type_text)
+        self.type_label.setText(
+            self.get_type_display(self.junction.junction_type, self.junction.is_directory)
+        )
 
         # Status
         from winlink.ui.icons import status_icon
@@ -295,17 +292,11 @@ class PropertiesDialog(AnimatedDialog):
             self._dismissed = True
         event.accept()
 
-    def get_type_display(self, junction_type) -> str:
+    def get_type_display(self, junction_type, is_directory: bool = True) -> str:
         """Get display text for junction type"""
-        from winlink.core.models import JunctionType
+        from winlink.ui.type_labels import link_type_label
 
-        if junction_type == JunctionType.JUNCTION:
-            return "Junção (Junction)"
-        elif junction_type == JunctionType.SYMLINK:
-            return "Link Simbólico (Symlink)"
-        elif junction_type == JunctionType.HARDLINK:
-            return "Hard Link"
-        return str(junction_type.value)
+        return link_type_label(junction_type, is_directory)
 
     def get_status_display(self, status) -> str:
         """Get display text for status"""

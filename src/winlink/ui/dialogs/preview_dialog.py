@@ -214,8 +214,10 @@ def build_preview(
     if link_type == JunctionType.SYMLINK and (
         is_directory is False or (is_directory is None and source.is_file())
     ):
+        from winlink.ui.type_labels import link_type_label
+
         return (
-            f"Ponto de Acesso: {target}\nDados Físicos: {source}\nCriar link simbólico de arquivo: {target} -> {source}\nO arquivo original será preservado.",
+            f"Ponto de Acesso: {target}\nDados Físicos: {source}\nCriar {link_type_label(link_type, False)}: {target} -> {source}\nO arquivo original será preservado.",
             True,
         )
 
@@ -283,8 +285,10 @@ def build_preview(
         preview_lines.append(f"Ponto de Acesso ainda não existe: {target}")
 
     preview_lines.append("")
+    from winlink.ui.type_labels import link_type_label
+
     preview_lines.append(
-        f"✓ Criar {'symlink' if link_type == JunctionType.SYMLINK else 'junção'}: {target} -> {source}"
+        f"✓ Criar {link_type_label(link_type, is_directory is not False)}: {target} -> {source}"
     )
 
     # Check for nested junctions

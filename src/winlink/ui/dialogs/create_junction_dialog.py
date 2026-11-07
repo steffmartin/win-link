@@ -34,14 +34,24 @@ class CreateJunctionDialog(AnimatedDialog):
         self._is_directory = True
 
         self.init_ui()
-        from winlink.core.config import get_settings
+        self.select_default_type()
 
-        preference = getattr(getattr(parent, "settings", None), "default_link_type", None)
-        preference = preference or get_settings().default_link_type
-        self.select_type(
-            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
-            preference in ("symlink_file", "hardlink"),
-        )
+    def select_default_type(self, preference: str | None = None):
+        if preference is None:
+            from winlink.core.config import get_settings
+
+            preference = getattr(
+                getattr(self.parent(), "settings", None), "default_link_type", None
+            )
+            preference = preference or get_settings().default_link_type
+        selection = {
+            "junction": (0, False),
+            "symlink_dir": (1, False),
+            "symlink_file": (1, True),
+            "hardlink": (2, True),
+        }
+        index, is_file = selection[preference]
+        self.select_type(index, is_file)
 
     def init_ui(self):
         from PyQt6.QtWidgets import QSizePolicy, QWidget
@@ -87,7 +97,7 @@ class CreateJunctionDialog(AnimatedDialog):
         form_layout.addWidget(QLabel("Tipo de Estrutura"))
         self.type_combo = QComboBox()
         for title, kind in [
-            ("Junction", JunctionType.JUNCTION),
+            ("Junção", JunctionType.JUNCTION),
             ("Symlink", JunctionType.SYMLINK),
             ("Hardlink", JunctionType.HARDLINK),
         ]:
@@ -112,7 +122,7 @@ class CreateJunctionDialog(AnimatedDialog):
         )
         for n, (title, desc, icon, index, file) in enumerate(
             [
-                ("Junction", "Atalho de pasta local (padrão).", "folder", 0, False),
+                ("Junção", "Atalho de pasta local (padrão).", "folder", 0, False),
                 (
                     "Symlink",
                     "Pasta local ou de rede. Pode exigir permissões.",
@@ -173,7 +183,7 @@ class CreateJunctionDialog(AnimatedDialog):
         form_layout.addLayout(source_row)
         self.info_label = QLabel()
         self.info_label.setObjectName("muted")
-        self.info_label.setWordWrap(True)
+        self.info_label.setWordWrap(False)
         info_row = QHBoxLayout()
         info_icon = QLabel()
         info_icon.setPixmap(symbol_icon("info").pixmap(18, 18))
@@ -183,7 +193,6 @@ class CreateJunctionDialog(AnimatedDialog):
         form_layout.addLayout(info_row)
         self.tags_edit = QLineEdit()
         self.tags_edit.setObjectName("tagsInput")
-        self.tags_edit.setPlaceholderText("minha-pasta, minhas-fotos")
         self.tags_edit.setAccessibleName("Tags do link")
         from winlink.ui.components import field
 
@@ -264,11 +273,25 @@ class CreateJunctionDialog(AnimatedDialog):
         )
         self.structure_target.setText(self.target_edit.text() or "[Ponto de Acesso vazio]")
         self.structure_source.setText(self.source_edit.text() or "[Dados Físicos vazios]")
-        self.structure_summary.setText(
-            "Os dois nomes representarão o mesmo arquivo, no mesmo volume."
-            if self._link_type == JunctionType.HARDLINK
-            else "O novo caminho permitirá acessar os dados no local indicado. A prévia confirma espaço, conflitos e preservação dos arquivos antes de executar."
-        )
+        summaries = {
+            (JunctionType.JUNCTION, True): (
+                "Redireciona uma pasta local para outro caminho.\n"
+                "Preserva os arquivos já existentes no Ponto de Acesso."
+            ),
+            (JunctionType.SYMLINK, True): (
+                "Cria um caminho simbólico para uma pasta.\n"
+                "Pode apontar para uma pasta local ou de rede."
+            ),
+            (JunctionType.SYMLINK, False): (
+                "Cria um caminho simbólico para um arquivo.\n"
+                "O novo caminho dá acesso ao arquivo selecionado."
+            ),
+            (JunctionType.HARDLINK, False): (
+                "Cria outro nome para o mesmo arquivo.\n"
+                "Os dois caminhos compartilham os mesmos dados."
+            ),
+        }
+        self.structure_summary.setText(summaries[(self._link_type, self._is_directory)])
 
     def select_type(self, index, file):
         self.select_category(not file, clear_paths=False)
@@ -326,19 +349,14 @@ class CreateJunctionDialog(AnimatedDialog):
             self.source_label.setText("2. Dados Físicos (arquivo existente)")
             self.target_edit.setPlaceholderText("Ex: C:\\Links\\documento.txt")
             self.source_edit.setPlaceholderText("Ex: D:\\Dados\\documento.txt")
-            self.info_label.setText(
-                "Escolha um arquivo existente para os Dados Físicos e um novo caminho para o link. "
-                "Hard links exigem o mesmo volume; symlinks podem exigir Modo de Desenvolvedor ou administrador."
-            )
+            self.info_label.setText("Escolha um arquivo existente e um novo caminho para o link.")
         else:
             # Junctions and symlinks are for directories
             self.target_label.setText("1. Ponto de Acesso")
             self.source_label.setText("2. Dados Físicos")
             self.target_edit.setPlaceholderText("Ex: C:\\Links\\Projetos")
             self.source_edit.setPlaceholderText("Ex: D:\\Dados\\Projetos")
-            self.info_label.setText(
-                "Se o Ponto de Acesso contiver uma pasta normal, seus arquivos serão preservados nos Dados Físicos antes da criação do link."
-            )
+            self.info_label.setText("Os arquivos existentes no Ponto de Acesso serão preservados.")
 
         selected = (
             2

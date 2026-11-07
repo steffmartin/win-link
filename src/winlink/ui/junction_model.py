@@ -105,11 +105,9 @@ class JunctionTableModel(QAbstractTableModel):
         elif column == 2:  # Criador
             return self._get_creator_display(junction.creator)
         elif column == 3:  # Tipo
-            return self._get_type_display(junction.junction_type) + (
-                (" (diretório)" if junction.is_directory else " (arquivo)")
-                if junction.junction_type == JunctionType.SYMLINK
-                else ""
-            )
+            from winlink.ui.type_labels import link_type_label
+
+            return link_type_label(junction.junction_type, junction.is_directory)
         elif column == 4:  # Tamanho
             return self._format_size(junction.size_bytes)
         elif column == 5:  # Tags
@@ -162,15 +160,11 @@ class JunctionTableModel(QAbstractTableModel):
             return "Manual"
         return creator.value
 
-    def _get_type_display(self, junction_type: JunctionType) -> str:
+    def _get_type_display(self, junction_type: JunctionType, is_directory: bool = True) -> str:
         """Get display text for junction type"""
-        if junction_type == JunctionType.JUNCTION:
-            return "Junction"
-        elif junction_type == JunctionType.SYMLINK:
-            return "Symlink"
-        elif junction_type == JunctionType.HARDLINK:
-            return "HardLink"
-        return junction_type.value
+        from winlink.ui.type_labels import link_type_label
+
+        return link_type_label(junction_type, is_directory)
 
     def _get_status_display(self, status: JunctionStatus) -> str:
         """Get display text for status"""

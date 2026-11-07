@@ -59,6 +59,93 @@ def test_default_type_reaches_creation_page(window, preference, index, file):
     )
 
 
+def test_default_type_saved_in_settings_is_selected_from_navigation(window):
+    settings_page = window.settings_page
+    settings_page.default_type_combo.setCurrentIndex(
+        settings_page.default_type_combo.findData("symlink_dir")
+    )
+    settings_page.save_settings()
+
+    window.navigate(1)
+
+    assert window.create_page.is_directory_link()
+    assert window.create_page.get_link_type() == JunctionType.SYMLINK
+    assert window.create_page.type_cards[1].isChecked()
+
+
+def test_default_type_labels_are_localized_without_changing_values(window):
+    combo = window.settings_page.default_type_combo
+    assert [combo.itemText(index) for index in range(combo.count())] == [
+        "Pasta - Junção",
+        "Pasta - Symlink",
+        "Arquivo - Hardlink",
+        "Arquivo - Symlink",
+    ]
+    assert [combo.itemData(index) for index in range(combo.count())] == [
+        "junction",
+        "symlink_dir",
+        "hardlink",
+        "symlink_file",
+    ]
+    assert window.create_page.type_cards[0].text() == "Junção"
+
+
+@pytest.mark.parametrize(
+    ("operation_type", "is_directory", "expected"),
+    [
+        (OperationType.CREATE_JUNCTION, True, "Criar Junção"),
+        (OperationType.CREATE_SYMLINK, True, "Criar Symlink (pasta)"),
+        (OperationType.CREATE_SYMLINK, False, "Criar Symlink (arquivo)"),
+        (OperationType.CREATE_HARDLINK, False, "Criar Hardlink"),
+    ],
+)
+def test_history_uses_consistent_link_type_labels(operation_type, is_directory, expected, tmp_path):
+    from winlink.ui.dialogs.history_dialog import HistoryTableModel
+
+    record = OperationRecord(
+        operation_type=operation_type,
+        source=tmp_path / ("folder" if is_directory else "file"),
+        metadata={"is_directory": is_directory},
+    )
+    model = HistoryTableModel()
+
+    assert model._get_type_display(record) == expected
+
+
+def test_legacy_history_defaults_unknown_symlink_category_to_directory(tmp_path):
+    from winlink.ui.dialogs.history_dialog import HistoryTableModel
+
+    record = OperationRecord(
+        operation_type=OperationType.CREATE_SYMLINK,
+        source=tmp_path / "source-no-longer-available",
+    )
+
+    assert HistoryTableModel()._get_type_display(record) == "Criar Symlink (pasta)"
+
+
+def test_compact_type_labels_distinguish_symlink_targets(window, tmp_path):
+    from winlink.core.models import Junction
+
+    entries = [
+        Junction(
+            source=tmp_path / ("folder" if is_directory else "file"),
+            target=tmp_path / f"link-{index}",
+            junction_type=JunctionType.SYMLINK,
+            is_directory=is_directory,
+        )
+        for index, is_directory in enumerate((True, False))
+    ]
+    window.junction_model.set_junctions(entries)
+
+    assert window.junction_model.data(
+        window.junction_model.index(0, 3), Qt.ItemDataRole.DisplayRole
+    ) == "Symlink (pasta)"
+    assert window.junction_model.data(
+        window.junction_model.index(1, 3), Qt.ItemDataRole.DisplayRole
+    ) == "Symlink (arquivo)"
+    assert window.create_page.type_combo.itemText(0) == "Junção"
+
+
 def test_settings_restore_discard_and_save_are_transactional(qtbot, tmp_path):
     settings = AppSettings(
         theme_mode="dark",
@@ -369,6 +456,7 @@ def test_properties_reversal_request_preserves_selection_until_confirmed(qtbot, 
     junction = Junction(source=data, target=tmp_path / "link", junction_type=JunctionType.JUNCTION)
     dialog = PropertiesDialog(junction)
     qtbot.addWidget(dialog)
+    assert not dialog.tags_edit.placeholderText()
     dialog.show()
     with qtbot.waitSignal(dialog.undo_requested):
         dialog.undo_btn.click()
