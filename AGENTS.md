@@ -6,7 +6,7 @@ Estas regras de organização, implementação, build e testes são obrigatória
 
 - O produto é um aplicativo Windows em Python 3.12+/PyQt6. Reutilizar a implementação real; React é somente referência histórica.
 - Preservar a organização: `src/winlink/core/` para domínio e serviços de arquivos; `src/winlink/ui/` para apresentação e workers; `src/winlink/utils/` para infraestrutura; `tests/` para testes; `resources/` para recursos; `installer/`, `winlink.spec` e `scripts/` para distribuição.
-- Documentação vigente fica em `docs/`; desenvolvimento da v0.1.0 fica em `docs/arquivo/v0.1.0/`. Não criar novos planos ou versões do protótipo na raiz. Corrigir links relativos quando mover documentos.
+- Documentação vigente fica em `docs/`. Não criar planos de trabalho paralelos às Issues do GitHub nem protótipos fora do aplicativo real.
 - Bugs, melhorias, critérios de aceite e andamento ficam exclusivamente nas [Issues do GitHub](https://github.com/steffmartin/win-link/issues). Consultar a issue pertinente e evitar duplicatas; não manter backlog paralelo em Markdown. Uma issue não autoriza implementar todas as demais.
 - Preservar compatibilidade de configurações e histórico existentes, prévia, confirmação obrigatória, verificação de identidade antes da reversão, cancelamento cooperativo, backups e recuperação de falhas. Nunca substituir serviços reais por simulações do protótipo.
 - Não operar sobre dados pessoais para testar. Usar diretórios temporários isolados; limpeza não pode seguir junctions/symlinks para seus destinos. Conferir caminhos absolutos antes de excluir ou mover árvores.
@@ -54,21 +54,3 @@ Windows limpo sem Python, Windows 10 e teste manual de sucesso de symlinks com p
 | Empacotar, instalar/desinstalar, validar ou publicar | [Distribuição](docs/DISTRIBUICAO.md) |
 | Entender o conteúdo entregue na versão | [Notas de versão](docs/NOTAS-DE-VERSAO.md) |
 | Escolher trabalho ou verificar o estado de uma proposta | [Issues do GitHub](https://github.com/steffmartin/win-link/issues) |
-
-## Índice histórico — consultar apenas para uma dúvida específica
-
-O arquivo registra o passado; menções a trabalho pendente podem ter sido superadas. Código atual, documentação vigente e decisões posteriores do mantenedor orientam a continuidade.
-
-| Assunto histórico | Referência |
-|---|---|
-| Visão geral e contexto do arquivamento | [Índice do arquivo](docs/arquivo/v0.1.0/README.md) |
-| Fases e fechamento da entrega inicial | [Plano](docs/arquivo/v0.1.0/planejamento/PLANO.md) |
-| Origem das propostas migradas para Issues | [Melhorias](docs/arquivo/v0.1.0/planejamento/MELHORIAS.md) |
-| Especificação funcional da versão inicial | [Especificação](docs/arquivo/v0.1.0/produto/ESPECIFICACAO.md) |
-| Contrato visual original e mapeamento da implementação | [Implementação da UI](docs/arquivo/v0.1.0/guias/IMPLEMENTACAO-UI.md) |
-| Estrutura e premissas antigas de distribuição | [Estrutura](docs/arquivo/v0.1.0/arquitetura/ESTRUTURA.md), [distribuição histórica](docs/arquivo/v0.1.0/arquitetura/DISTRIBUICAO.md) |
-| Evidências, capturas e limites das validações anteriores | [Fase 5](docs/arquivo/v0.1.0/validacao/FASE5.md), [redesign](docs/arquivo/v0.1.0/validacao/REDESIGN.md); JSON/XML adjacentes somente para investigar uma execução |
-| Texto de uso e notas antes do fechamento | [Uso histórico](docs/arquivo/v0.1.0/guias/USO.md), [notas históricas](docs/arquivo/v0.1.0/produto/NOTAS-DE-VERSAO.md) |
-| Dúvida visual não resolvida pelo guia atual ou capturas | [README do protótipo](docs/arquivo/v0.1.0/prototypes/ui/README.md), depois apenas o componente/estilo necessário em `src/` ou cenário em `tests/` dessa pasta |
-
-Se a tarefa modificar o protótipo histórico explicitamente, seus checks são `npm.cmd --prefix docs/arquivo/v0.1.0/prototypes/ui test` e `npm.cmd --prefix docs/arquivo/v0.1.0/prototypes/ui run build`. Scripts `browser-*.js` precisam de runner Playwright e não são executados por `npm test`. Testes React não comprovam segurança das operações reais.

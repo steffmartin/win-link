@@ -62,7 +62,6 @@ Também é possível abrir com `iniciar-winlink.bat` após instalar as dependên
 | `resources/` | Ícones e recursos visuais |
 | `installer/`, `winlink.spec`, `scripts/` | Fontes e ferramentas de empacotamento e validação |
 | `docs/` | Documentação vigente e imagem da tela principal |
-| `docs/arquivo/v0.1.0/` | Histórico de desenvolvimento, planos, especificação, protótipo React e evidências |
 
 - [Uso](docs/USO.md): instalar, criar, descobrir e desfazer links.
 - [Distribuição](docs/DISTRIBUICAO.md): gerar e validar pacotes.
@@ -71,7 +70,6 @@ Também é possível abrir com `iniciar-winlink.bat` após instalar as dependên
 - [Orientações para agentes](AGENTS.md): regras obrigatórias e índice de leitura sob demanda.
 - [Issues do GitHub](https://github.com/steffmartin/win-link/issues): registro de bugs e melhorias.
 - [Notas de versão](docs/NOTAS-DE-VERSAO.md).
-- [Arquivo histórico](docs/arquivo/v0.1.0/README.md).
 
 Builds, pacotes, logs, caches, ambientes virtuais e dependências ficam fora do Git. O protótipo arquivado é referência visual e não participa do aplicativo ou de sua distribuição.
 

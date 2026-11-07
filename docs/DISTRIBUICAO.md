@@ -22,9 +22,9 @@ uv sync --extra dev --extra build
 
 Use o compilador da instalação padrão do Inno Setup 7 em `C:\Program Files\Inno Setup 7\ISCC.exe`. O diretório `build/tools/inno/` não é mais necessário; builds e validações usam o compilador instalado.
 
-O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; preserva os resultados de teste para inspeção. Relatório atual: `build/distribution-test/distribution-report.json`. O relatório `phase5-distribution.json` preserva a execução histórica anterior ao redesign. Capturas e testes históricos: [redesign](arquivo/v0.1.0/validacao/REDESIGN.md).
+O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; o relatório `distribution-report.json` e demais resultados ficam nessa pasta temporária.
 
-O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar ICU/UCRT externos vindos do PATH. O primeiro build anterior à correção falhou ao importar QtWidgets; não distribuí-lo. Evidências históricas e hashes do build validado: [fase 5](arquivo/v0.1.0/validacao/FASE5.md).
+O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar ICU/UCRT externos vindos do PATH.
 
 ## Instalação e desinstalação
 

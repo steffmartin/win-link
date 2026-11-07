@@ -78,4 +78,4 @@ Atalhos existentes: Ctrl+N criar, Ctrl+H histórico, Ctrl+, configurações, Ctr
 4. Conferir teclado, caminhos longos, ausência de resultados, erros e avisos pertinentes; rolagem deve alcançar os últimos controles sem comprimir ou cortar os filhos. Reutilizar `tests/test_ui_layout.py`, `test_ui_main_window.py`, `test_ui_theme.py` e testes de workers/falhas conforme o caso.
 5. Capturar o aplicativo real com `.venv\Scripts\python.exe scripts/capture_ui.py` quando precisar de evidência visual. Saída padrão em `build/ui-review`, ignorada pelo Git; não sobrescrever o arquivo histórico. Atualizar a imagem do README somente se a mudança tornar a captura vigente obsoleta.
 
-Referências visuais adicionais: [capturas arquivadas](arquivo/v0.1.0/validacao/REDESIGN.md). Só se uma dúvida específica continuar sem resposta, consultar o componente necessário do [protótipo](arquivo/v0.1.0/prototypes/ui/README.md). Não transportar fixtures, temporizadores ou integrações fictícias do React para produção.
+Use este guia e a implementação PyQt6 em `src/winlink/ui/` como referência. Não introduzir fixtures, temporizadores ou integrações fictícias de protótipos na aplicação.

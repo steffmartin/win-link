@@ -46,19 +46,4 @@ Atalhos: Ctrl+N criar; Ctrl+H histórico; Ctrl+, configurações; Ctrl+F buscar;
 
 O desinstalador remove configuração/cache/log padrão e pergunta se deve manter o histórico. Em modo silencioso mantém o histórico, salvo `/DELETEHISTORY`. Não apaga dados migrados, destinos de junctions nem arquivos de histórico/log personalizados.
 
-Windows 10 e máquina limpa sem Python não foram homologados; esses testes foram dispensados pelo mantenedor. Neste host a criação de symlinks retornou erro 1314; o teste comprova a falha segura, não o sucesso com privilégios. O teste manual de sucesso com privilégios foi dispensado pelo mantenedor em 04/11/2026 para a release inicial. Ver [validação histórica](arquivo/v0.1.0/validacao/REDESIGN.md).
-
-## Capturas históricas do aplicativo real
-
-Capturas da interface da v0.1.0, geradas com links reais em diretório temporário isolado, sem dados do usuário. A captura principal atual está no [README](../README.md).
-
-![Lista clara](arquivo/v0.1.0/validacao/capturas/lista-light.png)
-![Criação escura](arquivo/v0.1.0/validacao/capturas/criacao-dark.png)
-![Histórico](arquivo/v0.1.0/validacao/capturas/historico-light.png)
-![Configurações](arquivo/v0.1.0/validacao/capturas/configuracoes-dark.png)
-![Propriedades](arquivo/v0.1.0/validacao/capturas/propriedades-dark.png)
-
-Diálogos revisados:
-
-![Prévia](arquivo/v0.1.0/validacao/capturas/previa-dark.png)
-![Reversão](arquivo/v0.1.0/validacao/capturas/reversao-light.png)
+Windows 10 e máquina limpa sem Python não foram homologados; esses testes foram dispensados pelo mantenedor. Neste host a criação de symlinks retornou erro 1314; o teste comprova a falha segura, não o sucesso com privilégios. O teste manual de sucesso com privilégios foi dispensado pelo mantenedor em 04/11/2026 para a release inicial. Os limites conhecidos da versão estão em [Continuidade](CONTINUIDADE.md).
