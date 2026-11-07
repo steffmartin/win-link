@@ -214,6 +214,25 @@ def test_create_dialog_rejects_relative_and_identical_inputs(qtbot, tmp_path):
     assert dialog.create_btn.isEnabled()
 
 
+def test_symlink_type_cards_explain_possible_privilege_requirement(qtbot):
+    from PyQt6.QtWidgets import QLabel
+
+    from winlink.ui.dialogs.create_junction_dialog import CreateJunctionDialog
+
+    dialog = CreateJunctionDialog()
+    qtbot.addWidget(dialog)
+
+    for card in dialog.type_cards[1:3]:
+        indicators = [
+            label
+            for label in card.findChildren(QLabel)
+            if label.property("glyph") == "shield"
+        ]
+        assert len(indicators) == 1
+        assert "Modo de Desenvolvedor" in indicators[0].toolTip()
+        assert "não solicita elevação automaticamente" in indicators[0].toolTip()
+
+
 def test_settings_dialog_saves_and_reloads(qtbot, monkeypatch, tmp_path):
     from winlink.core.config import AppSettings, get_settings
     from winlink.ui.dialogs.settings_dialog import SettingsDialog

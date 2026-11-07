@@ -67,6 +67,38 @@ def test_create_symbolic_link_failure():
             assert result is False
 
 
+def test_create_symbolic_link_privilege_failure_is_actionable(tmp_path):
+    import pywintypes
+
+    from winlink.core.operations import SymbolicLinkPrivilegeError
+
+    source = tmp_path / "source"
+    source.mkdir()
+    privilege_error = pywintypes.error(
+        1314, "CreateSymbolicLinkW", "A required privilege is not held by the client"
+    )
+
+    with patch(
+        "winlink.core.operations.win32file.CreateSymbolicLink", side_effect=privilege_error
+    ):
+        with pytest.raises(SymbolicLinkPrivilegeError, match="Modo de Desenvolvedor") as raised:
+            create_symbolic_link(source, tmp_path / "link")
+
+    assert "não será iniciada automaticamente" in str(raised.value)
+
+
+def test_create_symbolic_link_privilege_error_return_is_actionable(tmp_path):
+    from winlink.core.operations import SymbolicLinkPrivilegeError
+
+    source = tmp_path / "source"
+    source.mkdir()
+    with patch("winlink.core.operations.win32file.CreateSymbolicLink", return_value=False), patch(
+        "winlink.core.operations.win32api.GetLastError", return_value=1314
+    ):
+        with pytest.raises(SymbolicLinkPrivilegeError, match="Modo de Desenvolvedor"):
+            create_symbolic_link(source, tmp_path / "link")
+
+
 def test_create_hard_link():
     """Test creating a hard link"""
     with tempfile.TemporaryDirectory() as tmpdir:

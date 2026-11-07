@@ -1,3 +1,18 @@
+﻿# WinLink 0.1.7 — 06/11/2026
+
+Patch com correções dos bugs #58 e #29, conforme a triagem da #36.
+
+## Correções
+
+- A descoberta percorre destinos de junctions de diretório para encontrar junctions aninhadas, evitando ciclos e duplicidade e respeitando exclusões e cancelamento ([#58](https://github.com/steffmartin/win-link/issues/58)).
+- Falhas de criação de symlink com WinError 1314 agora orientam sobre Modo de Desenvolvedor ou execução como administrador, sem elevação automática; as opções de symlink exibem indicador acessível de privilégio possível ([#29](https://github.com/steffmartin/win-link/issues/29)).
+
+## Validação e limites
+
+363 testes Python passaram; Ruff, Black e mypy aprovados. Os 16 testes de layout passaram com `QT_SCALE_FACTOR=2`. A validação de distribuição confirmou abertura do pacote portátil e instalado, instalação/desinstalação em português e inglês e preservação dos dados de teste usando Inno Setup 7.
+
+O caso de #58 foi reproduzido em árvore temporária no Windows. Para #29, WinError 1314 foi simulado pelos caminhos de exceção e código de retorno; a criação real de symlink teve sucesso neste ambiente. Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados continuam não homologados. Pacotes sem assinatura digital.
+
 # WinLink 0.1.6 — 06/11/2026
 
 Patch com correções de bugs e pequenas melhorias solicitado na triagem da #36.

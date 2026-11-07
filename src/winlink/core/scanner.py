@@ -320,6 +320,14 @@ def is_discovery_excluded(path: Path, exclusions: tuple[Path, ...]) -> bool:
     return any(normalized.is_relative_to(directory) for directory in exclusions)
 
 
+def _directory_identity(path: Path) -> str:
+    try:
+        normalized = path.resolve()
+    except (OSError, RuntimeError):
+        normalized = path.absolute()
+    return os.path.normcase(os.path.normpath(str(normalized)))
+
+
 def scan_directory(
     path: Path,
     recursive: bool = True,
@@ -327,6 +335,7 @@ def scan_directory(
     *,
     excluded_directories: tuple[Path, ...] = (),
     should_cancel: Callable[[], bool] | None = None,
+    _visited_directories: set[str] | None = None,
 ) -> list[Junction]:
     """
     Scan a directory for junctions, symlinks, and hard links.
@@ -341,11 +350,18 @@ def scan_directory(
     """
     if known_junctions is None:
         known_junctions = set()
+    if _visited_directories is None:
+        _visited_directories = set()
 
     junctions: list[Junction] = []
 
     if (should_cancel and should_cancel()) or is_discovery_excluded(path, excluded_directories):
         return junctions
+
+    identity = _directory_identity(path)
+    if identity in _visited_directories:
+        return junctions
+    _visited_directories.add(identity)
 
     if not path.exists() or not path.is_dir():
         logger.warning(f"Path does not exist or is not a directory: {path}")
@@ -404,6 +420,22 @@ def scan_directory(
                     junctions.append(junction)
                     logger.info(f"Found junction: {item} -> {target}")
 
+                    if (
+                        recursive
+                        and is_directory
+                        and not is_discovery_excluded(target, excluded_directories)
+                    ):
+                        junctions.extend(
+                            scan_directory(
+                                target,
+                                recursive,
+                                known_junctions,
+                                excluded_directories=excluded_directories,
+                                should_cancel=should_cancel,
+                                _visited_directories=_visited_directories,
+                            )
+                        )
+
                 # Check for hard links (files only)
                 elif item.is_file() and is_hard_link(item):
                     # All hard link names are peers. Keep another name as the
@@ -454,6 +486,7 @@ def scan_directory(
                                 known_junctions,
                                 excluded_directories=excluded_directories,
                                 should_cancel=should_cancel,
+                                _visited_directories=_visited_directories,
                             )
                         )
                     except Exception as e:
@@ -502,6 +535,7 @@ def scan_directories(
     if known_junctions is None:
         known_junctions = set()
 
+    visited_directories: set[str] = set()
     cache_manager = CacheManager()
     if use_cache and not (should_cancel and should_cancel()):
         cached = cache_manager.load()
@@ -539,6 +573,7 @@ def scan_directories(
                 known_junctions,
                 excluded_directories=excluded_directories,
                 should_cancel=should_cancel,
+                _visited_directories=visited_directories,
             )
             existing = {j.target for j in all_junctions}
             all_junctions.extend(j for j in junctions if j.target not in existing)

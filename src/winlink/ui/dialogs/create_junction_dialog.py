@@ -104,7 +104,18 @@ class CreateJunctionDialog(AnimatedDialog):
                 ("Hardlink", "Nomes equivalentes do mesmo arquivo e volume.", "file", 2, False),
             ]
         ):
-            button = TypeButton(title, desc, icon, type_help[n])
+            needs_privilege_help = (
+                "A criação pode exigir Modo de Desenvolvedor ou privilégios em alguns ambientes; "
+                "o WinLink não solicita elevação automaticamente."
+            )
+            button = TypeButton(
+                title,
+                desc,
+                icon,
+                type_help[n],
+                indicator="shield" if title.startswith("Symlink") else None,
+                indicator_help=needs_privilege_help if title.startswith("Symlink") else None,
+            )
             button.clicked.connect(lambda checked=False, i=index, f=file: self.select_type(i, f))
             cards.addWidget(button, n // 2, n % 2)
             self.type_cards.append(button)

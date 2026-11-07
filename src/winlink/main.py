@@ -82,7 +82,7 @@ def main():
     # Create Qt application
     app = QApplication(sys.argv)
     app.setApplicationName("WinLink")
-    app.setApplicationVersion("0.1.6")
+    app.setApplicationVersion("0.1.7")
 
     instance_server = None
     if "--smoke-test" not in sys.argv:

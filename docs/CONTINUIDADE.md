@@ -1,6 +1,6 @@
 # Continuidade do WinLink
 
-Documento ativo de manutenção a partir da versão 0.1.0. A versão atual é a v0.1.6, descrita nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a fila de trabalho ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
+Documento ativo de manutenção a partir da versão 0.1.0. A versão atual é a v0.1.7, descrita nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a fila de trabalho ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
 
 ## Base da entrega inicial
 
@@ -10,9 +10,9 @@ Verificação de fechamento: 308 testes Python, Ruff, Black e mypy aprovados; 74
 
 A validação de distribuição no fechamento passou: abertura portátil/instalada, instalação e desinstalação com/sem histórico, preservando junction e dados de teste. Os hashes do executável e instalador conferem com os pacotes preparados anteriormente; a reorganização não alterou o código do aplicativo.
 
-## Verificação da v0.1.6
+## Verificação da v0.1.7
 
-357 testes Python passaram; Ruff, Black e mypy aprovados, assim como 16 testes de layout em escala 2. A validação de distribuição confirmou os pacotes portátil e instalado, os fluxos de instalação/desinstalação em português e inglês e a preservação dos dados de teste. Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados permanecem não homologados.
+363 testes Python passaram; Ruff, Black e mypy aprovados, assim como 16 testes de layout em escala 2. A validação de distribuição confirmou os pacotes portátil e instalado, os fluxos de instalação/desinstalação em português e inglês e a preservação dos dados de teste. A v0.1.7 corrige a descoberta de junctions aninhadas em destinos de outras junctions (#58) e orienta corretamente falhas de privilégio ao criar symlinks (#29). Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados permanecem não homologados.
 
 ## Descoberta e cache
 

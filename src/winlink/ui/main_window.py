@@ -1397,7 +1397,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.6\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.7\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

@@ -420,3 +420,57 @@ def test_cancelled_scan_returns_links_found_inside_current_root(tmp_path, monkey
     assert result.cancelled
     assert [junction.target for junction in result.junctions] == [link]
     assert opened == [root]
+
+
+def test_scan_follows_junction_targets_to_find_nested_junctions(tmp_path):
+    from winlink.core.operations import create_junction
+
+    profile = tmp_path / "Profile"
+    local_app_data = tmp_path / "LocalAppData" / "Vendor" / "Product"
+    destination = tmp_path / "Destination"
+    profile.mkdir()
+    (local_app_data / "backup").mkdir(parents=True)
+    destination.mkdir()
+    outer = profile / "Alias"
+    nested = local_app_data / "backup" / "auto"
+    assert create_junction(tmp_path / "LocalAppData", outer)
+    assert create_junction(destination, nested)
+
+    result = scan_directories([profile, tmp_path / "LocalAppData"])
+    targets = [junction.target for junction in result.junctions]
+
+    assert targets.count(outer) == 1
+    assert targets.count(nested) == 1
+
+
+def test_scan_does_not_follow_excluded_junction_target(tmp_path):
+    from winlink.core.operations import create_junction
+
+    profile = tmp_path / "Profile"
+    destination = tmp_path / "LocalAppData"
+    nested_destination = tmp_path / "NestedDestination"
+    profile.mkdir()
+    destination.mkdir()
+    nested_destination.mkdir()
+    outer = profile / "Alias"
+    nested = destination / "nested"
+    assert create_junction(destination, outer)
+    assert create_junction(nested_destination, nested)
+
+    result = scan_directories([profile], excluded_directories=(destination,))
+
+    assert [junction.target for junction in result.junctions] == [outer]
+
+
+def test_scan_junction_cycle_terminates_and_reports_link_once(tmp_path):
+    from winlink.core.operations import create_junction
+
+    root = tmp_path / "root"
+    child = root / "child"
+    child.mkdir(parents=True)
+    loop = child / "loop"
+    assert create_junction(root, loop)
+
+    result = scan_directories([root])
+
+    assert [junction.target for junction in result.junctions] == [loop]

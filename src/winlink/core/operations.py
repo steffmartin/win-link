@@ -15,6 +15,23 @@ logger = get_logger(__name__)
 # Constants not in pywin32
 SYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
 SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
+SYMBOLIC_LINK_PRIVILEGE_ERROR = 1314
+SYMBOLIC_LINK_PRIVILEGE_MESSAGE = (
+    "O Windows informou que falta o privilégio para criar este link simbólico. "
+    "Habilite o Modo de Desenvolvedor ou execute o WinLink como administrador. "
+    "A elevação não é necessária em todos os ambientes e não será iniciada automaticamente."
+)
+
+
+class SymbolicLinkPrivilegeError(OSError):
+    """Raised when Windows specifically requires a privilege to create a symbolic link."""
+
+
+def _windows_error_code(error: Exception) -> int | None:
+    code = getattr(error, "winerror", None)
+    if code is None and error.args and isinstance(error.args[0], int):
+        code = error.args[0]
+    return code
 
 
 def create_symbolic_link(
@@ -55,9 +72,15 @@ def create_symbolic_link(
         else:
             error = win32api.GetLastError()
             logger.error(f"Failed to create symbolic link: {error}")
+            if error == SYMBOLIC_LINK_PRIVILEGE_ERROR:
+                raise SymbolicLinkPrivilegeError(SYMBOLIC_LINK_PRIVILEGE_MESSAGE)
             return False
 
+    except SymbolicLinkPrivilegeError:
+        raise
     except Exception as e:
+        if _windows_error_code(e) == SYMBOLIC_LINK_PRIVILEGE_ERROR:
+            raise SymbolicLinkPrivilegeError(SYMBOLIC_LINK_PRIVILEGE_MESSAGE) from e
         logger.error(f"Error creating symbolic link {link} -> {target}: {e}")
         return False
 

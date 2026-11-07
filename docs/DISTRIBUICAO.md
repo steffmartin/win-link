@@ -6,7 +6,7 @@ Aplicativo Python/PyQt6 empacotado por PyInstaller (`winlink.spec`) e instalador
 
 - Instalador por usuário, sem elevação obrigatória, em `%LOCALAPPDATA%\Programs\WinLink`.
 - Portátil em `dist/WinLink`: distribuir a pasta inteira, incluindo `_internal`, não somente o executável.
-- Instalador em `dist/WinLink-Setup-0.1.6.exe`; inclui runtime Python e dependências.
+- Instalador em `dist/WinLink-Setup-0.1.7.exe`; inclui runtime Python e dependências.
 - Dados padrão em `%APPDATA%\WinLink`: configuração, histórico, cache e logs JSON/arquivo.
 - Sem serviço, banco de dados ou monitoramento automático como dependência da aplicação atual.
 
@@ -16,11 +16,11 @@ As imagens do assistente usam a marca do aplicativo. Para regerá-las após atua
 
 ```powershell
 uv sync --extra dev --extra build
-.\scripts\build.ps1 -Iscc 'build\tools\inno\ISCC.exe'
-.venv\Scripts\python.exe scripts\validate_distribution.py 'build\tools\inno\ISCC.exe'
+.\scripts\build.ps1 -Iscc 'C:\Program Files\Inno Setup 7\ISCC.exe'
+.venv\Scripts\python.exe scripts\validate_distribution.py 'C:\Program Files\Inno Setup 7\ISCC.exe'
 ```
 
-O Inno Setup não está instalado no sistema; o compilador portátil fica em `build/tools/inno/` (fora do Git, junto com `dist/` e `build/`). Se a pasta não existir, baixe o Inno Setup 6 oficial e copie seu conteúdo para lá, ou aponte `-Iscc` para o `ISCC.exe` da instalação local.
+Use o compilador da instalação padrão do Inno Setup 7 em `C:\Program Files\Inno Setup 7\ISCC.exe`. O diretório `build/tools/inno/` não é mais necessário; builds e validações usam o compilador instalado.
 
 O validador usa AppId e diretório de dados separados dentro de `build/distribution-test`; preserva os resultados de teste para inspeção. Relatório atual: `build/distribution-test/distribution-report.json`. O relatório `phase5-distribution.json` preserva a execução histórica anterior ao redesign. Capturas e testes históricos: [redesign](arquivo/v0.1.0/validacao/REDESIGN.md).
 
@@ -38,13 +38,13 @@ Em 04/11/2026, o mantenedor dispensou o teste manual de sucesso de symlinks com 
 
 ## Publicação
 
-Gerar `dist/WinLink-Portable-0.1.6.zip` com a pasta inteira `WinLink/` e publicar junto do instalador e de `SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. A tag `v0.1.6` deve apontar para o commit do patch validado; preservar as tags e os assets publicados de versões anteriores. A nova release deve usar as [notas de versão](NOTAS-DE-VERSAO.md).
+Gerar `dist/WinLink-Portable-0.1.7.zip` com a pasta inteira `WinLink/` e publicar junto do instalador e de `SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. A tag `v0.1.7` deve apontar para o commit do patch validado; preservar as tags e os assets publicados de versões anteriores. A nova release deve usar as [notas de versão](NOTAS-DE-VERSAO.md).
 
 Na raiz do repositório, após o build e a validação, gerar o ZIP portátil e os checksums:
 
 ```powershell
-Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.6.zip -CompressionLevel Optimal -Force
-$packages = @('.\dist\WinLink-Portable-0.1.6.zip', '.\dist\WinLink-Setup-0.1.6.exe')
+Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.7.zip -CompressionLevel Optimal -Force
+$packages = @('.\dist\WinLink-Portable-0.1.7.zip', '.\dist\WinLink-Setup-0.1.7.exe')
 $checksums = foreach ($package in $packages) {
     $hash = Get-FileHash $package -Algorithm SHA256
     '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), (Split-Path $package -Leaf)

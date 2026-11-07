@@ -163,7 +163,7 @@ class Panel(QFrame):
 
 
 class TypeButton(QPushButton):
-    def __init__(self, title, description, icon, help_text):
+    def __init__(self, title, description, icon, help_text, indicator=None, indicator_help=None):
         super().__init__(title)
         from PyQt6.QtWidgets import QStyle, QStyleOptionButton, QStylePainter
 
@@ -183,6 +183,14 @@ class TypeButton(QPushButton):
         name.setObjectName("fieldLabel")
         row.addWidget(name)
         row.addStretch()
+        if indicator:
+            indicator_label = QLabel()
+            indicator_label.setProperty("glyph", indicator)
+            indicator_label.setPixmap(symbol_icon(indicator).pixmap(16, 16))
+            indicator_label.setToolTip(indicator_help or "")
+            indicator_label.setAccessibleName(indicator_help or title)
+            indicator_label.setAccessibleDescription(indicator_help or "")
+            row.addWidget(indicator_label)
         row.addWidget(contextual_help(title, help_text))
         box.addLayout(row)
         desc = QLabel(description)
