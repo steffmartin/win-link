@@ -6,14 +6,33 @@ from unittest.mock import Mock
 
 import pytest
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QMessageBox, QScrollArea
+from PyQt6.QtWidgets import QDialogButtonBox, QMessageBox, QScrollArea
 
 from winlink.core.config import AppSettings, get_settings, save_settings, settings_path
 from winlink.core.history import HistoryManager, creation_was_undone
-from winlink.core.models import Junction, JunctionType, OperationRecord, OperationType
+from winlink.core.models import (
+    Creator,
+    Junction,
+    JunctionStatus,
+    JunctionType,
+    OperationRecord,
+    OperationType,
+)
 from winlink.ui.main_window import MainWindow
 from winlink.ui.dialogs.settings_dialog import SettingsDialog
 from winlink.ui.dialogs.history_dialog import HistoryDialog
+
+
+def _clear_list_filter_dialog(window):
+    from PyQt6.QtWidgets import QApplication
+
+    def clear():
+        dialog = QApplication.activeModalWidget()
+        dialog.clear_button.click()
+        dialog.accept()
+
+    QTimer.singleShot(20, clear)
+    window.edit_filters()
 
 
 @pytest.fixture
@@ -137,12 +156,14 @@ def test_compact_type_labels_distinguish_symlink_targets(window, tmp_path):
     ]
     window.junction_model.set_junctions(entries)
 
-    assert window.junction_model.data(
-        window.junction_model.index(0, 3), Qt.ItemDataRole.DisplayRole
-    ) == "Symlink (pasta)"
-    assert window.junction_model.data(
-        window.junction_model.index(1, 3), Qt.ItemDataRole.DisplayRole
-    ) == "Symlink (arquivo)"
+    assert (
+        window.junction_model.data(window.junction_model.index(0, 3), Qt.ItemDataRole.DisplayRole)
+        == "Symlink (pasta)"
+    )
+    assert (
+        window.junction_model.data(window.junction_model.index(1, 3), Qt.ItemDataRole.DisplayRole)
+        == "Symlink (arquivo)"
+    )
     assert window.create_page.type_combo.itemText(0) == "Junção"
 
 
@@ -216,31 +237,235 @@ def test_symlink_file_and_directory_filter(window, tmp_path):
             for i, directory in enumerate([True, False])
         ]
     )
-    window.type_filter.setCurrentIndex(4)
+    window._selected_types = {"symlink_file"}
+    window._apply_active_filters()
     assert window.filter_model.rowCount() == 1
-    window.type_filter.setCurrentIndex(2)
+    window._selected_types = {"symlink_dir"}
+    window._apply_active_filters()
     assert window.filter_model.rowCount() == 1
-    window.clear_filters()
+    _clear_list_filter_dialog(window)
     assert window.filter_model.rowCount() == 2
+
+
+def test_multiselect_filter_combinations_empty_selection_and_clear(window, tmp_path):
+    window.junction_model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "active",
+                target=tmp_path / "active-link",
+                junction_type=JunctionType.JUNCTION,
+                status=JunctionStatus.ACTIVE,
+                creator=Creator.APP,
+                tags=["alpha"],
+            ),
+            Junction(
+                source=tmp_path / "broken",
+                target=tmp_path / "broken-link",
+                junction_type=JunctionType.SYMLINK,
+                status=JunctionStatus.BROKEN,
+                creator=Creator.MANUAL,
+                tags=["beta"],
+            ),
+            Junction(
+                source=tmp_path / "inaccessible",
+                target=tmp_path / "inaccessible-link",
+                junction_type=JunctionType.HARDLINK,
+                is_directory=False,
+                status=JunctionStatus.INACCESSIBLE,
+                creator=Creator.EXISTING,
+                tags=["gamma"],
+            ),
+        ]
+    )
+    window._selected_statuses = {"ACTIVE", "BROKEN"}
+    window._selected_creators = {"APP", "MANUAL"}
+    window._selected_types = {"junction_dir", "symlink_dir"}
+    window._selected_tags = {"alpha", "beta"}
+    window._apply_active_filters()
+    assert window.filter_model.rowCount() == 2
+
+    window._selected_creators = set()
+    window._apply_active_filters()
+    assert window.filter_model.rowCount() == 0
+    _clear_list_filter_dialog(window)
+    assert window.filter_model.rowCount() == 3
+
+
+def test_filter_dialog_all_values_and_empty_selection(window, qtbot, tmp_path):
+    window.junction_model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "data",
+                target=tmp_path / "link",
+                junction_type=JunctionType.JUNCTION,
+            )
+        ]
+    )
+
+    def uncheck_all():
+        from PyQt6.QtWidgets import QApplication
+
+        dialog = QApplication.activeModalWidget()
+        group = dialog._groups["status"]
+        group.set_selected(set())
+        dialog.accept()
+
+    QTimer.singleShot(20, uncheck_all)
+    window.edit_filters()
+    assert window._selected_statuses == set()
+    assert window.filter_model.rowCount() == 0
+    assert get_settings().list_filter_status_values == []
+
+    def check_all():
+        from PyQt6.QtWidgets import QApplication
+
+        dialog = QApplication.activeModalWidget()
+        group = dialog._groups["status"]
+        group.set_selected(None)
+        dialog.accept()
+
+    QTimer.singleShot(20, check_all)
+    window.edit_filters()
+    assert window._selected_statuses is None
+    assert window.filter_model.rowCount() == 1
+    assert get_settings().list_filter_status_values is None
+
+
+def test_filter_multiselect_controls_stay_compact_and_popup_remains_open(qtbot):
+    from winlink.ui.dialogs.filter_selection_dialog import FilterSelectionDialog
+
+    dialog = FilterSelectionDialog("Filtros", None)
+    options = [(f"Valor {index}", index) for index in range(35)]
+    tags = dialog.add_multi_group("tags", "Tag", options, None)
+    statuses = dialog.add_multi_group(
+        "status", "Status", [("Ativa", "active"), ("Quebrada", "broken")], None
+    )
+    qtbot.addWidget(dialog)
+    dialog.show()
+    qtbot.waitExposed(dialog)
+
+    assert tags.combo.sizeHint().height() == statuses.combo.sizeHint().height()
+    assert tags.selected_values() is None
+    assert tags.combo._summary == "35 selecionados"
+    qtbot.mouseClick(tags.combo, Qt.MouseButton.LeftButton, pos=tags.combo.rect().center())
+    qtbot.waitUntil(tags.combo._menu.isVisible)
+    qtbot.mouseClick(tags.combo._options[3], Qt.MouseButton.LeftButton)
+    assert tags.selected_values() == set(range(35)) - {3}
+    assert tags.combo._summary == "34 selecionados"
+    assert tags.combo._menu.isVisible()
+    tags.combo._options[3].setFocus()
+    qtbot.keyClick(tags.combo._options[3], Qt.Key.Key_Space)
+    assert tags.selected_values() is None
+
+
+def test_empty_tag_filter_selects_untagged_links_and_persists(window, qtbot, tmp_path):
+    from winlink.ui.main_window import EMPTY_TAG_FILTER
+
+    window.junction_model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "tagged",
+                target=tmp_path / "tagged-link",
+                junction_type=JunctionType.JUNCTION,
+                tags=["photos"],
+            ),
+            Junction(
+                source=tmp_path / "untagged",
+                target=tmp_path / "untagged-link",
+                junction_type=JunctionType.JUNCTION,
+            ),
+        ]
+    )
+
+    def select_empty_tag():
+        from PyQt6.QtWidgets import QApplication
+
+        dialog = QApplication.activeModalWidget()
+        assert "(Vazio)" in [
+            checkbox.text() for checkbox in dialog._groups["tags"].combo._options.values()
+        ]
+        dialog._groups["tags"].set_selected({EMPTY_TAG_FILTER})
+        dialog.accept()
+
+    QTimer.singleShot(20, select_empty_tag)
+    window.edit_filters()
+
+    assert window._selected_tags == set()
+    assert window._selected_empty_tag
+    assert window.filter_model.rowCount() == 1
+    assert (
+        window.junction_model.get_junction(
+            window.filter_model.mapToSource(window.filter_model.index(0, 0))
+        ).source
+        == tmp_path / "untagged"
+    )
+    assert get_settings().list_filter_tags == []
+    assert get_settings().list_filter_include_empty_tag
+
+
+def test_saved_tag_filter_ignores_removed_mode_and_clears_unavailable_tags(
+    qtbot, monkeypatch, tmp_path
+):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(MainWindow, "start_scan", lambda self: None)
+    save_settings(
+        AppSettings.model_validate(
+            {
+                "scan_directories": [str(tmp_path)],
+                "remember_window_size": False,
+                "list_filter_tags": ["keep"],
+                "list_filter_tag_mode": 1,
+                "list_filter_tag_modes": ["exclude"],
+            }
+        )
+    )
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.junction_model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "data",
+                target=tmp_path / "link",
+                junction_type=JunctionType.JUNCTION,
+                tags=["keep"],
+            )
+        ]
+    )
+    window.update_tag_filter_options()
+    assert window._selected_tags == {"keep"}
+    assert window.filter_model.rowCount() == 1
+    window._persist_list_filters()
+    restored = MainWindow()
+    qtbot.addWidget(restored)
+    assert restored._selected_tags == {"keep"}
+    assert restored.filter_model.rowCount() == 0
+
+    window.junction_model.set_junctions([])
+    window.update_tag_filter_options()
+    assert window._selected_tags is None
+    assert get_settings().list_filter_tags is None
+    assert "list_filter_tag_mode" not in get_settings().model_dump()
+    assert "list_filter_tag_modes" not in get_settings().model_dump()
 
 
 @pytest.mark.parametrize("accept", [False, True])
 def test_filters_use_draft(window, accept):
     def edit():
-        dialog = window.findChild(QDialog)
-        # Embedded pages are QDialogs too; pick the visible modal dialog.
         from PyQt6.QtWidgets import QApplication
 
         dialog = QApplication.activeModalWidget()
-        dialog.findChildren(QComboBox)[0].setCurrentIndex(2)
+        status = dialog._groups["status"]
+        status.set_selected({"BROKEN"})
         dialog.accept() if accept else dialog.reject()
 
     QTimer.singleShot(20, edit)
     window.edit_filters()
-    assert window.status_filter.currentIndex() == (2 if accept else 0)
+    assert window._selected_statuses == ({"BROKEN"} if accept else None)
 
 
 def test_history_combines_result_and_removes_custom_date_controls(qtbot, tmp_path):
+    from PyQt6.QtWidgets import QApplication, QComboBox
+
     manager = HistoryManager(tmp_path / "history.json")
     records = [
         OperationRecord(
@@ -256,20 +481,232 @@ def test_history_combines_result_and_removes_custom_date_controls(qtbot, tmp_pat
     ]
     dialog = HistoryDialog(manager)
     qtbot.addWidget(dialog)
-    assert [dialog.date_combo.itemText(i) for i in range(dialog.date_combo.count())] == [
-        "Todos",
-        "Hoje",
-        "Última semana",
-        "Último mês",
-    ]
     assert not hasattr(dialog, "from_date")
     assert not hasattr(dialog, "to_date")
-    dialog.result_combo.setCurrentText("Sucesso")
+    choices = []
+
+    def inspect_filters():
+        selection_dialog = QApplication.activeModalWidget()
+        period = next(
+            combo
+            for combo in selection_dialog.findChildren(QComboBox)
+            if combo.accessibleName() == "Período"
+        )
+        choices.extend(
+            (period.itemText(index), period.itemData(index)) for index in range(period.count())
+        )
+        assert period.currentData() is None
+        choices.append(selection_dialog.clear_button.text())
+        selection_dialog.reject()
+
+    QTimer.singleShot(20, inspect_filters)
+    dialog.edit_filters()
+    assert choices == [
+        ("Todo período", None),
+        ("Hoje", "today"),
+        ("Última semana", "week"),
+        ("Último mês", "month"),
+        ("Último ano", "year"),
+        "Limpar",
+    ]
+    assert dialog.filters_btn.text() == "Filtros"
+    dialog._filter_results = {"Sucesso"}
     dialog.apply_filters(records)
     assert dialog.table_model.rowCount() == 1
     assert "1 de 2" in dialog.total_label.text()
-    assert dialog.clear_filter_btn.text() == "Limpar"
     assert dialog.clear_history_btn.text() == "Apagar histórico"
+
+
+@pytest.mark.parametrize("apply", [False, True])
+def test_history_filter_dialog_is_a_multi_select_draft(qtbot, monkeypatch, apply):
+    from PyQt6.QtWidgets import QApplication
+
+    records = [
+        OperationRecord(operation_type=OperationType.CREATE_JUNCTION, success=True),
+        OperationRecord(operation_type=OperationType.UNDO_OPERATION, success=False),
+    ]
+    manager = Mock()
+    manager.get_history.return_value = records
+    dialog = HistoryDialog(manager)
+    qtbot.addWidget(dialog)
+
+    def edit():
+        selection_dialog = QApplication.activeModalWidget()
+        group = selection_dialog._groups["type"]
+        group.set_selected({OperationType.CREATE_JUNCTION})
+        if apply:
+            results = selection_dialog._groups["result"]
+            results.set_selected({"Sucesso"})
+        selection_dialog.accept() if apply else selection_dialog.reject()
+
+    QTimer.singleShot(20, edit)
+    dialog.edit_filters()
+    if apply:
+        assert dialog._filter_types == {OperationType.CREATE_JUNCTION}
+        assert dialog._filter_results == {"Sucesso"}
+        assert dialog.table_model.rowCount() == 1
+    else:
+        assert dialog._filter_types is None
+        assert dialog._filter_results is None
+        assert dialog.table_model.rowCount() == 2
+
+
+def test_history_filter_clear_resets_draft_to_all_values(qtbot, monkeypatch):
+    from PyQt6.QtWidgets import QApplication
+
+    records = [
+        OperationRecord(operation_type=OperationType.CREATE_JUNCTION, success=True),
+        OperationRecord(operation_type=OperationType.UNDO_OPERATION, success=False),
+    ]
+    manager = Mock()
+    manager.get_history.return_value = records
+    dialog = HistoryDialog(manager)
+    qtbot.addWidget(dialog)
+    dialog._filter_results = {"Falha"}
+    dialog._sort_column = 2
+    dialog._sort_ascending = True
+    dialog.load_history()
+    assert dialog.table_model.rowCount() == 1
+
+    def clear():
+        selection_dialog = QApplication.activeModalWidget()
+        selection_dialog.clear_button.click()
+        selection_dialog.accept()
+
+    QTimer.singleShot(20, clear)
+    dialog.edit_filters()
+    assert dialog._filter_results is None
+    assert dialog._filter_types is None
+    assert dialog._filter_date_range is None
+    assert dialog._sort_column == 0
+    assert not dialog._sort_ascending
+    assert dialog.table_model.rowCount() == 2
+
+
+def test_history_period_filter_is_single_select_and_applies(qtbot):
+    from PyQt6.QtWidgets import QApplication, QComboBox
+
+    manager = Mock()
+    manager.get_history.return_value = []
+    dialog = HistoryDialog(manager)
+    qtbot.addWidget(dialog)
+
+    def select_year():
+        selection_dialog = QApplication.activeModalWidget()
+        period = next(
+            combo
+            for combo in selection_dialog.findChildren(QComboBox)
+            if combo.accessibleName() == "Período"
+        )
+        period.setCurrentIndex(period.findData("year"))
+        selection_dialog.accept()
+
+    QTimer.singleShot(20, select_year)
+    dialog.edit_filters()
+    assert dialog._filter_date_range == "year"
+
+
+def test_history_sorting_defaults_to_newest_and_sorts_every_column(qtbot, tmp_path):
+    from PyQt6.QtWidgets import QApplication, QComboBox
+
+    records = [
+        OperationRecord(
+            operation_type=OperationType.CREATE_JUNCTION,
+            timestamp=datetime(2026, 1, 1),
+            source=tmp_path / "source-z",
+            target=tmp_path / "target-z",
+            success=True,
+        ),
+        OperationRecord(
+            operation_type=OperationType.UNDO_OPERATION,
+            timestamp=datetime(2026, 1, 3),
+            source=tmp_path / "source-a",
+            target=tmp_path / "target-a",
+            success=True,
+        ),
+        OperationRecord(
+            operation_type=OperationType.CREATE_SYMLINK,
+            timestamp=datetime(2026, 1, 2),
+            source=tmp_path / "source-m",
+            target=tmp_path / "target-m",
+            success=False,
+        ),
+    ]
+    manager = Mock()
+    manager.get_history.return_value = records
+    dialog = HistoryDialog(manager)
+    qtbot.addWidget(dialog)
+
+    def operations_in_table():
+        return [
+            dialog.table_model.get_operation(dialog.table_model.index(row, 0))
+            for row in range(dialog.table_model.rowCount())
+        ]
+
+    assert dialog._sort_column == 0
+    assert not dialog._sort_ascending
+    assert [operation.timestamp for operation in operations_in_table()] == [
+        datetime(2026, 1, 3),
+        datetime(2026, 1, 2),
+        datetime(2026, 1, 1),
+    ]
+
+    for column, key in [
+        (0, lambda operation: operation.timestamp),
+        (1, lambda operation: dialog.table_model._get_type_display(operation).casefold()),
+        (2, lambda operation: str(operation.target or operation.source or "").casefold()),
+        (3, lambda operation: dialog.table_model._get_display_data(operation, 3).casefold()),
+    ]:
+        dialog._sort_column = column
+        dialog._sort_ascending = True
+        dialog.load_history()
+        assert [key(operation) for operation in operations_in_table()] == sorted(
+            key(operation) for operation in records
+        )
+
+    dialog._sort_column = 4
+    dialog._sort_ascending = True
+    dialog.load_history()
+    assert [operation.operation_type for operation in operations_in_table()] == [
+        OperationType.CREATE_JUNCTION,
+        OperationType.CREATE_SYMLINK,
+        OperationType.UNDO_OPERATION,
+    ]
+
+    def edit_sort():
+        selection_dialog = QApplication.activeModalWidget()
+        sort_column = next(
+            combo
+            for combo in selection_dialog.findChildren(QComboBox)
+            if combo.accessibleName() == "Ordenar por"
+        )
+        sort_order = next(
+            combo
+            for combo in selection_dialog.findChildren(QComboBox)
+            if combo.accessibleName() == "Ordem"
+        )
+        assert [sort_column.itemText(index) for index in range(sort_column.count())] == [
+            "Data / Hora",
+            "Ação Realizada",
+            "Ponto de Acesso",
+            "Status",
+            "Recuperação",
+        ]
+        assert sort_column.currentIndex() == 4
+        assert sort_order.currentText() == "Crescente"
+        sort_column.setCurrentIndex(0)
+        sort_order.setCurrentIndex(1)
+        selection_dialog.accept()
+
+    QTimer.singleShot(20, edit_sort)
+    dialog.edit_filters()
+    assert dialog._sort_column == 0
+    assert not dialog._sort_ascending
+    assert [operation.timestamp for operation in operations_in_table()] == [
+        datetime(2026, 1, 3),
+        datetime(2026, 1, 2),
+        datetime(2026, 1, 1),
+    ]
 
 
 def test_legacy_undone_creation_cannot_be_repeated(qtbot, monkeypatch, tmp_path):

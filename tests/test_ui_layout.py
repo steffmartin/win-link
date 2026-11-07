@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from PyQt6.QtCore import QPoint, Qt
-from PyQt6.QtWidgets import QCheckBox, QLabel, QScrollArea, QToolButton
+from PyQt6.QtWidgets import QApplication, QCheckBox, QLabel, QScrollArea, QToolButton
 
 from winlink.core.config import AppSettings, save_settings
 from winlink.core.models import OperationType
@@ -38,11 +38,38 @@ def test_four_pages_respect_requested_window_size(window, qtbot, size):
         if page == 2:
             history_page = window.history_page
             qtbot.wait(20)
-            button_rect = history_page.clear_filter_btn.geometry()
-            period_rect = history_page.date_combo.geometry()
-            assert abs(button_rect.center().y() - period_rect.center().y()) <= 1
+            assert history_page.filters_btn.isVisible()
+            assert not hasattr(history_page, "type_combo")
+            assert not hasattr(history_page, "date_combo")
+            assert not hasattr(history_page, "result_combo")
         if page == 2 and size[0] >= 1100:
             assert window.history_page.table_view.horizontalScrollBar().maximum() == 0
+
+
+def test_filter_dialog_reflows_columns_without_horizontal_scrolling(window, qtbot):
+    observed_columns = []
+    dialog_ref = []
+
+    def inspect_dialog():
+        dialog = QApplication.activeModalWidget()
+        dialog_ref.append(dialog)
+        for width, expected in [(920, 3), (760, 2), (500, 1)]:
+            dialog.resize(width, 420)
+            QApplication.processEvents()
+            observed_columns.append(dialog._grid_columns)
+            assert dialog._grid_columns == expected
+        dialog.reject()
+
+    from PyQt6.QtCore import QTimer
+
+    QTimer.singleShot(20, inspect_dialog)
+    window.edit_filters()
+    dialog = dialog_ref[0]
+    assert len(dialog._groups) == 6
+    scroll_area = dialog.findChild(QScrollArea)
+    assert scroll_area is not None
+    assert scroll_area.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    assert observed_columns == [3, 2, 1]
 
 
 def test_creation_cards_have_readable_children_and_two_columns(window, qtbot):
@@ -404,11 +431,14 @@ def test_list_filters_are_remembered_between_sessions(qtbot, monkeypatch, tmp_pa
     )
     window = MainWindow()
     qtbot.addWidget(window)
-    assert window.status_filter.currentIndex() == 3
-    assert window.creator_filter.currentIndex() == 2
-    assert window.type_filter.currentIndex() == 1
+    assert window._selected_statuses == {"INACCESSIBLE"}
+    assert window._selected_creators == {"EXISTING"}
+    assert window._selected_types == {"junction_dir"}
     assert window.filter_model.sortColumn() == 4
     assert window.filter_model.sortOrder() == Qt.SortOrder.DescendingOrder
-    window.status_filter.setCurrentIndex(1)
+    window._selected_statuses = {"ACTIVE"}
+    window._apply_active_filters()
+    window._persist_list_filters()
+    assert get_settings().list_filter_status_values == ["ACTIVE"]
     assert get_settings().list_filter_status == 1
     window.close()

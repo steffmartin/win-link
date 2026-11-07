@@ -6,7 +6,7 @@ Aplicativo Python/PyQt6 empacotado por PyInstaller (`winlink.spec`) e instalador
 
 - Instalador por usuário, sem elevação obrigatória, em `%LOCALAPPDATA%\Programs\WinLink`.
 - Portátil em `dist/WinLink`: distribuir a pasta inteira, incluindo `_internal`, não somente o executável.
-- Instalador em `dist/WinLink-Setup-0.1.8.exe`; inclui runtime Python e dependências.
+- Instalador em `dist/WinLink-Setup-0.1.9.exe`; inclui runtime Python e dependências.
 - Dados padrão em `%APPDATA%\WinLink`: configuração, histórico, cache e logs JSON/arquivo.
 - Sem serviço, banco de dados ou monitoramento automático como dependência da aplicação atual.
 
@@ -36,15 +36,15 @@ Leitura/junctions não exigem elevação geral do aplicativo. Symlinks dependem 
 
 Em 04/11/2026, o mantenedor dispensou o teste manual de sucesso de symlinks com privilégios apropriados e autorizou a release inicial. Windows limpo sem Python e Windows 10 também foram dispensados e permanecem não homologados. PATH isolado no host não substitui outra instalação do Windows. Acompanhar em [continuidade](CONTINUIDADE.md).
 
-## Publicação
+## Preparação da v0.1.9 e publicação
 
-Gerar `dist/WinLink-Portable-0.1.8.zip` com a pasta inteira `WinLink/` e publicar junto do instalador e de `SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. A tag `v0.1.8` deve apontar para o commit do patch validado; preservar as tags e os assets publicados de versões anteriores. A nova release deve usar as [notas de versão](NOTAS-DE-VERSAO.md).
+Os artefatos v0.1.9 foram reconstruídos e validados após a revisão manual. Preparar o commit aprovado, criar a tag `v0.1.9` nesse commit e deixar a release como rascunho até a autorização explícita para publicar. Anexar `dist/WinLink-Portable-0.1.9.zip` com a pasta inteira `WinLink/`, `dist/WinLink-Setup-0.1.9.exe` e `dist/SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. Preservar as tags e os assets publicados de versões anteriores. Usar as [notas de versão](NOTAS-DE-VERSAO.md).
 
 Na raiz do repositório, após o build e a validação, gerar o ZIP portátil e os checksums:
 
 ```powershell
-Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.8.zip -CompressionLevel Optimal -Force
-$packages = @('.\dist\WinLink-Portable-0.1.8.zip', '.\dist\WinLink-Setup-0.1.8.exe')
+Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-0.1.9.zip -CompressionLevel Optimal -Force
+$packages = @('.\dist\WinLink-Portable-0.1.9.zip', '.\dist\WinLink-Setup-0.1.9.exe')
 $checksums = foreach ($package in $packages) {
     $hash = Get-FileHash $package -Algorithm SHA256
     '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), (Split-Path $package -Leaf)
