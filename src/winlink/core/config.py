@@ -86,6 +86,7 @@ class AppSettings(BaseSettings):
     list_sort_ascending: bool = True
 
     # Operations
+    calculate_storage_automatically: bool = True
     auto_backup_before_undo: bool = True
     confirm_before_destructive: bool = True
     show_notifications: bool = True

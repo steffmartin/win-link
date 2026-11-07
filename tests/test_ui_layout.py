@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from PyQt6.QtCore import QPoint, Qt
-from PyQt6.QtWidgets import QLabel, QScrollArea
+from PyQt6.QtWidgets import QCheckBox, QLabel, QScrollArea, QToolButton
 
 from winlink.core.config import AppSettings, save_settings
 from winlink.core.models import OperationType
@@ -34,7 +34,7 @@ def test_four_pages_respect_requested_window_size(window, qtbot, size):
         assert window.width() == size[0] and window.height() == size[1]
         assert isinstance(window.pages.currentWidget(), QScrollArea)
         area = window.pages.currentWidget()
-        assert area.horizontalScrollBar().maximum() == 0
+        assert area.horizontalScrollBar().maximum() == 0, f"page {page} overflows horizontally"
         if page == 2 and size[0] >= 1100:
             assert window.history_page.table_view.horizontalScrollBar().maximum() == 0
 
@@ -43,11 +43,15 @@ def test_creation_cards_have_readable_children_and_two_columns(window, qtbot):
     window.resize(1280, 800)
     window.navigate(1)
     qtbot.wait(30)
-    cards = window.create_page.type_cards
-    positions = [card.mapTo(window.create_page, QPoint()) for card in cards]
-    assert positions[0].y() == positions[1].y()
-    assert positions[2].y() > positions[0].y()
-    for card in cards:
+    page = window.create_page
+    assert len(page.category_cards) == 2
+    assert sum(card.isVisible() for card in page.type_cards) == 2
+    category_positions = [card.mapTo(page, QPoint()) for card in page.category_cards]
+    assert category_positions[0].y() == category_positions[1].y()
+    visible_type_cards = [card for card in page.type_cards if card.isVisible()]
+    type_positions = [card.mapTo(page, QPoint()) for card in visible_type_cards]
+    assert type_positions[0].y() == type_positions[1].y()
+    for card in [*page.category_cards, *visible_type_cards]:
         assert card.height() >= 100
         for label in card.findChildren(QLabel):
             assert label.height() >= 16
@@ -129,14 +133,38 @@ def test_settings_footer_is_reachable_in_small_window(window, qtbot):
     assert position.y() + button.height() <= area.viewport().height()
 
 
+def test_storage_preference_is_before_backup_and_persists(window):
+    from winlink.core.config import get_settings
+
+    checkboxes = window.settings_page.findChildren(QCheckBox)
+    assert checkboxes.index(window.settings_page.calculate_storage_checkbox) < checkboxes.index(
+        window.settings_page.backup_checkbox
+    )
+    help_button = next(
+        button
+        for button in window.settings_page.findChildren(QToolButton)
+        if button.accessibleName() == "Ajuda: Calcular armazenamento automaticamente"
+    )
+    assert "Recalcular manual" in help_button.toolTip()
+    window.settings_page.calculate_storage_checkbox.setChecked(False)
+    window.settings_page.save_settings()
+    assert get_settings().calculate_storage_automatically is False
+
+
 def test_type_selection_cannot_be_unchecked_by_repeated_click(window, qtbot):
     window.navigate(1)
-    for button in window.create_page.type_cards:
+    page = window.create_page
+    for button in page.category_cards:
         button.click()
         assert button.isChecked()
-        button.click()
-        assert button.isChecked()
-        assert sum(card.isChecked() for card in window.create_page.type_cards) == 1
+        assert sum(card.isChecked() for card in page.category_cards) == 1
+    for button in page.type_cards:
+        if button.isVisible():
+            button.click()
+            assert button.isChecked()
+            button.click()
+            assert button.isChecked()
+            assert sum(card.isChecked() for card in page.type_cards) == 1
 
 
 def test_empty_state_remains_visible_when_switching_view_mode(window):
@@ -172,8 +200,9 @@ def test_type_help_is_inside_card_and_activates_without_selecting(window, qtbot)
     from PyQt6.QtWidgets import QToolButton
 
     window.navigate(1)
-    cards = window.create_page.type_cards
-    selected = [card.isChecked() for card in cards]
+    page = window.create_page
+    cards = [*page.category_cards, *(card for card in page.type_cards if card.isVisible())]
+    selected = [card.isChecked() for card in page.type_cards]
     for card in cards:
         help_button = card.findChild(QToolButton)
         assert help_button is not None
@@ -183,7 +212,28 @@ def test_type_help_is_inside_card_and_activates_without_selecting(window, qtbot)
         assert help_button.hasFocus()
         with qtbot.waitSignal(help_button.clicked):
             qtbot.keyClick(help_button, Qt.Key.Key_Space)
-        assert [item.isChecked() for item in cards] == selected
+        assert [item.isChecked() for item in page.type_cards] == selected
+
+
+def test_create_page_parses_optional_comma_separated_tags(qtbot):
+    from winlink.ui.dialogs.create_junction_dialog import CreateJunctionDialog
+
+    dialog = CreateJunctionDialog()
+    qtbot.addWidget(dialog)
+    dialog.tags_edit.setText("minha-pasta, minhas-fotos, , MINHA-PASTA")
+    assert dialog.get_tags() == ["minha-pasta", "minhas-fotos"]
+
+
+def test_create_page_shows_only_types_for_selected_category(qtbot):
+    from winlink.ui.dialogs.create_junction_dialog import CreateJunctionDialog
+
+    dialog = CreateJunctionDialog()
+    qtbot.addWidget(dialog)
+    assert [not card.isHidden() for card in dialog.type_cards] == [True, True, False, False]
+
+    dialog.select_category(False)
+
+    assert [not card.isHidden() for card in dialog.type_cards] == [False, False, True, True]
 
 
 def test_compact_paths_share_width_and_can_be_resized(window, qtbot, tmp_path):
@@ -196,15 +246,16 @@ def test_compact_paths_share_width_and_can_be_resized(window, qtbot, tmp_path):
     window.resize(760, 500)
     qtbot.wait(30)
     table = window.table_view
-    before = [table.columnWidth(column) for column in range(6)]
+    before = [table.columnWidth(column) for column in range(7)]
     window.resize(1280, 800)
     qtbot.wait(30)
-    after = [table.columnWidth(column) for column in range(6)]
+    after = [table.columnWidth(column) for column in range(7)]
     assert after[0] > before[0]
     assert abs((after[0] - before[0]) - (after[1] - before[1])) <= 1
     assert after[2:] == before[2:]
     table.horizontalHeader().resizeSection(0, after[0] + 20)
     assert table.columnWidth(0) == after[0] + 20
+
 
 def test_exclusion_draft_can_be_restored_discarded_and_saved(window):
     from winlink.core import config

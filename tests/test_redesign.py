@@ -27,7 +27,7 @@ def window(qtbot, monkeypatch, tmp_path):
 
 
 def test_legacy_config_roundtrip_preserves_storage(tmp_path):
-    settings_path().parent.mkdir(parents=True)
+    settings_path().parent.mkdir(parents=True, exist_ok=True)
     settings_path().write_text(
         '{"theme_mode":"dark","history_file":"D:/custom/history.json","show_notifications":false}'
     )
@@ -54,6 +54,9 @@ def test_default_type_reaches_creation_page(window, preference, index, file):
     assert window.pages.currentIndex() == 1
     assert window.create_page.type_combo.currentIndex() == index
     assert window.create_page.file_symlink.isChecked() == file
+    assert window.create_page.is_directory_link() is (
+        preference not in ("symlink_file", "hardlink")
+    )
 
 
 def test_settings_restore_discard_and_save_are_transactional(qtbot, tmp_path):
@@ -150,7 +153,7 @@ def test_filters_use_draft(window, accept):
     assert window.status_filter.currentIndex() == (2 if accept else 0)
 
 
-def test_history_combines_result_operation_and_inclusive_dates(qtbot, tmp_path):
+def test_history_combines_result_and_removes_custom_date_controls(qtbot, tmp_path):
     manager = HistoryManager(tmp_path / "history.json")
     records = [
         OperationRecord(
@@ -166,18 +169,20 @@ def test_history_combines_result_operation_and_inclusive_dates(qtbot, tmp_path):
     ]
     dialog = HistoryDialog(manager)
     qtbot.addWidget(dialog)
-    dialog.date_combo.setCurrentText("Personalizado")
-    from PyQt6.QtCore import QDate
-
-    dialog.from_date.setDate(QDate(2026, 1, 2))
-    dialog.to_date.setDate(QDate(2026, 1, 2))
+    assert [dialog.date_combo.itemText(i) for i in range(dialog.date_combo.count())] == [
+        "Todos",
+        "Hoje",
+        "Última semana",
+        "Último mês",
+    ]
+    assert not hasattr(dialog, "from_date")
+    assert not hasattr(dialog, "to_date")
     dialog.result_combo.setCurrentText("Sucesso")
     dialog.apply_filters(records)
     assert dialog.table_model.rowCount() == 1
     assert "1 de 2" in dialog.total_label.text()
-    dialog.from_date.setDate(QDate(2026, 1, 4))
-    dialog.apply_filters(records)
-    assert dialog.table_model.rowCount() == 0
+    assert dialog.clear_filter_btn.text() == "Limpar"
+    assert dialog.clear_history_btn.text() == "Apagar histórico"
 
 
 def test_legacy_undone_creation_cannot_be_repeated(qtbot, monkeypatch, tmp_path):

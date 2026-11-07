@@ -51,6 +51,7 @@ class Junction(BaseModel):
     created_at: datetime | None = Field(default=None, description="When it was created")
     size_bytes: int | None = Field(default=None, description="Total size in bytes")
     is_directory: bool = Field(default=True, description="Whether it's a directory")
+    tags: list[str] = Field(default_factory=list, description="User-assigned labels")
 
     @field_serializer("source", "target")
     def serialize_path(self, value: Path) -> str:

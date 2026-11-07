@@ -53,7 +53,7 @@ def sample_junctions():
 def test_model_initialization(junction_model):
     """Test model initialization"""
     assert junction_model.rowCount() == 0
-    assert junction_model.columnCount() == 6
+    assert junction_model.columnCount() == 7
 
 
 def test_model_set_junctions(junction_model, sample_junctions):
@@ -87,9 +87,16 @@ def test_model_data_display(junction_model, sample_junctions):
     data = junction_model.data(index, Qt.ItemDataRole.DisplayRole)
     assert "MB" in data
 
-    index = junction_model.index(0, 5)  # Status column
+    index = junction_model.index(0, 6)  # Status column
     data = junction_model.data(index, Qt.ItemDataRole.DisplayRole)
     assert "Ativo" in data
+
+
+def test_tags_are_displayed_in_the_compact_tags_column(junction_model, sample_junctions):
+    sample_junctions[0].tags = ["minha-pasta", "fotos"]
+    junction_model.set_junctions(sample_junctions)
+    assert junction_model.headerData(5, Qt.Orientation.Horizontal) == "Tags"
+    assert junction_model.data(junction_model.index(0, 5)) == "minha-pasta, fotos"
 
 
 def test_model_header_data(junction_model):
@@ -201,7 +208,7 @@ def test_update_notifies_entire_row(junction_model, sample_junctions):
     changes = []
     junction_model.dataChanged.connect(lambda left, right, roles: changes.append((left.column(), right.column())))
     junction_model.update_junction(junction_model.index(0, 2), sample_junctions[1])
-    assert changes == [(0, 5)]
+    assert changes == [(0, 6)]
 
 
 def test_upsert_and_remove_by_target(junction_model, sample_junctions):

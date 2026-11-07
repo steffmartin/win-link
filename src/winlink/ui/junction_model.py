@@ -19,6 +19,7 @@ class JunctionTableModel(QAbstractTableModel):
         "Criador",
         "Tipo",
         "Tamanho",
+        "Tags",
         "Status",
     ]
 
@@ -72,7 +73,7 @@ class JunctionTableModel(QAbstractTableModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             return self._get_display_data(junction, column)
-        elif role == Qt.ItemDataRole.DecorationRole and column == 5:
+        elif role == Qt.ItemDataRole.DecorationRole and column == 6:
             from winlink.ui.icons import status_icon
             from winlink.ui.theme import junction_status_color
 
@@ -111,7 +112,9 @@ class JunctionTableModel(QAbstractTableModel):
             )
         elif column == 4:  # Tamanho
             return self._format_size(junction.size_bytes)
-        elif column == 5:  # Status
+        elif column == 5:  # Tags
+            return ", ".join(junction.tags)
+        elif column == 6:  # Status
             return self._get_status_display(junction.status)
         return ""
 
@@ -129,13 +132,15 @@ class JunctionTableModel(QAbstractTableModel):
             if junction.size_bytes:
                 return f"{junction.size_bytes:,} bytes"
             return "Tamanho desconhecido"
-        elif column == 5:  # Status
+        elif column == 5:  # Tags
+            return ", ".join(junction.tags)
+        elif column == 6:  # Status
             return f"Status: {junction.status.value}"
         return ""
 
     def _get_foreground_color(self, junction: Junction, column: int) -> QColor | None:
         """Get foreground color for a cell"""
-        if column == 5:  # Status column
+        if column == 6:  # Status column
             from winlink.ui.theme import junction_status_color
 
             return junction_status_color(junction.status)

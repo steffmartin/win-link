@@ -38,7 +38,32 @@ class LinkCardView(QListView):
 
 class LinkCardDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index):
-        return QSize(400, 120)
+        proxy = index.model()
+        junction = proxy.sourceModel().get_junction(proxy.mapToSource(index))
+        if junction is None or not junction.tags:
+            return QSize(400, 120)
+        width = option.rect.width() or 400
+        available = max(120, width - 40)
+        metrics = option.fontMetrics
+        rows = self._tag_rows(junction.tags, available, metrics)
+        return QSize(400, 140 + max(0, len(rows) - 1) * 22)
+
+    @staticmethod
+    def _tag_rows(tags, width, metrics):
+        rows = []
+        current: list[tuple[str, int]] = []
+        used = 0
+        for tag in tags:
+            pill_width = min(width, metrics.horizontalAdvance(tag) + 16)
+            if current and used + pill_width > width:
+                rows.append(current)
+                current = []
+                used = 0
+            current.append((tag, pill_width))
+            used += pill_width
+        if current:
+            rows.append(current)
+        return rows
 
     def paint(self, painter, option, index):
         proxy = index.model()
@@ -116,6 +141,28 @@ class LinkCardDelegate(QStyledItemDelegate):
         status_icon(junction.status, tone).paint(
             painter, QRect(status_rect.right() - width - 22, status_rect.top(), 16, 16)
         )
+        if junction.tags:
+            tag_rows = self._tag_rows(
+                junction.tags, max(120, rect.width() - 40), painter.fontMetrics()
+            )
+            right_edge = rect.right() - 14
+            painter.setFont(option.font)
+            for row_index, row in enumerate(reversed(tag_rows)):
+                y = rect.bottom() - 9 - row_index * 22
+                right = right_edge
+                for tag, pill_width in reversed(row):
+                    pill = QRect(right - pill_width, y - 16, pill_width, 18)
+                    painter.setPen(colors.mid().color())
+                    painter.setBrush(colors.alternateBase().color())
+                    painter.drawRoundedRect(pill, 8, 8)
+                    painter.setPen(foreground)
+                    text = painter.fontMetrics().elidedText(
+                        tag, Qt.TextElideMode.ElideRight, max(1, pill_width - 12)
+                    )
+                    painter.drawText(
+                        pill.adjusted(6, 0, -6, 0), Qt.AlignmentFlag.AlignVCenter, text
+                    )
+                    right -= pill_width + 4
         symbol_icon("more", "#9ca3af").paint(
             painter, QRect(rect.right() - 32, rect.top() + 40, 20, 20)
         )

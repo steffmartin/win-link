@@ -137,7 +137,7 @@ def test_status_colors_match_table_and_properties(app, theme, status, expected):
         )
         model = JunctionTableModel()
         model.set_junctions([junction])
-        color = model.data(model.index(0, 5), Qt.ItemDataRole.ForegroundRole)
+        color = model.data(model.index(0, 6), Qt.ItemDataRole.ForegroundRole)
 
         assert color == junction_status_color(status)
         assert color.name() == expected

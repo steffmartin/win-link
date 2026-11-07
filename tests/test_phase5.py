@@ -198,7 +198,7 @@ def test_creation_preserves_original_when_copy_sees_external_changes(qtbot, monk
     (target / "payload").write_text("original")
     monkeypatch.setattr(
         "winlink.core.validators.validate_junction_creation",
-        lambda *a: ValidationResult(is_valid=True),
+        lambda *a, **kwargs: ValidationResult(is_valid=True),
     )
     original_copy = file_ops.copy_directory_with_metadata
 

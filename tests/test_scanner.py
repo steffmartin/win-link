@@ -140,6 +140,19 @@ def test_calculate_directory_size_permission_error():
         assert size == 0
 
 
+def test_discovery_coverage_uses_path_components_and_exclusions(tmp_path):
+    from winlink.core.scanner import is_discovery_covered
+
+    root = tmp_path / "scan"
+    nested_link = root / "nested" / "link"
+    sibling = tmp_path / "scan-other" / "link"
+    excluded = root / "excluded" / "link"
+    assert is_discovery_covered(nested_link, [root])
+    assert not is_discovery_covered(sibling, [root])
+    assert not is_discovery_covered(excluded, [root], (root / "excluded",))
+    assert not is_discovery_covered(root / "excluded", [root], (root / "excluded",))
+
+
 def test_check_junction_status_active():
     """Test check_junction_status for active junction"""
     with tempfile.TemporaryDirectory() as tmpdir:

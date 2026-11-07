@@ -45,17 +45,17 @@ def test_sorting_is_a_filter_draft_and_uses_current_table_sort(window, apply):
     def edit():
         dialog = QApplication.activeModalWidget()
         combos = dialog.findChildren(QComboBox)
-        observations.append((combos[3].currentIndex(), combos[4].currentIndex()))
+        observations.append((combos[5].currentIndex(), combos[6].currentIndex()))
         combos[0].setCurrentIndex(2)
-        combos[3].setCurrentIndex(4)
-        combos[4].setCurrentIndex(0)
+        combos[5].setCurrentIndex(5)
+        combos[6].setCurrentIndex(0)
         dialog.accept() if apply else dialog.reject()
 
     QTimer.singleShot(20, edit)
     window.edit_filters()
     assert observations == [(1, 1)]
     assert window.status_filter.currentIndex() == (2 if apply else 0)
-    assert window.filter_model.sortColumn() == (4 if apply else 1)
+    assert window.filter_model.sortColumn() == (5 if apply else 1)
     assert window.filter_model.sortOrder() == (
         Qt.SortOrder.AscendingOrder if apply else Qt.SortOrder.DescendingOrder
     )
@@ -79,7 +79,7 @@ def test_settings_help_is_available_by_keyboard_without_toggling_option(window, 
     page = window.settings_page
     window.navigate(3)
     buttons = [b for b in page.findChildren(QToolButton) if b.accessibleName().startswith("Ajuda:")]
-    assert len(buttons) == 5
+    assert len(buttons) == 6
     display = Mock()
     monkeypatch.setattr(QToolTip, "showText", display)
     before = (
@@ -154,7 +154,7 @@ def test_success_clears_form_and_keeps_only_progress_feedback(window, monkeypatc
         source.write_text("preserve")
     window.settings.default_link_type = "symlink_file"
     page = window.create_page
-    page.select_type(0 if kind == JunctionType.JUNCTION else 2, False)
+    page.select_type(0 if kind == JunctionType.JUNCTION else 2, kind == JunctionType.HARDLINK)
     page.source_edit.setText(str(source))
     page.target_edit.setText(str(target))
     info = Mock()

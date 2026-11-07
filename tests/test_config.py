@@ -30,6 +30,7 @@ def test_window_settings():
 
 def test_operation_settings():
     """Test operation settings"""
+    assert AppSettings().calculate_storage_automatically is True
     settings = AppSettings()
     assert settings.auto_backup_before_undo is True
     assert settings.confirm_before_destructive is True

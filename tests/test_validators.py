@@ -3,6 +3,7 @@
 import tempfile
 import pytest
 from pathlib import Path
+from unittest.mock import Mock
 
 from winlink.core.models import Junction, JunctionType, ValidationResult
 from winlink.core.validators import (
@@ -429,3 +430,41 @@ def test_creation_rejects_volume_root(tmp_path):
     result = validate_junction_creation(Path(tmp_path.anchor), tmp_path / "link", JunctionType.JUNCTION)
     assert not result.is_valid
     assert any("Volume roots" in error for error in result.errors)
+
+
+def test_storage_preflight_can_be_skipped_without_skipping_other_validations(
+    tmp_path, monkeypatch
+):
+    from winlink.core import validators
+
+    source, target = tmp_path / "source", tmp_path / "target"
+    source.mkdir()
+    target.mkdir()
+    (target / "payload.txt").write_text("data")
+    calculate = Mock(side_effect=AssertionError("automatic sizing must be skipped"))
+    monkeypatch.setattr(validators, "calculate_disk_space_required", calculate)
+
+    creation = validators.validate_junction_creation(
+        source, target, JunctionType.JUNCTION, calculate_storage=False
+    )
+    undo = validators.validate_undo_operation(
+        Junction(source=source, target=target, junction_type=JunctionType.JUNCTION),
+        "DUPLICATE",
+        calculate_storage=False,
+    )
+    assert creation.is_valid
+    assert undo.is_valid
+    calculate.assert_not_called()
+
+
+def test_file_category_rejects_directory_link_types(tmp_path):
+    source = tmp_path / "file.txt"
+    source.write_text("data")
+    result = validate_junction_creation(
+        source,
+        tmp_path / "link.txt",
+        JunctionType.JUNCTION,
+        is_directory=False,
+    )
+    assert not result.is_valid
+    assert any("Hardlink ou Symlink" in error for error in result.errors)

@@ -320,6 +320,21 @@ def is_discovery_excluded(path: Path, exclusions: tuple[Path, ...]) -> bool:
     return any(normalized.is_relative_to(directory) for directory in exclusions)
 
 
+def is_discovery_covered(
+    target: Path,
+    directories: list[Path],
+    exclusions: tuple[Path, ...] = (),
+) -> bool:
+    """Return whether discovery scans the directory entry at target without following links."""
+    normalized_target = discovery_path(target)
+    parent = normalized_target.parent
+    if is_discovery_excluded(normalized_target, exclusions) or is_discovery_excluded(
+        parent, exclusions
+    ):
+        return False
+    return any(parent.is_relative_to(discovery_path(directory)) for directory in directories)
+
+
 def _directory_identity(path: Path) -> str:
     try:
         normalized = path.resolve()

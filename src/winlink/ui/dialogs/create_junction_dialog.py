@@ -31,16 +31,17 @@ class CreateJunctionDialog(AnimatedDialog):
         self._source_path: Path | None = None
         self._target_path: Path | None = None
         self._link_type: JunctionType = JunctionType.JUNCTION
+        self._is_directory = True
 
         self.init_ui()
         from winlink.core.config import get_settings
 
         preference = getattr(getattr(parent, "settings", None), "default_link_type", None)
         preference = preference or get_settings().default_link_type
-        self.type_combo.setCurrentIndex(
-            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference]
+        self.select_type(
+            {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
+            preference in ("symlink_file", "hardlink"),
         )
-        self.file_symlink.setChecked(preference == "symlink_file")
 
     def init_ui(self):
         from PyQt6.QtWidgets import QSizePolicy, QWidget
@@ -64,6 +65,25 @@ class CreateJunctionDialog(AnimatedDialog):
         form_layout = QVBoxLayout(form)
         form_layout.setContentsMargins(0, 0, 0, 0)
         form_layout.setSpacing(12)
+        form_layout.addWidget(QLabel("Categoria"))
+        self.category_cards = []
+        category_layout = QGridLayout()
+        category_layout.setSpacing(12)
+        for column, (title, description, icon, is_directory) in enumerate(
+            [
+                ("Pasta", "Criar um link para uma pasta.", "folder", True),
+                ("Arquivo", "Criar um link para um arquivo.", "file", False),
+            ]
+        ):
+            button = TypeButton(title, description, icon, description)
+            button.clicked.connect(
+                lambda checked=False, directory=is_directory: self.select_category(directory)
+            )
+            category_layout.addWidget(button, 0, column)
+            self.category_cards.append(button)
+        category_layout.setColumnStretch(0, 1)
+        category_layout.setColumnStretch(1, 1)
+        form_layout.addLayout(category_layout)
         form_layout.addWidget(QLabel("Tipo de Estrutura"))
         self.type_combo = QComboBox()
         for title, kind in [
@@ -94,14 +114,14 @@ class CreateJunctionDialog(AnimatedDialog):
             [
                 ("Junction", "Atalho de pasta local (padrão).", "folder", 0, False),
                 (
-                    "Symlink (Dir)",
+                    "Symlink",
                     "Pasta local ou de rede. Pode exigir permissões.",
                     "folder",
                     1,
                     False,
                 ),
-                ("Symlink (File)", "Atalho avançado de arquivo.", "file", 1, True),
-                ("Hardlink", "Nomes equivalentes do mesmo arquivo e volume.", "file", 2, False),
+                ("Symlink", "Atalho simbólico para um arquivo.", "file", 1, True),
+                ("Hardlink", "Nomes equivalentes do mesmo arquivo e volume.", "file", 2, True),
             ]
         ):
             needs_privilege_help = (
@@ -121,6 +141,7 @@ class CreateJunctionDialog(AnimatedDialog):
             self.type_cards.append(button)
         cards.setColumnStretch(0, 1)
         cards.setColumnStretch(1, 1)
+        self.type_layout = cards
         form_layout.addLayout(cards)
         form_layout.addSpacing(8)
         self.source_edit = QLineEdit()
@@ -160,6 +181,13 @@ class CreateJunctionDialog(AnimatedDialog):
         info_row.addWidget(info_icon)
         info_row.addWidget(self.info_label, 1)
         form_layout.addLayout(info_row)
+        self.tags_edit = QLineEdit()
+        self.tags_edit.setObjectName("tagsInput")
+        self.tags_edit.setPlaceholderText("minha-pasta, minhas-fotos")
+        self.tags_edit.setAccessibleName("Tags do link")
+        from winlink.ui.components import field
+
+        field(form_layout, "Tags (opcional, separadas por vírgula)", self.tags_edit)
         self.create_btn = button_style(QPushButton("Avançar"), "arrow", primary=True)
         self.create_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.create_btn.setMinimumHeight(46)
@@ -230,7 +258,7 @@ class CreateJunctionDialog(AnimatedDialog):
     def update_structure(self):
         from winlink.ui.icons import symbol_icon
 
-        file = self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked()
+        file = not self._is_directory
         self.structure_source_icon.setPixmap(
             symbol_icon("file" if file else "folder", "#3b82f6").pixmap(32, 32)
         )
@@ -243,21 +271,56 @@ class CreateJunctionDialog(AnimatedDialog):
         )
 
     def select_type(self, index, file):
+        self.select_category(not file, clear_paths=False)
         self.type_combo.setCurrentIndex(index)
-        self.file_symlink.setChecked(file)
-        self.on_type_changed(index)
+        self.on_type_changed(self.type_combo.currentIndex())
+
+    def select_category(self, is_directory: bool, *, clear_paths: bool = True):
+        changed = is_directory != self._is_directory
+        self._is_directory = is_directory
+        for index, card in enumerate(self.category_cards):
+            card.setChecked((index == 0) == is_directory)
+        if changed and clear_paths and hasattr(self, "source_edit"):
+            self.source_edit.clear()
+            self.target_edit.clear()
+
+        allowed = (
+            (JunctionType.JUNCTION, JunctionType.SYMLINK)
+            if is_directory
+            else (JunctionType.HARDLINK, JunctionType.SYMLINK)
+        )
+        if self.type_combo.currentData() not in allowed:
+            default_type = JunctionType.JUNCTION if is_directory else JunctionType.HARDLINK
+            self.type_combo.setCurrentIndex(self.type_combo.findData(default_type))
+        else:
+            self.on_type_changed(self.type_combo.currentIndex())
 
     def on_type_changed(self, index: int):
         """Handle link type selection change"""
         link_type = self.type_combo.itemData(index)
+        allowed = (
+            (JunctionType.JUNCTION, JunctionType.SYMLINK)
+            if self._is_directory
+            else (JunctionType.HARDLINK, JunctionType.SYMLINK)
+        )
+        if link_type not in allowed:
+            link_type = JunctionType.JUNCTION if self._is_directory else JunctionType.HARDLINK
+            self.type_combo.blockSignals(True)
+            self.type_combo.setCurrentIndex(self.type_combo.findData(link_type))
+            self.type_combo.blockSignals(False)
         self._link_type = link_type
 
         self.file_symlink.hide()
-        if link_type != JunctionType.SYMLINK:
-            self.file_symlink.setChecked(False)
-        if link_type == JunctionType.HARDLINK or (
-            link_type == JunctionType.SYMLINK and self.file_symlink.isChecked()
-        ):
+        self.file_symlink.setChecked(link_type == JunctionType.SYMLINK and not self._is_directory)
+        card_indexes = (0, 1) if self._is_directory else (3, 2)
+        for card in self.type_cards:
+            self.type_layout.removeWidget(card)
+            card.hide()
+        for column, card_index in enumerate(card_indexes):
+            card = self.type_cards[card_index]
+            self.type_layout.addWidget(card, 0, column)
+            card.show()
+        if not self._is_directory:
             # Hard links are for files only
             self.target_label.setText("1. Ponto de Acesso")
             self.source_label.setText("2. Dados Físicos (arquivo existente)")
@@ -277,12 +340,16 @@ class CreateJunctionDialog(AnimatedDialog):
                 "Se o Ponto de Acesso contiver uma pasta normal, seus arquivos serão preservados nos Dados Físicos antes da criação do link."
             )
 
-        for card_index, card in enumerate(self.type_cards):
-            selected = (
-                (2 if self.file_symlink.isChecked() else 1)
+        selected = (
+            2
+            if link_type == JunctionType.SYMLINK and not self._is_directory
+            else (
+                1
                 if link_type == JunctionType.SYMLINK
-                else (3 if link_type == JunctionType.HARDLINK else 0)
+                else 3 if link_type == JunctionType.HARDLINK else 0
             )
+        )
+        for card_index, card in enumerate(self.type_cards):
             card.setChecked(card_index == selected)
         self.update_structure()
         self.validate_inputs()
@@ -301,7 +368,7 @@ class CreateJunctionDialog(AnimatedDialog):
 
     def browse_target(self):
         """Browse for target directory or file"""
-        if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
+        if not self._is_directory:
             # Browse for file
             file_path, _ = QFileDialog.getSaveFileName(
                 self, "Novo Ponto de Acesso", self.browse_start(self.target_edit.text(), file=True)
@@ -318,7 +385,7 @@ class CreateJunctionDialog(AnimatedDialog):
 
     def browse_source(self):
         """Browse for source directory or file"""
-        if self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked():
+        if not self._is_directory:
             # Browse for file
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
@@ -349,7 +416,7 @@ class CreateJunctionDialog(AnimatedDialog):
         )
 
         # For hard links, check if source exists (it must exist)
-        if (self._link_type == JunctionType.HARDLINK or self.file_symlink.isChecked()) and is_valid:
+        if not self._is_directory and is_valid:
             source_path = Path(source_text)
             if not source_path.exists() or not source_path.is_file():
                 is_valid = False
@@ -364,7 +431,17 @@ class CreateJunctionDialog(AnimatedDialog):
         target = Path(self.target_edit.text().strip())
         source = Path(self.source_edit.text().strip())
 
-        dialog = PreviewDialog(target, source, self, link_type=self._link_type)
+        from winlink.core.config import get_settings
+
+        settings = getattr(self.parent(), "settings", None) or get_settings()
+        dialog = PreviewDialog(
+            target,
+            source,
+            self,
+            link_type=self._link_type,
+            is_directory=self._is_directory,
+            calculate_storage=settings.calculate_storage_automatically,
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # User confirmed preview, proceed with creation
             self.accept()
@@ -382,6 +459,14 @@ class CreateJunctionDialog(AnimatedDialog):
     def get_link_type(self) -> JunctionType:
         """Get link type"""
         return self._link_type
+
+    def is_directory_link(self) -> bool:
+        return self._is_directory
+
+    def get_tags(self) -> list[str]:
+        from winlink.core.tags import parse_tags
+
+        return parse_tags(self.tags_edit.text())
 
     def accept(self):
         """Override accept to validate before closing"""
@@ -406,6 +491,13 @@ class CreateJunctionDialog(AnimatedDialog):
 
         if not source.is_absolute():
             QMessageBox.warning(self, "Aviso", "Os Dados Físicos devem ter um caminho absoluto.")
+            return
+        if not self._is_directory and not source.is_file():
+            QMessageBox.warning(
+                self,
+                "Aviso",
+                "Os Dados Físicos de arquivo devem apontar para um arquivo existente.",
+            )
             return
 
         self.logger.info(f"Creating junction: {target} -> {source}")

@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -25,12 +26,32 @@ class PropertiesDialog(AnimatedDialog):
 
     cancellation_requested = pyqtSignal()
     undo_requested = pyqtSignal(object)
+    tags_changed = pyqtSignal(object)
 
-    def __init__(self, junction: Junction, parent=None, history_manager=None):
+    def __init__(
+        self,
+        junction: Junction,
+        parent=None,
+        history_manager=None,
+        *,
+        tag_manager=None,
+        calculate_storage: bool | None = None,
+    ):
         super().__init__(parent)
         self.logger = get_logger()
         self.junction = junction
         self.history_manager = history_manager
+        if tag_manager is None:
+            from winlink.core.tags import LinkTagManager
+
+            tag_manager = LinkTagManager()
+        self.tag_manager = tag_manager
+        if calculate_storage is None:
+            from winlink.core.config import get_settings
+
+            calculate_storage = get_settings().calculate_storage_automatically
+        self.calculate_storage = calculate_storage
+        self._manual_recalculate = False
         self._dismissed = False
 
         self.init_ui()
@@ -95,6 +116,13 @@ class PropertiesDialog(AnimatedDialog):
             label.setMaximumHeight(120)
             label.setObjectName("pathBlock")
             field(panel.content, title, label)
+        self.tags_edit = QLineEdit()
+        self.tags_edit.setAccessibleName("Tags do link")
+        self.tags_edit.setPlaceholderText("minha-pasta, minhas-fotos")
+        field(panel.content, "Tags (separadas por vírgula)", self.tags_edit)
+        self.save_tags_btn = button_style(QPushButton("Salvar tags"), "save")
+        self.save_tags_btn.clicked.connect(self.save_tags)
+        panel.content.addWidget(self.save_tags_btn, 0, Qt.AlignmentFlag.AlignRight)
         statistics = QFormLayout()
         statistics.setVerticalSpacing(12)
         self.size_label = QLabel()
@@ -130,7 +158,20 @@ class PropertiesDialog(AnimatedDialog):
     def recalculate(self):
         if not getattr(self, "_calculating", False):
             self.junction.size_bytes = None
+            self._manual_recalculate = True
             self.load_junction_data()
+
+    def save_tags(self):
+        from winlink.core.tags import parse_tags
+
+        try:
+            self.tag_manager.set_tags(self.junction, parse_tags(self.tags_edit.text()))
+        except (OSError, ValueError) as exc:
+            self.logger.error("Could not save tags for %s: %s", self.junction.target, exc)
+            QMessageBox.warning(self, "Tags", f"Não foi possível salvar as tags: {exc}")
+            return
+        self.tags_edit.setText(", ".join(self.junction.tags))
+        self.tags_changed.emit(self.junction)
 
     def load_junction_data(self):
         """Load junction data into UI"""
@@ -165,12 +206,14 @@ class PropertiesDialog(AnimatedDialog):
         # Paths
         self.source_label.setPlainText(str(self.junction.source.absolute()))
         self.target_label.setPlainText(str(self.junction.target.absolute()))
+        self.tags_edit.setText(", ".join(self.junction.tags))
 
         # Statistics
+        should_calculate_storage = self.calculate_storage or self._manual_recalculate
         if self.junction.size_bytes is not None:
             size_text = self.format_size(self.junction.size_bytes)
         else:
-            size_text = "Desconhecido"
+            size_text = "Desconhecido" if should_calculate_storage else "Não calculado"
         self.size_label.setText(size_text)
 
         from winlink.ui.operation_worker import run_operation
@@ -192,7 +235,7 @@ class PropertiesDialog(AnimatedDialog):
 
                 context.check_cancelled()
                 counts.append(count_entries(self.junction.source, cancel_check=boundary))
-                if self.junction.size_bytes is None:
+                if self.junction.size_bytes is None and should_calculate_storage:
                     from winlink.core.scanner import calculate_directory_size
 
                     self.junction.size_bytes = calculate_directory_size(
@@ -213,6 +256,7 @@ class PropertiesDialog(AnimatedDialog):
                 self.folder_count_label.setText("Indisponível")
         finally:
             self._calculating = False
+            self._manual_recalculate = False
         if self._dismissed:
             return
 

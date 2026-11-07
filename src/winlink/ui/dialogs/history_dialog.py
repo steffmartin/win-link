@@ -2,16 +2,17 @@
 
 from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QAbstractTableModel, QDate, QModelIndex, Qt, pyqtSignal
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
-    QDateEdit,
     QFileDialog,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableView,
     QTextEdit,
     QVBoxLayout,
@@ -171,20 +172,23 @@ class HistoryDialog(AnimatedDialog):
         self.load_history()
 
     def init_ui(self):
-        from winlink.ui.components import FieldGrid, Panel, button_style, heading
+        from winlink.ui.components import Panel, button_style, heading
 
         self.setWindowTitle("Histórico de Operações")
         self.setModal(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
-        title = heading(layout, "Histórico de Operações")
+        heading(layout, "Histórico de Operações")
         self.export_btn = button_style(QPushButton("Exportar"), "download")
         self.export_btn.clicked.connect(self.export_history)
-        self.clear_history_btn = button_style(QPushButton("Limpar"), "trash")
+        self.clear_history_btn = button_style(QPushButton("Apagar histórico"), "trash")
         self.clear_history_btn.clicked.connect(self.clear_history)
-        title.addWidget(self.export_btn)
-        title.addWidget(self.clear_history_btn)
+        history_actions = QHBoxLayout()
+        history_actions.addStretch()
+        history_actions.addWidget(self.export_btn)
+        history_actions.addWidget(self.clear_history_btn)
+        layout.addLayout(history_actions)
         note = QLabel(
             'Registro de criações e reversões. Use "Desfazer" para reverter a criação selecionada.'
         )
@@ -197,7 +201,7 @@ class HistoryDialog(AnimatedDialog):
             self.type_combo.addItem(HistoryTableModel()._get_type_display(op), op)
         self.type_combo.currentTextChanged.connect(self.on_filter_changed)
         self.date_combo = QComboBox()
-        self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês", "Personalizado"])
+        self.date_combo.addItems(["Todos", "Hoje", "Última semana", "Último mês"])
         self.date_combo.currentTextChanged.connect(self.on_filter_changed)
         self.result_combo = QComboBox()
         self.result_combo.addItems(
@@ -205,30 +209,30 @@ class HistoryDialog(AnimatedDialog):
         )
         self.result_combo.setAccessibleName("Resultado")
         self.result_combo.currentIndexChanged.connect(self.on_filter_changed)
-        self.from_date = QDateEdit(QDate.currentDate().addMonths(-1))
-        self.to_date = QDateEdit(QDate.currentDate())
-        for name, control in [("De", self.from_date), ("Até", self.to_date)]:
-            control.setCalendarPopup(True)
-            control.setDisplayFormat("dd/MM/yyyy")
-            control.setAccessibleName(name)
-            control.dateChanged.connect(self.on_filter_changed)
         panel = Panel()
         panel.content.setContentsMargins(16, 16, 16, 16)
         panel.content.addWidget(QLabel("Filtrar histórico"))
-        self.clear_filter_btn = button_style(QPushButton("Limpar filtros"), "filter")
+        self.clear_filter_btn = button_style(QPushButton("Limpar"), "refresh")
+        self.clear_filter_btn.setAccessibleName("Limpar filtros")
         self.clear_filter_btn.clicked.connect(self.clear_filters)
-        panel.content.addWidget(
-            FieldGrid(
-                [
-                    ("Operação", self.type_combo),
-                    ("Período", self.date_combo),
-                    ("Resultado", self.result_combo),
-                    ("De", self.from_date),
-                    ("Até", self.to_date),
-                    ("", self.clear_filter_btn),
-                ]
-            )
-        )
+        filters = QHBoxLayout()
+        filters.setContentsMargins(0, 0, 0, 0)
+        filters.setSpacing(12)
+        for label, control in [
+            ("Operação", self.type_combo),
+            ("Período", self.date_combo),
+            ("Resultado", self.result_combo),
+        ]:
+            control.setMinimumWidth(0)
+            control.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+            column = QVBoxLayout()
+            column.setContentsMargins(0, 0, 0, 0)
+            column.setSpacing(6)
+            column.addWidget(QLabel(label))
+            column.addWidget(control)
+            filters.addLayout(column, 1)
+        filters.addWidget(self.clear_filter_btn)
+        panel.content.addLayout(filters)
         layout.addWidget(panel)
         self.total_label = QLabel()
         self.total_label.setObjectName("muted")
@@ -240,7 +244,9 @@ class HistoryDialog(AnimatedDialog):
         self.table_view.setWordWrap(False)
         self.table_view.setMinimumHeight(240)
         self.table_view.setShowGrid(False)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
+        history_header = self.table_view.horizontalHeader()
+        history_header.setMinimumSectionSize(48)
+        history_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_view.verticalHeader().hide()
         self.table_view.verticalHeader().setDefaultSectionSize(64)
         for index, width in enumerate((150, 150, 240, 160, 230)):
@@ -389,13 +395,6 @@ class HistoryDialog(AnimatedDialog):
             filtered = [op for op in filtered if op.metadata.get("result") == "cancelled"]
         elif result == "Criação desfeita":
             filtered = [op for op in filtered if creation_was_undone(op, operations)]
-        custom = self._filter_date_range == "Personalizado"
-        self.from_date.setEnabled(custom)
-        self.to_date.setEnabled(custom)
-        if custom:
-            start, end = self.from_date.date().toPyDate(), self.to_date.date().toPyDate()
-            filtered = [op for op in filtered if start <= op.timestamp.date() <= end]
-
         # Filter by type
         if self._filter_type:
             filtered = [op for op in filtered if op.operation_type == self._filter_type]

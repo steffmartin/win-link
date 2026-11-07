@@ -42,7 +42,7 @@ def test_browse_reuses_selection_and_cancel_preserves_it(qtbot, monkeypatch, tmp
     dialog = CreateJunctionDialog()
     qtbot.addWidget(dialog)
     if file:
-        dialog.select_type(2, False)
+        dialog.select_category(False)
     selected = tmp_path / "chosen.txt" if file else tmp_path
     edit = getattr(dialog, field + "_edit")
     edit.setText(str(selected))

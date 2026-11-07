@@ -130,11 +130,22 @@ class SettingsDialog(AnimatedDialog):
                 "A prévia e a confirmação de operações destrutivas são sempre obrigatórias e não podem ser desativadas.",
             )
         )
+        self.calculate_storage_checkbox = QCheckBox("Calcular armazenamento automaticamente")
         self.backup_checkbox = QCheckBox("Criar backup antes de desfazer")
         self.notify_checkbox = QCheckBox("Exibir notificações")
         self.warn_nested_checkbox = QCheckBox("Avisar sobre links aninhados")
-        for checkbox in [self.backup_checkbox, self.notify_checkbox, self.warn_nested_checkbox]:
+        for checkbox in [
+            self.calculate_storage_checkbox,
+            self.backup_checkbox,
+            self.notify_checkbox,
+            self.warn_nested_checkbox,
+        ]:
             descriptions = {
+                self.calculate_storage_checkbox: (
+                    "Controla as estimativas automáticas de armazenamento na criação, prévia, "
+                    "abertura de Propriedades e reversão. Não desativa as demais validações nem "
+                    "o botão Recalcular manual em Propriedades."
+                ),
                 self.backup_checkbox: "Pré-seleciona a preservação dos Dados Físicos como backup ao desfazer um link de diretório. Confira a estratégia na confirmação.",
                 self.notify_checkbox: "Controla avisos adicionais de sucesso quando disponíveis. Progresso, erros, confirmação e avisos de recuperação continuam visíveis.",
                 self.warn_nested_checkbox: "Na prévia, avisa se os Dados Físicos contêm outros links. Não altera esses links.",
@@ -199,6 +210,7 @@ class SettingsDialog(AnimatedDialog):
 
         # Operations
         self.confirm_checkbox.setChecked(True)
+        self.calculate_storage_checkbox.setChecked(settings.calculate_storage_automatically)
         self.backup_checkbox.setChecked(settings.auto_backup_before_undo)
         self.notify_checkbox.setChecked(settings.show_notifications)
         self.warn_nested_checkbox.setChecked(settings.warn_nested_junctions)
@@ -294,6 +306,7 @@ class SettingsDialog(AnimatedDialog):
         candidate.scan_directories = self._scan_directories
         candidate.scan_excluded_directories = self._excluded_directories
         candidate.confirm_before_destructive = self.confirm_checkbox.isChecked()
+        candidate.calculate_storage_automatically = self.calculate_storage_checkbox.isChecked()
         candidate.auto_backup_before_undo = self.backup_checkbox.isChecked()
         candidate.show_notifications = self.notify_checkbox.isChecked()
         candidate.warn_nested_junctions = self.warn_nested_checkbox.isChecked()

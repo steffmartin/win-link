@@ -9,6 +9,16 @@ from winlink.core.models import ValidationResult
 from winlink.ui import main_window
 
 
+def _mock_window(tmp_path):
+    from winlink.core.config import AppSettings
+    from winlink.core.tags import LinkTagManager
+
+    window = Mock()
+    window.settings = AppSettings(scan_directories=[str(tmp_path)])
+    window.tag_manager = LinkTagManager(tmp_path / "tags.json")
+    return window
+
+
 @pytest.mark.parametrize("failed_step", ["copy", "create"])
 def test_creation_failure_is_not_reported_as_success(qtbot, monkeypatch, tmp_path, failed_step):
     source = tmp_path / "source"
@@ -18,7 +28,9 @@ def test_creation_failure_is_not_reported_as_success(qtbot, monkeypatch, tmp_pat
     original = target / "original.txt"
     original.write_text("preserve me")
     monkeypatch.setattr(
-        validators, "validate_junction_creation", lambda *a: ValidationResult(is_valid=True)
+        validators,
+        "validate_junction_creation",
+        lambda *a, **k: ValidationResult(is_valid=True),
     )
     copy = Mock(return_value=failed_step != "copy")
     delete = Mock(return_value=failed_step != "delete")
@@ -30,13 +42,15 @@ def test_creation_failure_is_not_reported_as_success(qtbot, monkeypatch, tmp_pat
     monkeypatch.setattr(main_window, "ProgressDialog", Mock(return_value=progress))
     messages = Mock()
     monkeypatch.setattr(main_window, "QMessageBox", messages)
-    window = Mock()
+    window = _mock_window(tmp_path)
+    window.tag_manager = Mock()
 
     main_window.MainWindow.create_link(window, target, source, main_window.JunctionType.JUNCTION)
 
     assert original.read_text() == "preserve me"
     assert window.history_manager.add_operation.call_args.kwargs["success"] is False
     messages.information.assert_not_called()
+    window.tag_manager.set_tags.assert_not_called()
     window.start_scan.assert_not_called()
     if failed_step == "copy":
         delete.assert_not_called()
@@ -73,7 +87,9 @@ def test_window_exposes_type_filter_and_sorting(qtbot, monkeypatch, tmp_path):
 
     monkeypatch.setattr(main_window.MainWindow, "start_scan", lambda self: None)
     monkeypatch.setattr(main_window, "get_settings", lambda: AppSettings())
-    monkeypatch.setattr(main_window, "HistoryManager", Mock(return_value=Mock(get_history=Mock(return_value=[]))))
+    monkeypatch.setattr(
+        main_window, "HistoryManager", Mock(return_value=Mock(get_history=Mock(return_value=[])))
+    )
     window = main_window.MainWindow()
     qtbot.addWidget(window)
     window.junction_model.set_junctions(
@@ -116,6 +132,65 @@ def test_preview_shows_disk_free_bytes(qtbot, monkeypatch, tmp_path):
     qtbot.addWidget(dialog)
     assert "Espaço disponível: 2.0 KB" in dialog.preview_text.toPlainText()
     assert dialog.confirm_btn.isEnabled()
+
+
+def test_preview_skips_automatic_storage_estimate_when_disabled(monkeypatch, tmp_path):
+    target, source = tmp_path / "target", tmp_path / "source"
+    target.mkdir()
+    (target / "payload.txt").write_bytes(b"payload")
+    monkeypatch.setattr(
+        file_ops,
+        "calculate_directory_size_recursive",
+        Mock(side_effect=AssertionError("automatic estimate must be skipped")),
+    )
+    from winlink.ui.dialogs.preview_dialog import build_preview
+
+    text, valid = build_preview(
+        target,
+        source,
+        calculate_storage=False,
+        is_directory=True,
+    )
+    assert valid
+    assert "não calculado automaticamente" in text
+    assert "Espaço insuficiente" not in text
+
+
+def test_properties_can_disable_automatic_size_but_keep_manual_recalculate(
+    qtbot, monkeypatch, tmp_path
+):
+    from winlink.core.models import Junction, JunctionType
+    from winlink.core.tags import LinkTagManager
+    from winlink.ui.dialogs import properties_dialog
+
+    source = tmp_path / "source"
+    source.mkdir()
+    target = tmp_path / "link"
+    target.touch()
+    monkeypatch.setattr(properties_dialog, "count_entries", lambda *a, **k: (1, 0))
+    size = Mock(return_value=7)
+    monkeypatch.setattr("winlink.core.scanner.calculate_directory_size", size)
+
+    def run_inline(operation, parent):
+        operation(Mock(check_cancelled=Mock()))
+
+    monkeypatch.setattr("winlink.ui.operation_worker.run_operation", run_inline)
+    dialog = properties_dialog.PropertiesDialog(
+        Junction(source=source, target=tmp_path / "link", junction_type=JunctionType.JUNCTION),
+        tag_manager=LinkTagManager(tmp_path / "tags.json"),
+        calculate_storage=False,
+    )
+    qtbot.addWidget(dialog)
+    assert dialog.size_label.text() == "Não calculado"
+    size.assert_not_called()
+
+    dialog.tags_edit.setText("photos, work")
+    dialog.save_tags()
+    assert dialog.junction.tags == ["photos", "work"]
+
+    dialog.recalculate()
+    size.assert_called_once()
+    assert dialog.size_label.text() == "7.0 B"
 
 
 def test_scan_worker_passes_app_owned_paths(monkeypatch, tmp_path):
@@ -224,9 +299,7 @@ def test_symlink_type_cards_explain_possible_privilege_requirement(qtbot):
 
     for card in dialog.type_cards[1:3]:
         indicators = [
-            label
-            for label in card.findChildren(QLabel)
-            if label.property("glyph") == "shield"
+            label for label in card.findChildren(QLabel) if label.property("glyph") == "shield"
         ]
         assert len(indicators) == 1
         assert "Modo de Desenvolvedor" in indicators[0].toolTip()
@@ -318,12 +391,14 @@ def test_window_creation_real_copy_and_rollback(qtbot, monkeypatch, tmp_path, cr
     target.mkdir()
     (target / "payload").write_text("preserved")
     monkeypatch.setattr(
-        validators, "validate_junction_creation", lambda *args: ValidationResult(is_valid=True)
+        validators,
+        "validate_junction_creation",
+        lambda *args, **kwargs: ValidationResult(is_valid=True),
     )
     monkeypatch.setattr(main_window, "QMessageBox", Mock())
     if not creation_succeeds:
         monkeypatch.setattr(operations, "create_junction", lambda *args: False)
-    window = Mock()
+    window = _mock_window(tmp_path)
     # Real progress widget requires a QWidget parent, so use a factory without the mock parent.
     from winlink.ui.dialogs.progress_dialog import ProgressDialog
 
@@ -496,6 +571,7 @@ def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
                 junction_type=JunctionType.JUNCTION,
                 creator=Creator.APP,
                 size_bytes=2048,
+                tags=["photos", "work"],
             ),
             Junction(
                 source=tmp_path / "beta",
@@ -503,6 +579,7 @@ def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
                 junction_type=JunctionType.SYMLINK,
                 creator=Creator.EXISTING,
                 size_bytes=10,
+                tags=["photos"],
             ),
             Junction(
                 source=tmp_path / "gamma",
@@ -511,6 +588,7 @@ def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
                 creator=Creator.APP,
                 status=JunctionStatus.BROKEN,
                 size_bytes=100,
+                tags=["work"],
             ),
         ]
     )
@@ -526,6 +604,11 @@ def test_proxy_combines_filters_and_sorts_sizes(qtbot, tmp_path):
     assert proxy.rowCount() == 1
     proxy.set_search_text("beta")
     assert proxy.rowCount() == 0
+    proxy.clear_filters()
+    proxy.set_filter_tag("photos")
+    assert proxy.rowCount() == 2
+    proxy.set_filter_tag("work", exclude=True)
+    assert proxy.rowCount() == 1
     proxy.clear_filters()
     assert proxy.rowCount() == 3
 
@@ -722,12 +805,14 @@ def test_successful_creation_warns_when_history_save_fails(qtbot, monkeypatch, t
     source, target = tmp_path / "source", tmp_path / "target"
     source.mkdir()
     monkeypatch.setattr(
-        validators, "validate_junction_creation", lambda *a: ValidationResult(is_valid=True)
+        validators,
+        "validate_junction_creation",
+        lambda *a, **k: ValidationResult(is_valid=True),
     )
     monkeypatch.setattr(main_window, "ProgressDialog", Mock())
     messages = Mock()
     monkeypatch.setattr(main_window, "QMessageBox", messages)
-    window = Mock()
+    window = _mock_window(tmp_path)
     window.history_manager.add_operation.return_value = False
     main_window.MainWindow.create_junction(window, target, source)
     assert target.is_junction()
@@ -769,13 +854,15 @@ def test_backup_cleanup_failure_keeps_success_and_records_backup(qtbot, monkeypa
     target.mkdir()
     (target / "payload").write_text("keep")
     monkeypatch.setattr(
-        validators, "validate_junction_creation", lambda *a: ValidationResult(is_valid=True)
+        validators,
+        "validate_junction_creation",
+        lambda *a, **k: ValidationResult(is_valid=True),
     )
     monkeypatch.setattr(main_window, "ProgressDialog", Mock())
     messages = Mock()
     monkeypatch.setattr(main_window, "QMessageBox", messages)
     monkeypatch.setattr(file_ops, "delete_directory", lambda path: False)
-    window = Mock()
+    window = _mock_window(tmp_path)
     main_window.MainWindow.create_junction(window, target, source)
     assert target.is_junction()
     record = window.history_manager.add_operation.call_args.kwargs
@@ -796,7 +883,7 @@ def test_preview_computation_keeps_ui_responsive(qtbot, monkeypatch, tmp_path):
 
     released = Event()
 
-    def build(target, source):
+    def build(target, source, **kwargs):
         assert released.wait(2)
         return "computed", True
 
@@ -813,36 +900,50 @@ def test_creation_cancelled_during_copy_preserves_original(qtbot, monkeypatch, t
     from PyQt6.QtCore import QTimer
     from winlink.core.models import ValidationResult
     from winlink.ui.dialogs.progress_dialog import ProgressDialog
+
     source, target = tmp_path / "storage", tmp_path / "original"
     target.mkdir()
     (target / "a").write_text("first")
     (target / "b").write_text("second")
-    monkeypatch.setattr(validators, "validate_junction_creation", lambda *a: ValidationResult(is_valid=True))
+    monkeypatch.setattr(
+        validators,
+        "validate_junction_creation",
+        lambda *a, **k: ValidationResult(is_valid=True),
+    )
     monkeypatch.setattr(main_window, "QMessageBox", Mock())
     dialogs = []
     released = Event()
     original_copy = file_ops.shutil.copy2
+
     def copy(src, dst):
         assert released.wait(2)
         return original_copy(src, dst)
+
     monkeypatch.setattr(file_ops.shutil, "copy2", copy)
+
     def progress(title, parent):
         dialog = ProgressDialog(title)
         qtbot.addWidget(dialog)
         dialogs.append(dialog)
         return dialog
+
     monkeypatch.setattr(main_window, "ProgressDialog", progress)
+
     def cancel():
         dialogs[0].cancel_operation()
         released.set()
+
     QTimer.singleShot(30, cancel)
-    window = Mock()
+    window = _mock_window(tmp_path)
+    window.tag_manager = Mock()
     main_window.MainWindow.create_junction(window, target, source)
     assert not target.is_junction()
     assert (target / "a").read_text() == "first"
     assert (target / "b").read_text() == "second"
     assert window.history_manager.add_operation.call_args.kwargs["success"] is False
+    window.tag_manager.set_tags.assert_not_called()
     assert not list(tmp_path.glob("*.winlink-backup-*"))
+
 
 def test_close_cancels_worker_merges_cache_and_skips_queued_refresh(qtbot, monkeypatch, tmp_path):
     from threading import Event
@@ -854,7 +955,9 @@ def test_close_cancels_worker_merges_cache_and_skips_queued_refresh(qtbot, monke
 
     started, stopped, release = Event(), Event(), Event()
     old, found = [
-        Junction(source=tmp_path / "data", target=tmp_path / name, junction_type=JunctionType.JUNCTION)
+        Junction(
+            source=tmp_path / "data", target=tmp_path / name, junction_type=JunctionType.JUNCTION
+        )
         for name in ("cached", "found")
     ]
     cache = CacheManager()
@@ -873,7 +976,8 @@ def test_close_cancels_worker_merges_cache_and_skips_queued_refresh(qtbot, monke
 
     monkeypatch.setattr(scanner, "scan_directories", scan)
     monkeypatch.setattr(
-        main_window, "get_settings",
+        main_window,
+        "get_settings",
         lambda: AppSettings(scan_directories=[str(tmp_path)], scan_excluded_directories=[]),
     )
     window = main_window.MainWindow()
@@ -940,8 +1044,6 @@ def test_stale_scan_result_is_discarded_after_point_update(qtbot, monkeypatch, t
     junction = Junction(
         source=tmp_path, target=tmp_path / "link", junction_type=JunctionType.JUNCTION
     )
-    window.on_scan_finished(
-        ScanResult(junctions=[junction], scanned_directories=[tmp_path])
-    )
+    window.on_scan_finished(ScanResult(junctions=[junction], scanned_directories=[tmp_path]))
     assert window.junction_model.rowCount() == 0
     assert window._scan_pending

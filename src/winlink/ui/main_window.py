@@ -35,6 +35,7 @@ from winlink.core.models import (
     UndoStrategy,
 )
 from winlink.core.scanner import discovery_path, is_discovery_excluded
+from winlink.core.tags import LinkTagManager
 from winlink.ui.dialogs import (
     ProgressDialog,
     PropertiesDialog,
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
         self.logger = get_logger()
         self.settings = get_settings()
         self.history_manager = HistoryManager()
+        self.tag_manager = LinkTagManager()
         # Theme manager
         self.theme_manager = ThemeManager()
         self.theme_manager.setParent(self)
@@ -125,6 +127,7 @@ class MainWindow(QMainWindow):
                     if not is_discovery_excluded(j.target, exclusions)
                 ]
             )
+            self._apply_saved_tags(self.junction_model._junctions)
         self.start_scan()
         self.logger.info("WinLink main window initialized")
 
@@ -274,6 +277,13 @@ class MainWindow(QMainWindow):
         ]:
             self.type_filter.addItem(label, link_type)
         self.type_filter.currentIndexChanged.connect(self.on_filter_changed)
+        self.tag_filter = QComboBox()
+        self.tag_filter.addItem("Todas as tags", None)
+        self.tag_filter.currentIndexChanged.connect(self.on_filter_changed)
+        self.tag_mode_filter = QComboBox()
+        self.tag_mode_filter.addItem("Com tag")
+        self.tag_mode_filter.addItem("Sem tag")
+        self.tag_mode_filter.currentIndexChanged.connect(self.on_filter_changed)
         saved_filters = (
             self.settings.list_filter_status,
             self.settings.list_filter_creator,
@@ -295,6 +305,8 @@ class MainWindow(QMainWindow):
         filter_layout.addWidget(self.status_filter)
         filter_layout.addWidget(self.creator_filter)
         filter_layout.addWidget(self.type_filter)
+        filter_layout.addWidget(self.tag_filter)
+        filter_layout.addWidget(self.tag_mode_filter)
         filter_layout.addWidget(self.clear_filter_btn)
         filter_layout.addStretch()
         filter_container = QWidget()
@@ -321,14 +333,14 @@ class MainWindow(QMainWindow):
         self.table_view.customContextMenuRequested.connect(self.show_context_menu)
         header = self.table_view.horizontalHeader()
         header.setMinimumSectionSize(100)
-        for column, width in enumerate((160, 160, 110, 190, 100, 115)):
+        for column, width in enumerate((160, 160, 110, 160, 100, 150, 115)):
             self.table_view.setColumnWidth(column, width)
         self.link_views = QStackedWidget()
         self.card_view = LinkCardView()
         self.card_view.setModel(self.filter_model)
 
         self.card_view.setItemDelegate(LinkCardDelegate(self.card_view))
-        self.card_view.setUniformItemSizes(True)
+        self.card_view.setUniformItemSizes(False)
         self.card_view.setFrameShape(QFrame.Shape.NoFrame)
         self.card_view.setMinimumHeight(240)
         self.card_view.clicked.connect(self.card_clicked)
@@ -452,15 +464,22 @@ class MainWindow(QMainWindow):
         source = self.create_page.get_source_path()
         target = self.create_page.get_target_path()
         if source and target:
-            self.create_link(target, source, self.create_page.get_link_type())
+            self.create_link(
+                target,
+                source,
+                self.create_page.get_link_type(),
+                is_directory=self.create_page.is_directory_link(),
+                tags=self.create_page.get_tags(),
+            )
 
     def reset_creation_form(self):
         self.create_page.source_edit.clear()
         self.create_page.target_edit.clear()
+        self.create_page.tags_edit.clear()
         preference = self.settings.default_link_type
         self.create_page.select_type(
             {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
-            preference == "symlink_file",
+            preference in ("symlink_file", "hardlink"),
         )
 
     def settings_saved(self):
@@ -646,6 +665,7 @@ class MainWindow(QMainWindow):
         if tuple(result.excluded_directories) != self.discovery_exclusions():
             return
 
+        self._apply_saved_tags(result.junctions)
         if result.cancelled:
             if self.scan_worker is not None:
                 CacheManager().save(result, requested_directories=self.scan_worker.directories)
@@ -659,11 +679,13 @@ class MainWindow(QMainWindow):
             self.scan_notice.show()
             if self.junction_model.rowCount() == 0:
                 self.junction_model.set_junctions(result.junctions)
+                self.update_tag_filter_options()
             self.status_bar.showMessage("Descoberta incompleta; consulte o aviso da lista.")
             return
         self.scan_notice.hide()
         CacheManager().save(result)
         self.junction_model.set_junctions(result.junctions)
+        self.update_tag_filter_options()
         self.status_bar.showMessage(
             f"Escaneamento concluído: {len(result.junctions)} junções encontradas"
         )
@@ -688,6 +710,7 @@ class MainWindow(QMainWindow):
         from winlink.core.operations import verify_junction_integrity
 
         self._data_version += 1
+        self._apply_saved_tags([junction])
         try:
             verify_junction_integrity(junction)
         except Exception as exc:
@@ -700,8 +723,100 @@ class MainWindow(QMainWindow):
         from winlink.core.cache import CacheManager
 
         self._data_version += 1
+        try:
+            self.tag_manager.remove(target)
+        except (OSError, ValueError) as exc:
+            self.logger.error("Could not remove tags for %s: %s", target, exc)
+            QMessageBox.warning(
+                self, "Tags", f"O link foi removido, mas as tags não puderam ser atualizadas: {exc}"
+            )
         self.junction_model.remove_junction_target(target)
         CacheManager().remove_junction(target)
+
+    def _apply_saved_tags(self, junctions: list[Junction]):
+        try:
+            self.tag_manager.apply_tags(junctions)
+        except (OSError, ValueError) as exc:
+            self.logger.error("Could not load link tags: %s", exc)
+            QMessageBox.warning(self, "Tags", f"Não foi possível carregar as tags dos links: {exc}")
+        self.update_tag_filter_options()
+
+    def update_tag_filter_options(self):
+        if not hasattr(self, "tag_filter"):
+            return
+        selected = self.tag_filter.currentData()
+        tags = sorted(
+            {tag for junction in self.junction_model._junctions for tag in junction.tags},
+            key=str.casefold,
+        )
+        self.tag_filter.blockSignals(True)
+        self.tag_filter.clear()
+        self.tag_filter.addItem("Todas as tags", None)
+        for tag in tags:
+            self.tag_filter.addItem(tag, tag)
+        selected_index = self.tag_filter.findData(selected)
+        self.tag_filter.setCurrentIndex(max(0, selected_index))
+        self.tag_filter.blockSignals(False)
+        self.filter_model.set_filter_tag(
+            self.tag_filter.currentData(),
+            exclude=self.tag_mode_filter.currentIndex() == 1,
+        )
+
+    def _post_creation_success(self, junction: Junction, tags: list[str]):
+        """Persist tags and optionally add an uncovered access-point folder to discovery."""
+        try:
+            self.tag_manager.set_tags(junction, tags)
+        except (OSError, ValueError) as exc:
+            junction.tags = []
+            self.logger.error("Link was created but its tags could not be saved: %s", exc)
+            QMessageBox.warning(
+                self,
+                "Link criado",
+                f"O link foi criado, mas as tags não puderam ser salvas: {exc}",
+            )
+
+        from winlink.core.scanner import is_discovery_covered
+
+        target_directory = junction.target.parent
+        exclusions = self.discovery_exclusions()
+        if is_discovery_covered(
+            junction.target, [Path(p) for p in self.settings.scan_directories], exclusions
+        ):
+            return
+        if is_discovery_excluded(target_directory, exclusions) or is_discovery_excluded(
+            junction.target, exclusions
+        ):
+            return
+        answer = QMessageBox.question(
+            self,
+            "Adicionar à descoberta",
+            f"Deseja adicionar a pasta {target_directory.absolute()} à lista de descoberta?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        from winlink.core.config import save_settings
+
+        candidate = self.settings.model_copy(deep=True)
+        normalized = discovery_path(target_directory)
+        if normalized not in {discovery_path(Path(path)) for path in candidate.scan_directories}:
+            candidate.scan_directories.append(str(normalized))
+        try:
+            save_settings(candidate)
+        except OSError as exc:
+            self.logger.error("Link was created but discovery settings could not be saved: %s", exc)
+            QMessageBox.warning(
+                self,
+                "Link criado",
+                f"O link foi criado, mas a pasta não pôde ser adicionada à descoberta: {exc}",
+            )
+            return
+        for name in type(self.settings).model_fields:
+            setattr(self.settings, name, getattr(candidate, name))
+        self.settings_page.load_settings(self.settings)
+        self._data_version += 1
 
     def on_search_changed(self, text: str):
         """Handle search text change"""
@@ -712,6 +827,10 @@ class MainWindow(QMainWindow):
         self.filter_model.set_filter_type(self.type_filter.currentData())
         self.filter_model.set_filter_directory(
             {2: True, 4: False}.get(self.type_filter.currentIndex())
+        )
+        self.filter_model.set_filter_tag(
+            self.tag_filter.currentData(),
+            exclude=self.tag_mode_filter.currentIndex() == 1,
         )
         # Status filter
         status_index = self.status_filter.currentIndex()
@@ -756,6 +875,8 @@ class MainWindow(QMainWindow):
         self.status_filter.setCurrentIndex(0)
         self.creator_filter.setCurrentIndex(0)
         self.type_filter.setCurrentIndex(0)
+        self.tag_filter.setCurrentIndex(0)
+        self.tag_mode_filter.setCurrentIndex(0)
         self.search_edit.clear()
 
     def on_home(self):
@@ -770,20 +891,34 @@ class MainWindow(QMainWindow):
             return
         preference = self.settings.default_link_type
         if not self.create_page.source_edit.text() and not self.create_page.target_edit.text():
-            self.create_page.type_combo.setCurrentIndex(
-                {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference]
+            self.create_page.select_type(
+                {"junction": 0, "symlink_dir": 1, "symlink_file": 1, "hardlink": 2}[preference],
+                preference in ("symlink_file", "hardlink"),
             )
-            self.create_page.file_symlink.setChecked(preference == "symlink_file")
         self.navigate(1)
 
     def create_junction(self, target: Path, source: Path):
         """Compatibility entry point for directory junction creation."""
         MainWindow.create_link(self, target, source, JunctionType.JUNCTION)
 
-    def create_link(self, target: Path, source: Path, link_type: JunctionType):
+    def create_link(
+        self,
+        target: Path,
+        source: Path,
+        link_type: JunctionType,
+        *,
+        is_directory: bool | None = None,
+        tags: list[str] | None = None,
+    ):
         """Create a link (junction, symlink, or hardlink)"""
         if self._operation_active is True:
             return
+        if is_directory is None:
+            is_directory = not (
+                link_type == JunctionType.HARDLINK
+                or (link_type == JunctionType.SYMLINK and source.is_file())
+            )
+        tags = tags or []
         # Validate
         from winlink.core.validators import validate_junction_creation
         from winlink.ui.operation_worker import evaluate_in_background
@@ -791,7 +926,13 @@ class MainWindow(QMainWindow):
         self._operation_active = True
         try:
             validation = evaluate_in_background(
-                lambda: validate_junction_creation(source, target, link_type)
+                lambda: validate_junction_creation(
+                    source,
+                    target,
+                    link_type,
+                    is_directory=is_directory,
+                    calculate_storage=self.settings.calculate_storage_automatically,
+                )
             )
         except Exception as exc:
             QMessageBox.critical(self, "Erro de validação", str(exc))
@@ -816,21 +957,23 @@ class MainWindow(QMainWindow):
 
         # Handle hard links separately (simpler flow)
         if link_type == JunctionType.HARDLINK:
-            MainWindow.create_hard_link(self, target, source)
+            MainWindow.create_file_link(self, target, source, link_type, tags)
             return
 
-        if link_type == JunctionType.SYMLINK and source.is_file():
-            MainWindow.create_file_link(self, target, source, link_type)
+        if link_type == JunctionType.SYMLINK and not is_directory:
+            MainWindow.create_file_link(self, target, source, link_type, tags)
             return
 
         # Junctions and symlinks
-        MainWindow.create_directory_link(self, target, source, link_type)
+        MainWindow.create_directory_link(self, target, source, link_type, tags)
 
     def create_hard_link(self, target: Path, source: Path):
         """Create an additional name for an existing file."""
         MainWindow.create_file_link(self, target, source, JunctionType.HARDLINK)
 
-    def create_file_link(self, target: Path, source: Path, link_type: JunctionType):
+    def create_file_link(
+        self, target: Path, source: Path, link_type: JunctionType, tags: list[str] | None = None
+    ):
         from winlink.core.operations import create_hard_link, create_symbolic_link
         from winlink.ui.operation_worker import run_operation
 
@@ -881,19 +1024,21 @@ class MainWindow(QMainWindow):
                 "A operação terminou, mas o registro do histórico falhou. Confira o estado do link antes de repetir.",
             )
         if success:
-            self._upsert_junction_entry(
-                Junction(
-                    source=source,
-                    target=target,
-                    junction_type=link_type,
-                    creator=Creator.APP,
-                    is_directory=False,
-                )
+            junction = Junction(
+                source=source,
+                target=target,
+                junction_type=link_type,
+                creator=Creator.APP,
+                is_directory=False,
             )
+            self._post_creation_success(junction, tags or [])
+            self._upsert_junction_entry(junction)
             self.start_scan()
             self.reset_creation_form()
 
-    def create_directory_link(self, target: Path, source: Path, link_type: JunctionType):
+    def create_directory_link(
+        self, target: Path, source: Path, link_type: JunctionType, tags: list[str] | None = None
+    ):
         """Create a directory link (junction or symlink)"""
         # Create progress dialog
         progress = ProgressDialog("Criando Link", self)
@@ -996,16 +1141,15 @@ class MainWindow(QMainWindow):
                     "Historico",
                     "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                 )
-            # Refresh scan
-            self._upsert_junction_entry(
-                Junction(
-                    source=source,
-                    target=target,
-                    junction_type=link_type,
-                    creator=Creator.APP,
-                    is_directory=True,
-                )
+            junction = Junction(
+                source=source,
+                target=target,
+                junction_type=link_type,
+                creator=Creator.APP,
+                is_directory=True,
             )
+            self._post_creation_success(junction, tags or [])
+            self._upsert_junction_entry(junction)
             self.start_scan()
             if preserved_backups:
                 QMessageBox.warning(
@@ -1069,12 +1213,14 @@ class MainWindow(QMainWindow):
             ("Status", self.status_filter),
             ("Criador", self.creator_filter),
             ("Tipo", self.type_filter),
+            ("Tag", self.tag_filter),
+            ("Aplicar tag como", self.tag_mode_filter),
         ]:
             layout.addWidget(QLabel(label))
             field = QComboBox()
             field.setAccessibleName(label)
             for index in range(original.count()):
-                field.addItem(original.itemText(index))
+                field.addItem(original.itemText(index), original.itemData(index))
             field.setCurrentIndex(original.currentIndex())
             layout.addWidget(field)
             copies.append((original, field))
@@ -1082,7 +1228,7 @@ class MainWindow(QMainWindow):
         sort_column = QComboBox()
         sort_column.setAccessibleName("Ordenar por")
         sort_column.addItems(
-            ["Dados Físicos", "Ponto de Acesso", "Criador", "Tipo", "Tamanho", "Status"]
+            ["Dados Físicos", "Ponto de Acesso", "Criador", "Tipo", "Tamanho", "Tags", "Status"]
         )
         sort_column.setCurrentIndex(max(0, self.filter_model.sortColumn()))
         layout.addWidget(sort_column)
@@ -1167,7 +1313,13 @@ class MainWindow(QMainWindow):
 
     def show_properties(self, junction: Junction):
         """Show junction properties dialog"""
-        dialog = PropertiesDialog(junction, self, history_manager=self.history_manager)
+        dialog = PropertiesDialog(
+            junction,
+            self,
+            history_manager=self.history_manager,
+            tag_manager=self.tag_manager,
+            calculate_storage=self.settings.calculate_storage_automatically,
+        )
 
         def undo_from_properties(selected):
             import os
@@ -1182,6 +1334,7 @@ class MainWindow(QMainWindow):
                 dialog.accept()
 
         dialog.undo_requested.connect(undo_from_properties)
+        dialog.tags_changed.connect(self._upsert_junction_entry)
         if not getattr(dialog, "_dismissed", False):
             dialog.exec()
 
@@ -1243,14 +1396,16 @@ class MainWindow(QMainWindow):
                             raise OSError(
                                 "A junção foi alterada. Atualize a lista antes de desfazer."
                             )
-                    from winlink.core.file_ops import calculate_disk_space_required
-                    from winlink.core.validators import validate_disk_space
+                    if self.settings.calculate_storage_automatically:
+                        from winlink.core.file_ops import calculate_disk_space_required
+                        from winlink.core.validators import validate_disk_space
 
-                    space = validate_disk_space(
-                        junction.target.parent, calculate_disk_space_required(junction.source)
-                    )
-                    if not space.is_valid:
-                        raise OSError("\n".join(space.errors))
+                        space = validate_disk_space(
+                            junction.target.parent,
+                            calculate_disk_space_required(junction.source),
+                        )
+                        if not space.is_valid:
+                            raise OSError("\n".join(space.errors))
                     staging = junction.target.with_name(
                         f"{junction.target.name}.winlink-restore-{uuid4().hex}"
                     )

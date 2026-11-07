@@ -241,6 +241,9 @@ def validate_junction_creation(
     source: Path,
     target: Path,
     junction_type: JunctionType,
+    *,
+    is_directory: bool | None = None,
+    calculate_storage: bool = True,
 ) -> ValidationResult:
     """
     Validate junction creation operation.
@@ -289,11 +292,17 @@ def validate_junction_creation(
         return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
     # File links never replace existing user files.
-    if junction_type == JunctionType.HARDLINK or (
-        junction_type == JunctionType.SYMLINK and source.is_file()
-    ):
+    is_file_link = junction_type == JunctionType.HARDLINK or (
+        junction_type == JunctionType.SYMLINK
+        and (is_directory is False or (is_directory is None and source.is_file()))
+    )
+    if is_file_link:
         if not source.is_file():
-            errors.append("Hard links e symlinks de arquivo exigem um arquivo de origem existente")
+            errors.append(
+                "Hard links exigem um arquivo existente"
+                if junction_type == JunctionType.HARDLINK
+                else "Symlinks de arquivo exigem um arquivo de Dados Físicos existente"
+            )
         if os.path.lexists(target):
             errors.append("O caminho do link já existe; escolha um novo nome")
         parent = target.parent
@@ -303,6 +312,10 @@ def validate_junction_creation(
             if source.stat().st_dev != parent.stat().st_dev:
                 errors.append("Hard links devem estar no mesmo volume")
         return ValidationResult(is_valid=not errors, errors=errors, warnings=warnings)
+
+    if is_directory is False:
+        errors.append("Selecione Hardlink ou Symlink para criar um link de arquivo")
+        return ValidationResult(is_valid=False, errors=errors, warnings=warnings)
 
     if junction_type == JunctionType.SYMLINK and target.exists() and not target.is_dir():
         errors.append("Para migrar um diretório, o destino deve ser uma pasta")
@@ -343,7 +356,7 @@ def validate_junction_creation(
                 )
 
     # Check disk space
-    if target.exists():
+    if calculate_storage and target.exists():
         required = calculate_disk_space_required(target)
         disk_path = source
         while not disk_path.exists() and disk_path != disk_path.parent:
@@ -398,6 +411,8 @@ def validate_junction_removal(junction: Junction) -> ValidationResult:
 def validate_undo_operation(
     junction: Junction,
     strategy: str,
+    *,
+    calculate_storage: bool = True,
 ) -> ValidationResult:
     """
     Validate undo operation.
@@ -422,7 +437,7 @@ def validate_undo_operation(
         errors.append(f"Invalid undo strategy: {strategy}")
 
     # Check disk space for move back or duplicate
-    if strategy in ["MOVE_BACK", "DUPLICATE"]:
+    if calculate_storage and strategy in ["MOVE_BACK", "DUPLICATE"]:
         if junction.source.exists():
             required = calculate_disk_space_required(junction.source)
             space_result = validate_disk_space(junction.target.parent, required)

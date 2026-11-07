@@ -20,12 +20,27 @@ class PreviewDialog(AnimatedDialog):
 
     cancellation_requested = pyqtSignal()
 
-    def __init__(self, target: Path, source: Path, parent=None, link_type=None):
+    def __init__(
+        self,
+        target: Path,
+        source: Path,
+        parent=None,
+        link_type=None,
+        *,
+        is_directory: bool | None = None,
+        calculate_storage: bool | None = None,
+    ):
         super().__init__(parent)
         self.logger = get_logger()
         self.target = target
         self.source = source
         self.link_type = link_type
+        self.is_directory = is_directory
+        if calculate_storage is None:
+            from winlink.core.config import get_settings
+
+            calculate_storage = get_settings().calculate_storage_automatically
+        self.calculate_storage = calculate_storage
 
         self.init_ui()
         self.calculate_preview()
@@ -107,9 +122,20 @@ class PreviewDialog(AnimatedDialog):
         try:
             run_operation(
                 lambda context: result.append(
-                    build_preview(self.target, self.source)
+                    build_preview(
+                        self.target,
+                        self.source,
+                        is_directory=self.is_directory,
+                        calculate_storage=self.calculate_storage,
+                    )
                     if self.link_type is None
-                    else build_preview(self.target, self.source, self.link_type)
+                    else build_preview(
+                        self.target,
+                        self.source,
+                        self.link_type,
+                        is_directory=self.is_directory,
+                        calculate_storage=self.calculate_storage,
+                    )
                 ),
                 self,
             )
@@ -146,17 +172,33 @@ class PreviewDialog(AnimatedDialog):
         return f"{size_bytes:.1f} PB"
 
 
-def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool]:
+def build_preview(
+    target: Path,
+    source: Path,
+    link_type=None,
+    *,
+    is_directory: bool | None = None,
+    calculate_storage: bool | None = None,
+) -> tuple[str, bool]:
     """Collect preview information without accessing widgets."""
     logger = get_logger()
+    from winlink.core.config import get_settings
     from winlink.core.models import JunctionType
     from winlink.core.validators import validate_junction_creation
 
     if link_type is None:
         link_type = JunctionType.JUNCTION
+    if calculate_storage is None:
+        calculate_storage = get_settings().calculate_storage_automatically
 
     valid = False
-    validation = validate_junction_creation(source, target, link_type)
+    validation = validate_junction_creation(
+        source,
+        target,
+        link_type,
+        is_directory=is_directory,
+        calculate_storage=calculate_storage,
+    )
     if not validation.is_valid:
         return "\n".join(validation.errors), False
     valid = True
@@ -169,7 +211,9 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
     target_exists = target.exists()
     source_exists = source.exists()
 
-    if link_type == JunctionType.SYMLINK and source.is_file():
+    if link_type == JunctionType.SYMLINK and (
+        is_directory is False or (is_directory is None and source.is_file())
+    ):
         return (
             f"Ponto de Acesso: {target}\nDados Físicos: {source}\nCriar link simbólico de arquivo: {target} -> {source}\nO arquivo original será preservado.",
             True,
@@ -202,41 +246,39 @@ def build_preview(target: Path, source: Path, link_type=None) -> tuple[str, bool
 
     if target_exists:
         preview_lines.append(f"Ponto de Acesso contém a pasta a migrar: {target}")
-        # Target exists, need to copy files
-        from winlink.core.file_ops import (
-            calculate_directory_size_recursive,
-            get_available_disk_space,
-        )
-
-        try:
-            size = calculate_directory_size_recursive(target)
-            size_str = PreviewDialog.format_size(size)
-
-            preview_lines.append(f"✓ Copiar arquivos de {target}")
-            preview_lines.append(f"  para {source} ({size_str})")
-            preview_lines.append(
-                f"Remover a pasta em {target} somente após preservar os arquivos em {source}"
+        preview_lines.append(f"✓ Copiar arquivos de {target}")
+        if calculate_storage:
+            from winlink.core.file_ops import (
+                calculate_directory_size_recursive,
+                get_available_disk_space,
             )
 
-            # Check disk space
-            disk_path = source
-            while not disk_path.exists() and disk_path != disk_path.parent:
-                disk_path = disk_path.parent
-            available = get_available_disk_space(disk_path)
-            if available >= size:
-                available_str = PreviewDialog.format_size(available)
+            try:
+                size = calculate_directory_size_recursive(target)
+                size_str = PreviewDialog.format_size(size)
+                preview_lines[-1] += f"\n  para {source} ({size_str})"
+                disk_path = source
+                while not disk_path.exists() and disk_path != disk_path.parent:
+                    disk_path = disk_path.parent
+                available = get_available_disk_space(disk_path)
                 preview_lines.append("")
-                preview_lines.append(f"Espaço necessário: {size_str}")
-                preview_lines.append(f"Espaço disponível: {available_str}")
-            else:
-                preview_lines.append("")
-                preview_lines.append("⚠️ Espaço insuficiente no disco!")
-
+                if available >= size:
+                    available_str = PreviewDialog.format_size(available)
+                    preview_lines.append(f"Espaço necessário: {size_str}")
+                    preview_lines.append(f"Espaço disponível: {available_str}")
+                else:
+                    preview_lines.append("⚠️ Espaço insuficiente no disco!")
+                    valid = False
+            except Exception as e:
+                logger.error(f"Error calculating directory size: {e}")
+                preview_lines.append(f"⚠️ Erro ao calcular tamanho: {e}")
                 valid = False
-        except Exception as e:
-            logger.error(f"Error calculating directory size: {e}")
-            preview_lines.append(f"⚠️ Erro ao calcular tamanho: {e}")
-            valid = False
+        else:
+            preview_lines.append("  Armazenamento não calculado automaticamente.")
+            preview_lines.append(f"  para {source}")
+        preview_lines.append(
+            f"Remover a pasta em {target} somente após preservar os arquivos em {source}"
+        )
     else:
         preview_lines.append(f"Ponto de Acesso ainda não existe: {target}")
 

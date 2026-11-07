@@ -18,6 +18,8 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._filter_type: JunctionType | None = None
         self._search_text: str = ""
         self._filter_directory: bool | None = None
+        self._filter_tag: str | None = None
+        self._exclude_tag = False
 
     def set_filter_status(self, status: JunctionStatus | None) -> None:
         """
@@ -63,6 +65,11 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._search_text = text.lower()
         self.invalidateFilter()
 
+    def set_filter_tag(self, tag: str | None, *, exclude: bool = False) -> None:
+        self._filter_tag = tag
+        self._exclude_tag = exclude
+        self.invalidateFilter()
+
     def clear_filters(self) -> None:
         """Clear all filters"""
         self._filter_status = None
@@ -70,6 +77,8 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
         self._filter_type = None
         self._filter_directory = None
         self._search_text = ""
+        self._filter_tag = None
+        self._exclude_tag = False
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
@@ -107,6 +116,11 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
 
         if self._filter_directory is not None and junction.is_directory != self._filter_directory:
             return False
+
+        if self._filter_tag is not None:
+            has_tag = self._filter_tag.casefold() in {tag.casefold() for tag in junction.tags}
+            if has_tag == self._exclude_tag:
+                return False
 
         # Filter by search text
         if self._search_text:
@@ -153,7 +167,11 @@ class JunctionFilterProxyModel(QSortFilterProxyModel):
             left_size = left_junction.size_bytes or 0
             right_size = right_junction.size_bytes or 0
             return left_size < right_size
-        elif column == 5:  # Status - sort by status
+        elif column == 5:  # Tags
+            return (
+                ", ".join(left_junction.tags).casefold() < ", ".join(right_junction.tags).casefold()
+            )
+        elif column == 6:  # Status - sort by status
             return left_junction.status.value < right_junction.status.value
 
         # Default to string comparison
