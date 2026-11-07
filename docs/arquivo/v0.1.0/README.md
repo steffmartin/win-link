@@ -9,5 +9,6 @@ O mantenedor dispensou a validação manual de symlinks e autorizou a release in
 - [Implementação da interface](guias/IMPLEMENTACAO-UI.md)
 - [Protótipo visual](prototypes/ui/README.md)
 - [Validação e capturas](validacao/REDESIGN.md)
+- [Checklist de testes manuais da v0.1.0](validacao/TESTES-MANUAIS.md)
 
 JSON/XML e capturas desta pasta são evidências históricas relevantes, não relatórios correntes. Caminhos, hashes e quantidades de testes neles se referem às execuções originais. Novos relatórios devem ser gerados em `build/`, ignorado pelo Git.

@@ -77,7 +77,13 @@ class AppSettings(BaseSettings):
     link_view_mode: Literal["normal", "compact"] = "normal"
     window_width: int = 1200
     window_height: int = 800
+    window_geometry: str = ""
     remember_window_size: bool = True
+    list_filter_status: int = 0
+    list_filter_creator: int = 0
+    list_filter_type: int = 0
+    list_sort_column: int = 0
+    list_sort_ascending: bool = True
 
     # Operations
     auto_backup_before_undo: bool = True

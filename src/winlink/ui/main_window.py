@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
         self.filter_model.setSourceModel(self.junction_model)
         # Scan worker
         self.scan_worker: ScanWorker | None = None
+        self._data_version = 0
         self._operation_active = False
         self._scan_pending = False
         self._closing_after_scan = False
@@ -134,7 +135,15 @@ class MainWindow(QMainWindow):
         from winlink.ui.icons import application_icon, symbol_icon
 
         self.setWindowIcon(application_icon())
-        self.setGeometry(100, 100, self.settings.window_width, self.settings.window_height)
+        geometry_restored = False
+        if self.settings.remember_window_size and self.settings.window_geometry:
+            from PyQt6.QtCore import QByteArray
+
+            geometry_restored = self.restoreGeometry(
+                QByteArray.fromBase64(self.settings.window_geometry.encode("ascii"))
+            )
+        if not geometry_restored:
+            self.setGeometry(100, 100, self.settings.window_width, self.settings.window_height)
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -265,6 +274,21 @@ class MainWindow(QMainWindow):
         ]:
             self.type_filter.addItem(label, link_type)
         self.type_filter.currentIndexChanged.connect(self.on_filter_changed)
+        saved_filters = (
+            self.settings.list_filter_status,
+            self.settings.list_filter_creator,
+            self.settings.list_filter_type,
+        )
+        saved_sort = (self.settings.list_sort_column, self.settings.list_sort_ascending)
+        self.status_filter.setCurrentIndex(
+            min(max(0, saved_filters[0]), self.status_filter.count() - 1)
+        )
+        self.creator_filter.setCurrentIndex(
+            min(max(0, saved_filters[1]), self.creator_filter.count() - 1)
+        )
+        self.type_filter.setCurrentIndex(
+            min(max(0, saved_filters[2]), self.type_filter.count() - 1)
+        )
         self.clear_filter_btn = QPushButton("Limpar Filtros")
         self.clear_filter_btn.clicked.connect(self.clear_filters)
         filter_layout.addWidget(filter_label)
@@ -358,7 +382,10 @@ class MainWindow(QMainWindow):
         self.filter_model.rowsInserted.connect(self.update_list_summary)
         self.filter_model.rowsRemoved.connect(self.update_list_summary)
         main_layout.addWidget(self.link_views, 1)
-        self.filter_model.sort(0, Qt.SortOrder.AscendingOrder)
+        self.filter_model.sort(
+            min(max(0, saved_sort[0]), self.filter_model.columnCount() - 1),
+            (Qt.SortOrder.AscendingOrder if saved_sort[1] else Qt.SortOrder.DescendingOrder),
+        )
         self.table_view.doubleClicked.connect(self.open_selected_properties)
         self.table_view.verticalHeader().hide()
         self.table_view.verticalHeader().setDefaultSectionSize(36)
@@ -592,6 +619,7 @@ class MainWindow(QMainWindow):
             use_cache=False,
             cache_max_age_seconds=3600,  # 1 hour
         )
+        self.scan_worker.data_version = self._data_version
         self.scan_worker.result_ready.connect(self.on_scan_finished)
         self.scan_worker.finished.connect(self.on_scan_thread_finished)
         self.scan_worker.error.connect(self.on_scan_error)
@@ -607,6 +635,13 @@ class MainWindow(QMainWindow):
     def on_scan_finished(self, result):
         """Handle scan completion"""
         from winlink.core.cache import CacheManager
+
+        if (
+            self.scan_worker is not None
+            and getattr(self.scan_worker, "data_version", self._data_version) != self._data_version
+        ):
+            self._scan_pending = True
+            return
 
         if tuple(result.excluded_directories) != self.discovery_exclusions():
             return
@@ -647,6 +682,27 @@ class MainWindow(QMainWindow):
         self.logger.error(f"Scan error: {error}")
         QMessageBox.critical(self, "Erro", f"Erro ao escanear junções: {error}")
 
+    def _upsert_junction_entry(self, junction: Junction):
+        """Reflect a created/updated link immediately and invalidate stale scans."""
+        from winlink.core.cache import CacheManager
+        from winlink.core.operations import verify_junction_integrity
+
+        self._data_version += 1
+        try:
+            verify_junction_integrity(junction)
+        except Exception as exc:
+            self.logger.warning(f"Could not verify new link status: {exc}")
+        self.junction_model.upsert_junction(junction)
+        CacheManager().upsert_junction(junction)
+
+    def _remove_junction_entry(self, target: Path):
+        """Reflect a removed link immediately and invalidate stale scans."""
+        from winlink.core.cache import CacheManager
+
+        self._data_version += 1
+        self.junction_model.remove_junction_target(target)
+        CacheManager().remove_junction(target)
+
     def on_search_changed(self, text: str):
         """Handle search text change"""
         self.filter_model.set_search_text(text)
@@ -677,6 +733,23 @@ class MainWindow(QMainWindow):
             self.filter_model.set_filter_creator(Creator.EXISTING)
         elif creator_index == 3:
             self.filter_model.set_filter_creator(Creator.MANUAL)
+        self._persist_list_filters()
+
+    def _persist_list_filters(self):
+        """Remember the last applied list filters for the next session."""
+        self.settings.list_filter_status = self.status_filter.currentIndex()
+        self.settings.list_filter_creator = self.creator_filter.currentIndex()
+        self.settings.list_filter_type = self.type_filter.currentIndex()
+        self.settings.list_sort_column = self.filter_model.sortColumn()
+        self.settings.list_sort_ascending = (
+            self.filter_model.sortOrder() == Qt.SortOrder.AscendingOrder
+        )
+        from winlink.core.config import save_settings
+
+        try:
+            save_settings(self.settings)
+        except OSError as exc:
+            self.logger.error(f"Could not save list filter preferences: {exc}")
 
     def clear_filters(self):
         """Clear all filters"""
@@ -808,6 +881,15 @@ class MainWindow(QMainWindow):
                 "A operação terminou, mas o registro do histórico falhou. Confira o estado do link antes de repetir.",
             )
         if success:
+            self._upsert_junction_entry(
+                Junction(
+                    source=source,
+                    target=target,
+                    junction_type=link_type,
+                    creator=Creator.APP,
+                    is_directory=False,
+                )
+            )
             self.start_scan()
             self.reset_creation_form()
 
@@ -915,6 +997,15 @@ class MainWindow(QMainWindow):
                     "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                 )
             # Refresh scan
+            self._upsert_junction_entry(
+                Junction(
+                    source=source,
+                    target=target,
+                    junction_type=link_type,
+                    creator=Creator.APP,
+                    is_directory=True,
+                )
+            )
             self.start_scan()
             if preserved_backups:
                 QMessageBox.warning(
@@ -1024,6 +1115,7 @@ class MainWindow(QMainWindow):
                     else Qt.SortOrder.DescendingOrder
                 ),
             )
+            self._persist_list_filters()
 
     def update_list_summary(self):
         count = self.filter_model.rowCount()
@@ -1090,7 +1182,8 @@ class MainWindow(QMainWindow):
                 dialog.accept()
 
         dialog.undo_requested.connect(undo_from_properties)
-        dialog.exec()
+        if not getattr(dialog, "_dismissed", False):
+            dialog.exec()
 
     def undo_junction(self, junction: Junction):
         """Undo a junction"""
@@ -1219,6 +1312,7 @@ class MainWindow(QMainWindow):
                         "O registro do histórico falhou. Confira o estado do link e consulte os logs antes de repetir a operação.",
                     )
                 # Refresh scan
+                self._remove_junction_entry(junction.target)
                 self.start_scan()
                 if self.settings.show_notifications is not False:
                     QMessageBox.information(self, "Sucesso", "Junção desfeita com sucesso!")
@@ -1233,6 +1327,7 @@ class MainWindow(QMainWindow):
                         "Restauração realizada; Dados Físicos preservados",
                         f"{e}\nNão repita a reversão. Confira os caminhos preservados.",
                     )
+                    self._remove_junction_entry(junction.target)
                     self.start_scan()
                 else:
                     QMessageBox.critical(self, "Erro", f"Erro ao desfazer junção: {e}")
@@ -1287,6 +1382,7 @@ class MainWindow(QMainWindow):
                 "Histórico",
                 "A operação terminou, mas o registro do histórico falhou. Confira o estado do link antes de repetir.",
             )
+        self._remove_junction_entry(junction.target)
         self.start_scan()
 
     def show_about(self):
@@ -1301,7 +1397,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.5\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            "WinLink Manager · Versão 0.1.6\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)
@@ -1331,14 +1427,61 @@ class MainWindow(QMainWindow):
             self.setEnabled(False)
             event.ignore()
             return
-        # Save window size if enabled
+        # Save window geometry if enabled
         if self.settings.remember_window_size:
-            self.settings.window_width = self.width()
-            self.settings.window_height = self.height()
+            if self.isMaximized() is True:
+                normal = self.normalGeometry()
+                self.settings.window_width = normal.width()
+                self.settings.window_height = normal.height()
+            else:
+                self.settings.window_width = self.width()
+                self.settings.window_height = self.height()
+            try:
+                geometry = self.saveGeometry().toBase64().data().decode("ascii")
+            except (AttributeError, TypeError, ValueError):
+                geometry = ""
+            self.settings.window_geometry = geometry if isinstance(geometry, str) else ""
             from winlink.core.config import save_settings
 
             try:
                 save_settings(self.settings)
             except OSError as exc:
                 self.logger.error(f"Could not save window preferences: {exc}")
+        self._persist_list_filters()
         event.accept()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not getattr(self, "_screen_checked", False):
+            self._screen_checked = True
+            self._ensure_window_on_screen()
+
+    def _ensure_window_on_screen(self):
+        """Move the window back into a visible area when its saved geometry is off-screen."""
+        if self.isMaximized() or self.isFullScreen():
+            return
+        from PyQt6.QtCore import QRect
+        from PyQt6.QtGui import QGuiApplication
+
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        frame = self.frameGeometry()
+        geometry = self.geometry()
+        if available.contains(frame):
+            return
+        width = min(frame.width(), available.width())
+        height = min(frame.height(), available.height())
+        target = QRect(
+            available.x() + max(0, (available.width() - width) // 2),
+            available.y() + max(0, (available.height() - height) // 2),
+            width,
+            height,
+        )
+        self.setGeometry(
+            target.x() + (geometry.x() - frame.x()),
+            target.y() + (geometry.y() - frame.y()),
+            width - (frame.width() - geometry.width()),
+            height - (frame.height() - geometry.height()),
+        )

@@ -224,3 +224,73 @@ def test_exclusion_draft_can_be_restored_discarded_and_saved(window):
     page.restore_defaults()
     assert page.excluded_list.count() >= 1
     assert config.get_settings().scan_excluded_directories == []
+
+
+def test_maximized_geometry_is_restored_on_next_launch(qtbot, monkeypatch, tmp_path):
+    from winlink.core.config import get_settings
+
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(MainWindow, "start_scan", lambda self: None)
+    save_settings(AppSettings(scan_directories=[str(tmp_path)], remember_window_size=True))
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    window.showMaximized()
+    qtbot.wait(20)
+    window.close()
+    qtbot.wait(20)
+    assert get_settings().window_geometry
+    restored = MainWindow()
+    qtbot.addWidget(restored)
+    restored.show()
+    qtbot.wait(20)
+    assert restored.isMaximized()
+    restored.close()
+
+
+def test_saved_offscreen_geometry_is_moved_back_on_screen(qtbot, monkeypatch, tmp_path):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(MainWindow, "start_scan", lambda self: None)
+    save_settings(AppSettings(scan_directories=[str(tmp_path)], remember_window_size=True))
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.setGeometry(-3000, -3000, 800, 600)
+    window.show()
+    window.close()
+    qtbot.wait(20)
+    restored = MainWindow()
+    qtbot.addWidget(restored)
+    restored.show()
+    qtbot.wait(20)
+    assert restored.screen().availableGeometry().contains(restored.geometry())
+    restored.close()
+
+
+def test_list_filters_are_remembered_between_sessions(qtbot, monkeypatch, tmp_path):
+    from PyQt6.QtCore import Qt
+
+    from winlink.core.config import get_settings
+
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(MainWindow, "start_scan", lambda self: None)
+    save_settings(
+        AppSettings(
+            scan_directories=[str(tmp_path)],
+            remember_window_size=False,
+            list_filter_status=3,
+            list_filter_creator=2,
+            list_filter_type=1,
+            list_sort_column=4,
+            list_sort_ascending=False,
+        )
+    )
+    window = MainWindow()
+    qtbot.addWidget(window)
+    assert window.status_filter.currentIndex() == 3
+    assert window.creator_filter.currentIndex() == 2
+    assert window.type_filter.currentIndex() == 1
+    assert window.filter_model.sortColumn() == 4
+    assert window.filter_model.sortOrder() == Qt.SortOrder.DescendingOrder
+    window.status_filter.setCurrentIndex(1)
+    assert get_settings().list_filter_status == 1
+    window.close()

@@ -26,6 +26,27 @@ class JunctionTableModel(QAbstractTableModel):
         super().__init__(parent)
         self._junctions: list[Junction] = []
 
+    def upsert_junction(self, junction: Junction) -> None:
+        """Insert or replace the entry for a junction target."""
+        for row, existing in enumerate(self._junctions):
+            if existing.target == junction.target:
+                self._junctions[row] = junction
+                self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount() - 1))
+                return
+        row = len(self._junctions)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._junctions.append(junction)
+        self.endInsertRows()
+
+    def remove_junction_target(self, target: Path) -> None:
+        """Remove the entry for a junction target if present."""
+        for row, existing in enumerate(self._junctions):
+            if existing.target == target:
+                self.beginRemoveRows(QModelIndex(), row, row)
+                del self._junctions[row]
+                self.endRemoveRows()
+                return
+
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return number of rows"""
         if parent.isValid():
@@ -51,6 +72,11 @@ class JunctionTableModel(QAbstractTableModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             return self._get_display_data(junction, column)
+        elif role == Qt.ItemDataRole.DecorationRole and column == 5:
+            from winlink.ui.icons import status_icon
+            from winlink.ui.theme import junction_status_color
+
+            return status_icon(junction.status, junction_status_color(junction.status).name())
         elif role == Qt.ItemDataRole.ToolTipRole:
             return self._get_tooltip_data(junction, column)
         elif role == Qt.ItemDataRole.ForegroundRole:
@@ -110,12 +136,9 @@ class JunctionTableModel(QAbstractTableModel):
     def _get_foreground_color(self, junction: Junction, column: int) -> QColor | None:
         """Get foreground color for a cell"""
         if column == 5:  # Status column
-            if junction.status == JunctionStatus.ACTIVE:
-                return QColor("#107C10")  # Green
-            elif junction.status == JunctionStatus.BROKEN:
-                return QColor("#9B8F06")  # Yellow/Orange
-            elif junction.status == JunctionStatus.INACCESSIBLE:
-                return QColor("#C42B1A")  # Red
+            from winlink.ui.theme import junction_status_color
+
+            return junction_status_color(junction.status)
         return None
 
     def _get_alignment(self, column: int) -> Qt.AlignmentFlag:
@@ -147,11 +170,11 @@ class JunctionTableModel(QAbstractTableModel):
     def _get_status_display(self, status: JunctionStatus) -> str:
         """Get display text for status"""
         if status == JunctionStatus.ACTIVE:
-            return "✓ Ativo"
+            return "Ativo"
         elif status == JunctionStatus.BROKEN:
-            return "⚠ Quebrado"
+            return "Quebrado"
         elif status == JunctionStatus.INACCESSIBLE:
-            return "🔒 Inacessível"
+            return "Inacessível"
         return status.value
 
     def _format_size(self, size_bytes: float | None) -> str:

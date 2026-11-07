@@ -104,16 +104,16 @@ class LinkCardDelegate(QStyledItemDelegate):
         status = {"ACTIVE": "Ativo", "BROKEN": "Quebrado", "INACCESSIBLE": "Inacessível"}[
             junction.status.value
         ]
-        tone = {
-            "ACTIVE": "#34d399" if dark else "#059669",
-            "BROKEN": "#f59e0b",
-            "INACCESSIBLE": "#ef4444",
-        }[junction.status.value]
+        from winlink.ui.theme import junction_status_color
+
+        tone = junction_status_color(junction.status).name()
         painter.setPen(QColor(tone))
         status_rect = right.translated(0, 26)
         painter.drawText(status_rect, Qt.AlignmentFlag.AlignRight, status)
         width = painter.fontMetrics().horizontalAdvance(status)
-        symbol_icon("check" if junction.status.value == "ACTIVE" else "error", tone).paint(
+        from winlink.ui.icons import status_icon
+
+        status_icon(junction.status, tone).paint(
             painter, QRect(status_rect.right() - width - 22, status_rect.top(), 16, 16)
         )
         symbol_icon("more", "#9ca3af").paint(

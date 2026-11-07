@@ -8,7 +8,9 @@ windows = Path(os.environ["SystemRoot"])
 os.environ["PATH"] = os.pathsep.join([str(Path(sys.executable).parent),
                                     str(windows / "System32"), str(windows)])
 a = Analysis([str(root / "src/winlink/main.py")], pathex=[str(root / "src")],
-             binaries=[], datas=[(str(root / "LICENSE"), "."), (str(root / "resources/ui"), "ui")], hiddenimports=["win32timezone"],
+             binaries=[],
+             datas=[(str(root / "LICENSE"), "."), (str(root / "resources/ui"), "ui")],
+             hiddenimports=["win32timezone"],
              hookspath=[], hooksconfig={}, runtime_hooks=[], excludes=["pytest", "mypy"],
              noarchive=False)
 pyz = PYZ(a.pure)

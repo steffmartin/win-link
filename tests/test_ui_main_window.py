@@ -1,14 +1,14 @@
 """Tests for bug prevention - no GUI required"""
 
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-import pytest
+from PyQt6.QtTest import QTest
 
-from winlink.core.validators import validate_junction_creation
+from winlink.core import file_ops
 from winlink.core.models import JunctionType
 from winlink.core.operations import create_junction
-from winlink.core import file_ops
+from winlink.core.validators import validate_junction_creation
 
 
 def test_import_correctness():
@@ -68,3 +68,39 @@ def test_target_not_empty_validation():
         result = validate_junction_creation(source, target, JunctionType.JUNCTION)
         # Target can have files - they will be copied to source (should be valid)
         assert result.is_valid is True
+
+
+def test_single_instance_acquire_and_release(qapp):
+    from PyQt6.QtNetwork import QLocalServer
+
+    from winlink.main import _acquire_instance, _instance_name
+
+    name = _instance_name()
+    first = _acquire_instance(name)
+    assert first is not None and first != "secondary"
+    try:
+        assert _acquire_instance(name) == "secondary"
+    finally:
+        first.close()
+    QTest.qWait(50)
+    QLocalServer.removeServer(name)
+    third = _acquire_instance(name)
+    assert third is not None and third != "secondary"
+    third.close()
+    QLocalServer.removeServer(name)
+
+
+def test_raise_window_restores_minimized_and_activates():
+    from unittest.mock import Mock
+
+    from PyQt6.QtCore import Qt
+
+    from winlink.main import _raise_window
+
+    window = Mock()
+    window.windowState.return_value = Qt.WindowState.WindowMinimized
+    _raise_window(window)
+    window.setWindowState.assert_called_once()
+    window.show.assert_called_once()
+    window.raise_.assert_called_once()
+    window.activateWindow.assert_called_once()

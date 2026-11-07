@@ -47,6 +47,22 @@ class ThemeColors:
     }
 
 
+def junction_status_color(status) -> QColor:
+    """Theme-aware color for a junction status (success/error/warning tokens)."""
+    from winlink.core.models import JunctionStatus
+
+    app = QApplication.instance()
+    dark = app is not None and app.palette().window().color().lightness() < 128
+    palette = ThemeColors.DARK if dark else ThemeColors.LIGHT
+    if status == JunctionStatus.ACTIVE:
+        return palette["success"]
+    if status == JunctionStatus.BROKEN:
+        return palette["error"]
+    if status == JunctionStatus.INACCESSIBLE:
+        return palette["warning"]
+    return palette["text"]
+
+
 class ThemeManager(QObject):
     """Manages application theme following Windows 11 system theme"""
 
@@ -440,6 +456,7 @@ class ThemeManager(QObject):
             Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[3] / "resources")) / "ui"
         )
         arrow = (assets / "chevron-down.svg").as_posix()
+        arrow_up = (assets / "chevron-up.svg").as_posix()
         radio_off = (assets / "radio-off.svg").as_posix()
         radio_on = (assets / "radio-on.svg").as_posix()
         checkbox_off = (assets / "checkbox-off.svg").as_posix()
@@ -474,6 +491,9 @@ class ThemeManager(QObject):
         QComboBox {{ padding-right: 28px; }}
         QComboBox::drop-down {{ width: 24px; border: none; }}
         QComboBox::down-arrow {{ image: url("{arrow}"); width: 16px; height: 16px; }}
+        QDateTimeEdit::up-button, QDateTimeEdit::down-button {{ background: transparent; border: none; width: 22px; }}
+        QDateTimeEdit::up-arrow {{ image: url("{arrow_up}"); width: 16px; height: 16px; }}
+        QDateTimeEdit::down-arrow {{ image: url("{arrow}"); width: 16px; height: 16px; }}
         QToolButton#headerIcon::menu-button {{ border: none; width: 12px; background: transparent; }}
         QToolButton#headerIcon::menu-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
         QComboBox QAbstractItemView {{ padding: 4px; selection-background-color: {primary_container}; }}

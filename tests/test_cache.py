@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from winlink.core.cache import CacheEntry, CacheManager, JunctionCache
-from winlink.core.models import Junction, JunctionStatus, JunctionType
+from winlink.core.models import Junction, JunctionStatus, JunctionType, ScanResult
 
 
 def test_cache_entry_creation():
@@ -271,3 +271,49 @@ def test_cache_manager_handles_corrupt_file():
         # Should return None on load
         loaded_cache = manager.load()
         assert loaded_cache is None
+
+
+def test_cache_upsert_and_remove_single_junction(tmp_path):
+    """Point updates must not require a full scan result."""
+    manager = CacheManager(tmp_path / "cache.json")
+    junction = Junction(
+        source=Path("D:/source"),
+        target=Path("C:/target"),
+        junction_type=JunctionType.JUNCTION,
+        status=JunctionStatus.ACTIVE,
+    )
+    other = Junction(
+        source=Path("D:/other"),
+        target=Path("C:/other"),
+        junction_type=JunctionType.SYMLINK,
+        status=JunctionStatus.BROKEN,
+    )
+    manager.save(
+        ScanResult(junctions=[junction], scanned_directories=[Path("C:/")])
+    )
+
+    assert manager.upsert_junction(other)
+    cached = {entry.junction.target: entry for entry in manager.load().entries}
+    assert set(cached) == {junction.target, other.target}
+
+    updated = junction.model_copy(update={"status": JunctionStatus.INACCESSIBLE})
+    assert manager.upsert_junction(updated)
+    cached = {entry.junction.target: entry for entry in manager.load().entries}
+    assert cached[junction.target].junction.status == JunctionStatus.INACCESSIBLE
+    assert len(cached) == 2
+
+    assert manager.remove_junction(junction.target)
+    cached = {entry.junction.target: entry for entry in manager.load().entries}
+    assert set(cached) == {other.target}
+
+
+def test_cache_point_update_without_cache_is_a_noop(tmp_path):
+    manager = CacheManager(tmp_path / "missing.json")
+    junction = Junction(
+        source=Path("D:/source"),
+        target=Path("C:/target"),
+        junction_type=JunctionType.JUNCTION,
+    )
+    assert manager.upsert_junction(junction) is False
+    assert manager.remove_junction(junction.target) is False
+    assert not manager.cache_path.exists()

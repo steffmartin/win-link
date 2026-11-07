@@ -132,20 +132,44 @@ class CacheManager:
             )
 
             # Ensure parent directory exists
-            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            return self._write_cache(cache)
+        except Exception as e:
+            logger.error(f"Failed to save cache: {e}")
+            return False
 
-            # Save to file
+    def _write_cache(self, cache: JunctionCache) -> bool:
+        try:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.cache_path.with_suffix(".tmp")
             with open(temporary, "w", encoding="utf-8") as f:
                 f.write(cache.model_dump_json(indent=2))
-
             temporary.replace(self.cache_path)
             self._cache = cache
-            logger.info(f"Saved cache with {len(entries)} entries to {self.cache_path}")
+            logger.info(f"Saved cache with {len(cache.entries)} entries to {self.cache_path}")
             return True
         except Exception as e:
             logger.error(f"Failed to save cache: {e}")
             return False
+
+    def upsert_junction(self, junction: Junction) -> bool:
+        """Insert or replace a single entry without waiting for a full scan."""
+        cache = self.load()
+        if cache is None:
+            return False
+        entries = {entry.junction.target: entry for entry in cache.entries}
+        entries[junction.target] = CacheEntry(junction=junction)
+        cache.entries = list(entries.values())
+        cache.cached_at = datetime.now()
+        return self._write_cache(cache)
+
+    def remove_junction(self, target: Path) -> bool:
+        """Remove a single entry without waiting for a full scan."""
+        cache = self.load()
+        if cache is None:
+            return False
+        cache.entries = [entry for entry in cache.entries if entry.junction.target != target]
+        cache.cached_at = datetime.now()
+        return self._write_cache(cache)
 
     def clear(self) -> bool:
         """

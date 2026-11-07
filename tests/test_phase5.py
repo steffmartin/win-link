@@ -155,7 +155,7 @@ def test_properties_statistics_keep_event_loop_responsive(qtbot, monkeypatch, tm
 
     release = Event()
 
-    def counts(path):
+    def counts(path, cancel_check=None):
         assert release.wait(2)
         return 4, 3
 
@@ -246,3 +246,37 @@ def test_long_unicode_paths_preserve_files(tmp_path):
     assert (destination / original.relative_to(source)).read_text(
         encoding="utf-8"
     ) == "conteúdo preservado"
+
+
+def test_properties_close_during_calculation_cancels_and_stays_dismissed(
+    qtbot, monkeypatch, tmp_path
+):
+    from winlink.ui.dialogs import properties_dialog
+
+    entered = Event()
+
+    def counts(path, cancel_check=None):
+        entered.set()
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            if cancel_check is not None:
+                cancel_check()
+            time.sleep(0.005)
+        return 1, 0
+
+    monkeypatch.setattr(properties_dialog, "count_entries", counts)
+    original_show = properties_dialog.PropertiesDialog.show
+
+    def show_then_close(dialog):
+        original_show(dialog)
+        QTimer.singleShot(30, dialog.close)
+
+    monkeypatch.setattr(properties_dialog.PropertiesDialog, "show", show_then_close)
+    dialog = properties_dialog.PropertiesDialog(
+        Junction(source=tmp_path, target=tmp_path / "link", junction_type=JunctionType.JUNCTION)
+    )
+    qtbot.addWidget(dialog)
+    assert entered.wait(2)
+    assert dialog._dismissed
+    assert dialog.file_count_label.text() != "1"
+    assert dialog.size_label.text() != "0.0 B"

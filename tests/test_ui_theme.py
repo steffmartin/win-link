@@ -1,9 +1,18 @@
 """Tests for theme management"""
 
 import pytest
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication
 
-from winlink.ui.theme import ThemeManager, ThemeColors
+from winlink.core.models import Junction, JunctionStatus, JunctionType
+from winlink.ui.dialogs.properties_dialog import PropertiesDialog
+from winlink.ui.junction_model import JunctionTableModel
+from winlink.ui.theme import (
+    ThemeColors,
+    ThemeManager,
+    junction_status_color,
+)
 
 
 @pytest.fixture
@@ -102,3 +111,36 @@ def test_theme_colors_constants():
     dark_colors = ThemeColors.DARK
     for key in required_keys:
         assert key in dark_colors
+
+
+@pytest.mark.parametrize(
+    ("theme", "status", "expected"),
+    [
+        ("light", JunctionStatus.INACCESSIBLE, "#9b8f06"),
+        ("light", JunctionStatus.BROKEN, "#c42b1a"),
+        ("dark", JunctionStatus.INACCESSIBLE, "#e2d868"),
+        ("dark", JunctionStatus.BROKEN, "#ff8a80"),
+    ],
+)
+def test_status_colors_match_table_and_properties(app, theme, status, expected):
+    original_palette = app.palette()
+    palette = QPalette(original_palette)
+    colors = ThemeColors.DARK if theme == "dark" else ThemeColors.LIGHT
+    palette.setColor(QPalette.ColorRole.Window, colors["background"])
+    app.setPalette(palette)
+    try:
+        junction = Junction(
+            source="C:/physical",
+            target="C:/link",
+            junction_type=JunctionType.JUNCTION,
+            status=status,
+        )
+        model = JunctionTableModel()
+        model.set_junctions([junction])
+        color = model.data(model.index(0, 5), Qt.ItemDataRole.ForegroundRole)
+
+        assert color == junction_status_color(status)
+        assert color.name() == expected
+        assert PropertiesDialog.get_status_color(None, status) == expected
+    finally:
+        app.setPalette(original_palette)

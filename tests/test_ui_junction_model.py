@@ -202,3 +202,25 @@ def test_update_notifies_entire_row(junction_model, sample_junctions):
     junction_model.dataChanged.connect(lambda left, right, roles: changes.append((left.column(), right.column())))
     junction_model.update_junction(junction_model.index(0, 2), sample_junctions[1])
     assert changes == [(0, 5)]
+
+
+def test_upsert_and_remove_by_target(junction_model, sample_junctions):
+    junction_model.set_junctions(list(sample_junctions))
+    created = Junction(
+        source=Path("D:\\new"),
+        target=Path("C:\\new-link"),
+        junction_type=JunctionType.JUNCTION,
+        status=JunctionStatus.ACTIVE,
+    )
+    junction_model.upsert_junction(created)
+    assert junction_model.rowCount() == 4
+
+    updated = created.model_copy(update={"status": JunctionStatus.BROKEN})
+    junction_model.upsert_junction(updated)
+    assert junction_model.rowCount() == 4
+    assert junction_model._junctions[-1].status == JunctionStatus.BROKEN
+
+    junction_model.remove_junction_target(created.target)
+    assert junction_model.rowCount() == 3
+    junction_model.remove_junction_target(Path("C:\\does-not-exist"))
+    assert junction_model.rowCount() == 3

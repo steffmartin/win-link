@@ -31,6 +31,7 @@ class PropertiesDialog(AnimatedDialog):
         self.logger = get_logger()
         self.junction = junction
         self.history_manager = history_manager
+        self._dismissed = False
 
         self.init_ui()
         self.load_junction_data()
@@ -65,6 +66,8 @@ class PropertiesDialog(AnimatedDialog):
         name.setToolTip(self.junction.target.name)
         name.setObjectName("sectionTitle")
         header.addWidget(name, 1)
+        self.status_icon = QLabel()
+        header.addWidget(self.status_icon)
         self.status_label = QLabel()
         header.addWidget(self.status_label)
         panel.content.addLayout(header)
@@ -138,11 +141,15 @@ class PropertiesDialog(AnimatedDialog):
         self.type_label.setText(type_text)
 
         # Status
-        status_text = self.get_status_display(self.junction.status)
-        self.status_label.setText(status_text)
-        self.status_label.setStyleSheet(
-            f"color: {self.get_status_color(self.junction.status)}; font-weight: bold;"
+        from winlink.ui.icons import status_icon
+        from winlink.ui.theme import junction_status_color
+
+        status_color = junction_status_color(self.junction.status)
+        self.status_icon.setPixmap(
+            status_icon(self.junction.status, status_color.name()).pixmap(16, 16)
         )
+        self.status_label.setText(self.get_status_display(self.junction.status))
+        self.status_label.setStyleSheet(f"color: {status_color.name()}; font-weight: bold;")
 
         # Creator
         creator_text = self.get_creator_display(self.junction.creator)
@@ -172,26 +179,42 @@ class PropertiesDialog(AnimatedDialog):
         self._calculating = True
         self.show()
         try:
+            from winlink.ui.operation_worker import OperationCancelledError
+
+            def check_cancelled():
+                if self._dismissed:
+                    raise OperationCancelledError("Operação cancelada")
 
             def collect(context):
-                counts.append(count_entries(self.junction.source))
+                def boundary():
+                    check_cancelled()
+                    context.check_cancelled()
+
+                context.check_cancelled()
+                counts.append(count_entries(self.junction.source, cancel_check=boundary))
                 if self.junction.size_bytes is None:
                     from winlink.core.scanner import calculate_directory_size
 
-                    self.junction.size_bytes = calculate_directory_size(self.junction.source)
+                    self.junction.size_bytes = calculate_directory_size(
+                        self.junction.source, cancel_check=boundary
+                    )
 
             run_operation(collect, self)
-            files, folders = counts[0]
-            if self.junction.size_bytes is not None:
-                self.size_label.setText(self.format_size(self.junction.size_bytes))
-            self.file_count_label.setText(str(files))
-            self.folder_count_label.setText(str(folders))
+            if counts and not self._dismissed:
+                files, folders = counts[0]
+                if self.junction.size_bytes is not None:
+                    self.size_label.setText(self.format_size(self.junction.size_bytes))
+                self.file_count_label.setText(str(files))
+                self.folder_count_label.setText(str(folders))
         except OSError:
-            self.size_label.setText("Indisponível")
-            self.file_count_label.setText("Indisponível")
-            self.folder_count_label.setText("Indisponível")
+            if not self._dismissed:
+                self.size_label.setText("Indisponível")
+                self.file_count_label.setText("Indisponível")
+                self.folder_count_label.setText("Indisponível")
         finally:
             self._calculating = False
+        if self._dismissed:
+            return
 
         # History
         if self.junction.creator.value == "APP":
@@ -217,14 +240,16 @@ class PropertiesDialog(AnimatedDialog):
         pass
 
     def done(self, result):
-        if not getattr(self, "_calculating", False):
-            super().done(result)
+        if getattr(self, "_calculating", False):
+            self.cancellation_requested.emit()
+            self._dismissed = True
+        super().done(result)
 
     def closeEvent(self, event):
         if getattr(self, "_calculating", False):
-            event.ignore()
-        else:
-            event.accept()
+            self.cancellation_requested.emit()
+            self._dismissed = True
+        event.accept()
 
     def get_type_display(self, junction_type) -> str:
         """Get display text for junction type"""
@@ -243,24 +268,18 @@ class PropertiesDialog(AnimatedDialog):
         from winlink.core.models import JunctionStatus
 
         if status == JunctionStatus.ACTIVE:
-            return "✓ Ativo"
+            return "Ativo"
         elif status == JunctionStatus.BROKEN:
-            return "⚠ Quebrado"
+            return "Quebrado"
         elif status == JunctionStatus.INACCESSIBLE:
-            return "🔒 Inacessível"
+            return "Inacessível"
         return str(status.value)
 
     def get_status_color(self, status) -> str:
         """Get color for status"""
-        from winlink.core.models import JunctionStatus
+        from winlink.ui.theme import junction_status_color
 
-        if status == JunctionStatus.ACTIVE:
-            return "#107C10"  # Green
-        elif status == JunctionStatus.BROKEN:
-            return "#9B8F06"  # Yellow/Orange
-        elif status == JunctionStatus.INACCESSIBLE:
-            return "#C42B1A"  # Red
-        return "#1A1A1A"
+        return str(junction_status_color(status).name())
 
     def get_creator_display(self, creator) -> str:
         """Get display text for creator"""
@@ -295,19 +314,27 @@ class PropertiesDialog(AnimatedDialog):
         import os
         import subprocess
 
-        if path.exists():
+        try:
+            exists = path.exists()
+        except OSError:
+            exists = False
+        if not exists:
+            QMessageBox.warning(self, "Aviso", f"O diretório não existe: {path}")
+            return
+        try:
             if os.name == "nt":  # Windows
-                subprocess.run(["explorer", str(path.absolute())])
+                subprocess.run(["explorer", str(path.absolute())], check=False)
             else:
                 # Fallback for other platforms
                 import webbrowser
 
                 webbrowser.open(str(path.absolute()))
-        else:
-            QMessageBox.warning(self, "Aviso", f"O diretório não existe: {path}")
+        except (OSError, subprocess.SubprocessError) as exc:
+            self.logger.error(f"Could not open {path}: {exc}")
+            QMessageBox.warning(self, "Aviso", f"Não foi possível abrir o destino: {path}")
 
 
-def count_entries(source: Path) -> tuple[int, int]:
+def count_entries(source: Path, *, cancel_check=None) -> tuple[int, int]:
     """Read statistics outside the GUI thread, without following nested links."""
     if source.is_file():
         return 1, 0
@@ -315,6 +342,8 @@ def count_entries(source: Path) -> tuple[int, int]:
         raise OSError("Dados Físicos indisponíveis")
     files = folders = 0
     for root, directories, filenames in os.walk(source):
+        if cancel_check is not None:
+            cancel_check()
         folders += len(directories)
         directories[:] = [
             name

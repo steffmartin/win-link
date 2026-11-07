@@ -226,12 +226,13 @@ def get_junction_type(path: Path) -> JunctionType | None:
     return None
 
 
-def calculate_directory_size(path: Path) -> int:
+def calculate_directory_size(path: Path, *, cancel_check=None) -> int:
     """
     Calculate total size of a directory recursively.
 
     Args:
         path: Path to directory
+        cancel_check: Optional callable invoked at each directory; may raise to abort
 
     Returns:
         Total size in bytes
@@ -239,6 +240,8 @@ def calculate_directory_size(path: Path) -> int:
     total_size = 0
     try:
         for dirpath, directories, filenames in os.walk(path):
+            if cancel_check is not None:
+                cancel_check()
             directories[:] = [
                 name
                 for name in directories

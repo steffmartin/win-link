@@ -1,3 +1,29 @@
+# WinLink 0.1.6 — 06/11/2026
+
+Patch com correções de bugs e pequenas melhorias solicitado na triagem da #36.
+
+## Correções
+
+- Fechar Propriedades durante o cálculo de tamanho e contagem agora solicita cancelamento cooperativo e libera o diálogo, sem resultado parcial ou sinais tardios ([#54](https://github.com/steffmartin/win-link/issues/54)).
+- Criar ou remover um link reflete a alteração na lista e no cache imediatamente, sem aguardar a varredura; resultados de varredura iniciados antes da operação são descartados ([#18](https://github.com/steffmartin/win-link/issues/18)).
+- A janela restaura a geometria salva sem abrir fora da área visível, inclusive após fechar maximizada ([#63](https://github.com/steffmartin/win-link/issues/63)).
+- Abrir dados ou ponto de acesso nas Propriedades trata falhas com mensagem em vez de encerrar o aplicativo ([#14](https://github.com/steffmartin/win-link/issues/14)).
+- Setas dos campos de data do histórico usam o mesmo padrão vetorial dos demais campos ([#53](https://github.com/steffmartin/win-link/issues/53)).
+
+## Melhorias
+
+- Estado Inacessível usa um único ícone vetorial em lista, cartões e Propriedades; Inacessível exibe amarelo e Quebrado vermelho com tokens de tema ([#59](https://github.com/steffmartin/win-link/issues/59), [#60](https://github.com/steffmartin/win-link/issues/60)).
+- Nova instância do aplicativo apenas ativa a janela já aberta ([#33](https://github.com/steffmartin/win-link/issues/33)).
+- A lista lembra o último filtro e ordenação aplicados entre sessões ([#11](https://github.com/steffmartin/win-link/issues/11)).
+
+## Validação e limites
+
+357 testes Python passaram; Ruff, Black e mypy aprovados. Os 16 testes de layout também passaram com `QT_SCALE_FACTOR=2`.
+
+Build por PyInstaller e instalador offline Inno Setup. A validação local de distribuição confirmou abertura do portátil e instalado, instalação/desinstalação em português e inglês com e sem histórico e preservação da junction de teste. O pacote portátil completo, instalador e checksums SHA-256 acompanham a release.
+
+Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados continuam não homologados; não fazem parte desta validação. Pacotes sem assinatura digital. O manual foi retirado deste patch após as tentativas online e offline; a #10 permanece aberta para decidir uma alternativa local.
+
 # WinLink 0.1.5 — 05/11/2026
 
 - Configurações permite salvar pastas excluídas da descoberta. A varredura pula cada subárvore excluída, mesmo quando uma raiz incluída está dentro dela. Os padrões são a pasta temporária e a pasta do Windows, quando disponíveis. As listas ficam lado a lado em janelas amplas e empilhadas nas menores. [#56](https://github.com/steffmartin/win-link/issues/56)

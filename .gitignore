@@ -8,6 +8,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 *.egg
+*.whl
 .installed.cfg
 
 # Generated builds: PyInstaller, installer and Vite
@@ -15,9 +16,12 @@ build/
 dist/
 *.exe
 *.dll
+*.pyd
 *.pdb
 *.so
 *.dylib
+WinLink-Portable-*.zip
+/SHA256SUMS.txt
 
 # Test, lint, typing and coverage caches
 .pytest_cache/

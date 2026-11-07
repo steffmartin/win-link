@@ -1,6 +1,6 @@
 # Continuidade do WinLink
 
-Documento ativo de manutenção a partir da versão 0.1.0. O patch atual é a v0.1.5, descrito nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a divisão dos patches ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
+Documento ativo de manutenção a partir da versão 0.1.0. A versão atual é a v0.1.6, descrita nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a fila de trabalho ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36). Planos, protótipo e evidências anteriores estão no [arquivo histórico](arquivo/v0.1.0/README.md); seus checkpoints não são pendências atuais de lançamento.
 
 ## Base da entrega inicial
 
@@ -9,6 +9,10 @@ Em 04/11/2026, o mantenedor autorizou a release inicial e dispensou o teste manu
 Verificação de fechamento: 308 testes Python, Ruff, Black e mypy aprovados; 74 testes unitários do protótipo e build Vite aprovados. O build histórico emite avisos sobre a diretiva `use client` do lucide-react, sem impedir sua conclusão.
 
 A validação de distribuição no fechamento passou: abertura portátil/instalada, instalação e desinstalação com/sem histórico, preservando junction e dados de teste. Os hashes do executável e instalador conferem com os pacotes preparados anteriormente; a reorganização não alterou o código do aplicativo.
+
+## Verificação da v0.1.6
+
+357 testes Python passaram; Ruff, Black e mypy aprovados, assim como 16 testes de layout em escala 2. A validação de distribuição confirmou os pacotes portátil e instalado, os fluxos de instalação/desinstalação em português e inglês e a preservação dos dados de teste. Windows limpo sem Python, Windows 10 e sucesso de symlinks com privilégios apropriados permanecem não homologados.
 
 ## Descoberta e cache
 

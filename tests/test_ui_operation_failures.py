@@ -876,3 +876,53 @@ def test_close_cancels_worker_merges_cache_and_skips_queued_refresh(qtbot, monke
     saved = cache.load()
     assert saved is not None and saved.partial
     assert {link.target for link in saved.to_junctions()} == {old.target, found.target}
+
+
+def test_point_update_reflects_in_model_and_cache(qtbot, monkeypatch, tmp_path):
+    from winlink.core.cache import CacheManager
+    from winlink.core.config import AppSettings
+    from winlink.core.models import Junction, JunctionType, ScanResult
+
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr(
+        main_window, "get_settings", lambda: AppSettings(scan_directories=[str(tmp_path)])
+    )
+    window = main_window.MainWindow()
+    qtbot.addWidget(window)
+    manager = CacheManager()
+    manager.save(ScanResult(junctions=[], scanned_directories=[tmp_path]))
+    junction = Junction(
+        source=tmp_path / "dados",
+        target=tmp_path / "link",
+        junction_type=JunctionType.JUNCTION,
+    )
+    window._upsert_junction_entry(junction)
+    assert window.junction_model.rowCount() == 1
+    assert junction.target in {j.target for j in CacheManager().get_cached_junctions()}
+    window._remove_junction_entry(junction.target)
+    assert window.junction_model.rowCount() == 0
+    assert junction.target not in {j.target for j in CacheManager().get_cached_junctions()}
+
+
+def test_stale_scan_result_is_discarded_after_point_update(qtbot, monkeypatch, tmp_path):
+    from winlink.core import scanner
+    from winlink.core.config import AppSettings
+    from winlink.core.models import Junction, JunctionType, ScanResult
+
+    monkeypatch.setattr(scanner, "scan_directories", lambda *a, **k: ScanResult())
+    monkeypatch.setattr(
+        main_window, "get_settings", lambda: AppSettings(scan_directories=[str(tmp_path)])
+    )
+    window = main_window.MainWindow()
+    qtbot.addWidget(window)
+    window.start_scan()
+    assert window.scan_worker is not None
+    window.scan_worker.data_version = window._data_version - 1
+    junction = Junction(
+        source=tmp_path, target=tmp_path / "link", junction_type=JunctionType.JUNCTION
+    )
+    window.on_scan_finished(
+        ScanResult(junctions=[junction], scanned_directories=[tmp_path])
+    )
+    assert window.junction_model.rowCount() == 0
+    assert window._scan_pending

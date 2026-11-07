@@ -46,6 +46,7 @@ _SYMBOLS = {
     "undo": '<path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 7 7v3"/>',
     "check": '<circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/>',
     "error": '<circle cx="12" cy="12" r="9"/><path d="m8 8 8 8m0-8-8 8"/>',
+    "prohibited": '<circle cx="12" cy="12" r="9"/><path d="M6 18 18 6"/>',
     "warning": '<path d="m12 3 10 18H2zM12 9v5M12 17h.01"/>',
     "shield": '<path d="M12 3 3 6v6c0 5 9 9 9 9s9-4 9-9V6zM12 8v5M12 16h.01"/>',
     "trash": '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
@@ -78,6 +79,21 @@ def symbol_icon(name: str, color: str = "#64748b") -> QIcon:
         painter.end()
         icon.addPixmap(pixmap)
     return icon
+
+
+_STATUS_SYMBOLS = {
+    "ACTIVE": "check",
+    "BROKEN": "warning",
+    "INACCESSIBLE": "prohibited",
+}
+
+
+def status_icon(status, color: str = "#64748b") -> QIcon:
+    """Vector icon for a junction status, shared by all presentations."""
+    from winlink.core.models import JunctionStatus
+
+    value = status.value if isinstance(status, JunctionStatus) else str(status)
+    return symbol_icon(_STATUS_SYMBOLS.get(value, "info"), color)
 
 
 def set_button_icon(button, name: str, size: int = 18):
