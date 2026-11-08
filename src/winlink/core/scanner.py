@@ -612,9 +612,8 @@ def scan_directories(
 
     logger.info(f"Scan complete: found {len(all_junctions)} junctions in {duration:.2f}s")
 
-    # Save to cache
+    # Save to cache (reuse the existing cache_manager instance)
     if use_cache and recursive and not errors and not cancelled:
-        cache_manager = CacheManager()
         cache_manager.save(result)
 
     return result

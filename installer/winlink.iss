@@ -1,4 +1,4 @@
-#define AppVersion "0.1.9"
+#define AppVersion "1.0.0"
 #ifndef InstallerAppId
 #define InstallerAppId "WinLink-D58F7460-EDC0-4563-98B7-2FB51900B813"
 #endif
@@ -6,7 +6,7 @@
 #define UserDataDir "{userappdata}\WinLink"
 #endif
 #ifndef OutputBase
-#define OutputBase "WinLink-Setup-0.1.9"
+#define OutputBase "WinLink-Setup-1.0.0"
 #endif
 [Setup]
 LicenseFile=..\LICENSE

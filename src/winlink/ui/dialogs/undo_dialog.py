@@ -50,17 +50,17 @@ class UndoDialog(AnimatedDialog):
         )
 
         # Junction info
-        info_label = QLabel("Junção selecionada:")
+        info_label = QLabel("Link selecionado")
         layout.addWidget(info_label)
 
         junction_label = QLabel(f"Ponto de Acesso: {self.target}\nDados Físicos: {self.source}")
         junction_label.setWordWrap(True)
-        junction_label.setStyleSheet("font-weight: bold; margin: 5px 0;")
+        junction_label.setObjectName("undoPaths")
         layout.addWidget(junction_label)
 
         # Strategy selection
         strategy_label = QLabel("Escolha o que fazer:")
-        strategy_label.setStyleSheet("font-weight: bold; margin-top: 20px;")
+        strategy_label.setObjectName("fieldLabel")
         layout.addWidget(strategy_label)
 
         self.strategy_group = QButtonGroup(self)
@@ -76,9 +76,8 @@ class UndoDialog(AnimatedDialog):
         remove_only_desc = QLabel(
             "O link será removido, deixando uma pasta vazia no Ponto de Acesso. Os arquivos permanecem nos Dados Físicos."
         )
-        remove_only_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         remove_only_desc.setWordWrap(True)
-        remove_only_desc.setObjectName("muted")
+        remove_only_desc.setObjectName("strategyDescription")
         layout.addWidget(remove_only_desc)
 
         # Move back option
@@ -93,9 +92,8 @@ class UndoDialog(AnimatedDialog):
         move_back_desc = QLabel(
             "Os arquivos voltarão dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. A opção de backup preserva os Dados Físicos."
         )
-        move_back_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         move_back_desc.setWordWrap(True)
-        move_back_desc.setObjectName("muted")
+        move_back_desc.setObjectName("strategyDescription")
         layout.addWidget(move_back_desc)
 
         # Duplicate option
@@ -109,9 +107,8 @@ class UndoDialog(AnimatedDialog):
         duplicate_desc = QLabel(
             "Os arquivos serão copiados dos Dados Físicos para o Ponto de Acesso, substituindo o link por uma pasta normal. Os Dados Físicos permanecem com os arquivos."
         )
-        duplicate_desc.setStyleSheet("font-size: 12px; margin-left: 20px;")
         duplicate_desc.setWordWrap(True)
-        duplicate_desc.setObjectName("muted")
+        duplicate_desc.setObjectName("strategyDescription")
         layout.addWidget(duplicate_desc)
 
         # Keep source checkbox

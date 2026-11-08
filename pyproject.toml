@@ -1,6 +1,6 @@
 [project]
 name = "winlink"
-version = "0.1.9"
+version = "1.0.0"
 description = "Gerenciador de junções para Windows 11"
 readme = "README.md"
 license = "MIT"

@@ -1,3 +1,24 @@
+# WinLink 1.0.0 — 08/11/2026
+
+Release inicial oficial do WinLink para Windows 11.
+
+## Destaques da Release 1.0.0
+
+- **Criação e Gestão Completa de Links NTFS:** Suporte completo e unificado a Junções de diretório, Symlinks (pastas e arquivos) e Hardlinks de arquivo com confirmação e integridade.
+- **Identidade Visual e Temas:** Paleta refinada em tom petróleo com suporte nativo aos modos Claro, Escuro e Seguir Sistema. Arte do instalador Inno Setup e ícones sincronizados com a nova paleta (#70).
+- **Interface e Usabilidade:**
+  - Janela de propriedades compacta e moderna com botões contextuais de abertura rápida em linha, ícone dinâmico correspondente ao tipo de dado físico (pasta ou arquivo) (#71), edição de tags e remoção do botão de recálculo manual desnecessário.
+  - Tela inicial com visualização em cartões virtuais e modo compacto auto-adaptável sem scrolls horizontais espúrios.
+  - Configurações simplificadas em grade responsiva de 3 colunas e gerenciamento direto de exclusões e diretórios de descoberta.
+  - Histórico de operações enriquecido com filtros em diálogo dedicado, reversão com verificação de integridade e exportação completa.
+- **Segurança de Dados:** Operações com prévia obrigatória, detecção de bloqueio por processos, validações estritas de caminhos absolutos, proteção contra exclusão recursiva inadvertida e rotinas de backup cooperativo antes de reversão.
+
+## Validação
+
+409 testes automatizados passando; Ruff, Black e Mypy aprovados com 100% de conformidade. Distribuição validada via smoke test portátil e ciclo completo de instalação/desinstalação isolada.
+
+---
+
 ﻿# WinLink 0.1.9 — 07/11/2026
 
 Filtros atualizados para Meus Links e Histórico, com validação manual aprovada pelo mantenedor.

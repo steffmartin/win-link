@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -115,7 +116,11 @@ class HistoryTableModel(QAbstractTableModel):
     def _get_foreground_color(self, operation: OperationRecord) -> QColor | None:
         """Get foreground color based on operation type"""
         if not operation.success:
-            return QColor("#C42B1A")
+            from winlink.ui.theme import ThemeColors
+
+            app = QApplication.instance()
+            dark = app is not None and app.palette().window().color().lightness() < 128
+            return (ThemeColors.DARK if dark else ThemeColors.LIGHT)["error"]
         return None
 
     def _get_type_display(self, operation: OperationRecord | OperationType) -> str:
@@ -218,14 +223,7 @@ class HistoryDialog(AnimatedDialog):
         history_actions.addWidget(self.export_btn)
         history_actions.addWidget(self.clear_history_btn)
         layout.addLayout(history_actions)
-        note = QLabel(
-            'Registro de criações e reversões. Use "Desfazer" para reverter a criação selecionada.'
-        )
-        note.setWordWrap(True)
-        note.setObjectName("muted")
-        layout.addWidget(note)
         self.total_label = QLabel()
-        self.total_label.setObjectName("muted")
         layout.addWidget(self.total_label)
         self.table_model = HistoryTableModel(self)
         self.table_view = QTableView()
@@ -352,7 +350,6 @@ class HistoryDialog(AnimatedDialog):
 
     def edit_filters(self):
         dialog = FilterSelectionDialog("Filtros do histórico", self)
-        dialog.clear_button.setText("Limpar")
         type_options = [
             (HistoryTableModel()._get_type_display(operation), operation)
             for operation in OperationType
@@ -447,7 +444,7 @@ class HistoryDialog(AnimatedDialog):
 
         # Update model
         self.table_model.set_operations(filtered)
-        self.total_label.setText(f"Total: {len(filtered)} de {len(operations)} operações")
+        self.total_label.setText(f"{len(filtered)} de {len(operations)} operações")
 
     def _sort_operations(self, operations: list[OperationRecord]) -> list[OperationRecord]:
         def sort_key(operation: OperationRecord):

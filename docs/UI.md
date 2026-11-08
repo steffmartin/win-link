@@ -22,24 +22,25 @@ Domínio e acesso ao disco permanecem em `core/operations.py`, `file_ops.py`, `v
 
 ## Aparência
 
-- Fonte do sistema, preferindo Segoe UI no Windows. Referência visual: corpo 14–16 px, títulos 20–24 px em negrito e caminhos em monospace. Respeitar métricas e escala do Qt; não fixar alturas que cortem texto.
+- A identidade visual usa o vocabulário de uma bancada de caminhos do Windows: superfícies frias, azul-petróleo para ação/seleção e âmbar reservado a atenção. Usar Segoe UI para interface e monospace apenas para caminhos. Referência visual: corpo 14–16 px, títulos 20–24 px em negrito. Respeitar métricas e escala do Qt; não fixar alturas que cortem texto.
 - Espaçamentos de referência: 4, 8, 12, 16, 24 e 32 px; margens centrais de 24 px; bordas finas e cantos de 6–12 px. Usar layouts flexíveis e componentes compartilhados.
-- Sidebar atual: 256 px em desktop e 192 px abaixo de 1100 px de largura. Reutilizar o comportamento responsivo implementado; não impor largura mínima que force a janela a exceder a tela.
-- Criação oferece cartões Pasta/Arquivo seguidos por dois cartões de tipo compatíveis em uma linha, cada um com ajuda no canto superior direito. O tipo padrão pré-seleciona também sua categoria; textos de orientação junto aos caminhos ocupam uma linha e a faixa azul da prévia tem duas linhas específicas para cada tipo. Os cartões da lista mantêm altura fixa; as pills de tags compartilham a linha dos caminhos, alinhadas à direita. Menus de contexto mantêm ícones centralizados na coluna compacta ao lado dos rótulos. Em Configurações, as listas de pastas incluídas e excluídas ficam lado a lado em largura ampla e empilhadas em largura reduzida. Histórico pode rolar sua tabela horizontalmente quando necessário.
+- Sidebar atual: 256 px em desktop e 192 px abaixo de 1100 px de largura. Reutilizar o comportamento responsivo implementado; não impor largura mínima que force a janela a exceder a tela. Na visão compacta, as colunas de Dados Físicos e Ponto de Acesso dividem dinamicamente o espaço restante; barras horizontais só aparecem quando a janela não comporta as larguras mínimas.
+- Criação oferece cartões Pasta/Arquivo seguidos por dois cartões de tipo compatíveis em uma linha, cada um com ajuda no canto superior direito. O tipo padrão pré-seleciona também sua categoria; textos de orientação junto aos caminhos ocupam uma linha e a faixa azul da prévia tem duas linhas específicas para cada tipo. Os cartões da lista mantêm altura fixa; as pills de tags compartilham a linha dos caminhos, alinhadas à direita. Menus de contexto mantêm ícones centralizados na coluna compacta ao lado dos rótulos. Em Configurações, Tema, Apresentação de Meus Links e Tipo de link padrão dividem três colunas em largura ampla e refluem em janelas estreitas; as listas de pastas incluídas e excluídas ficam lado a lado em largura ampla e empilhadas em largura reduzida. Propriedades combina tipo/criador/data e tamanho/arquivos/pastas em duas colunas, com o campo e a ação de salvar tags na mesma linha. Histórico pode rolar sua tabela horizontalmente quando necessário.
 - Ícones vetoriais consistentes com `ui/icons.py`, acompanhados de rótulo ou descrição acessível. Não substituir por emojis nem criar outro sistema visual.
 
-Usar `ThemeColors`, `ThemeManager` e os estilos existentes como fonte de cores, sem espalhar novas cores fixas nos widgets:
+Usar `ThemeColors` e `ThemeManager` como fonte única de cores em widgets, diálogos, cartões desenhados e estados do histórico:
 
 | Token | Claro | Escuro |
 |---|---|---|
-| Fundo | `#FFFFFF` | `#111827` |
-| Superfície | `#f9fafb` | `#1f2937` |
-| Superfície alternativa | `#f3f4f6` | `#374151` |
-| Primária | `#2563eb` | `#2563eb` |
-| Texto | `#111827` | `#FFFFFF` |
-| Texto secundário | `#5C5C5C` | `#D0D0D0` |
-| Borda | `#d1d5db` | `#4b5563` |
-| Sucesso / aviso / erro | `#107C10` / `#9B8F06` / `#C42B1A` | `#6CCB6F` / `#E2D868` / `#FF8A80` |
+| Fundo | `#F1F4F4` | `#111D23` |
+| Superfície | `#FFFFFF` | `#1C2A31` |
+| Superfície alternativa | `#E8EFEF` | `#2A3A41` |
+| Primária | `#126E78` | `#75C9C1` |
+| Seleção | `#D6EBE9` | `#23494B` |
+| Texto | `#19282D` | `#EDF4F4` |
+| Texto secundário | `#52646A` | `#ADBDC0` |
+| Borda | `#C8D4D7` | `#42555B` |
+| Sucesso / aviso / erro | `#14735D` / `#86560A` / `#B42332` | `#82D2AE` / `#F2C56E` / `#FF9299` |
 
 Estados normal, hover, foco, seleção e desabilitado precisam continuar legíveis nos dois temas. Cor não pode ser o único indicador de resultado. Seguir sistema deve reagir ao tema do Windows; a troca rápida deve respeitar a preferência persistida e a opção automática.
 

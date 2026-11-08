@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 
 from winlink.core.models import JunctionType
 from winlink.ui.dialogs.animated_dialog import AnimatedDialog
+from winlink.ui.icons import set_label_icon
 from winlink.utils.logger import get_logger
 
 
@@ -63,7 +64,6 @@ class CreateJunctionDialog(AnimatedDialog):
             button_style,
             heading,
         )
-        from winlink.ui.icons import symbol_icon
 
         self.setWindowTitle("Criar Novo Link")
         self.setModal(True)
@@ -115,10 +115,10 @@ class CreateJunctionDialog(AnimatedDialog):
         cards.setSpacing(12)
         self.type_cards = []
         type_help = (
-            "Conceito: redireciona uma pasta para outra. Use para manter o Ponto de Acesso antigo após mover os Dados Físicos. Limite: pastas locais, sem destino de rede.",
-            "Conceito: ligação simbólica para uma pasta. Use para acessar Dados Físicos locais ou de rede por outro caminho. Criar pode exigir Modo de Desenvolvedor ou privilégios e acessar depende das permissões do destino.",
-            "Conceito: ligação simbólica para um arquivo. Use para manter outro Ponto de Acesso para o arquivo. Criar pode exigir Modo de Desenvolvedor ou privilégios e acessar depende das permissões do destino.",
-            "Conceito: nomes equivalentes para os mesmos Dados Físicos. Use para acessar um arquivo por dois nomes. Os nomes precisam estar no mesmo volume e alterações que substituem o arquivo podem separar os nomes.",
+            "Conceito: redireciona uma pasta para outra.\nUse para manter o Ponto de Acesso antigo após mover os Dados Físicos.\nLimite: pastas locais, sem destino de rede.",
+            "Conceito: ligação simbólica para uma pasta.\nUse para acessar Dados Físicos locais ou de rede por outro caminho.\nCriar pode exigir Modo de Desenvolvedor ou privilégios; acessar depende das permissões do destino.",
+            "Conceito: ligação simbólica para um arquivo.\nUse para manter outro Ponto de Acesso para o arquivo.\nCriar pode exigir Modo de Desenvolvedor ou privilégios; acessar depende das permissões do destino.",
+            "Conceito: nomes equivalentes para os mesmos Dados Físicos.\nUse para acessar um arquivo por dois nomes.\nOs nomes precisam estar no mesmo volume; alterações que substituem o arquivo podem separá-los.",
         )
         for n, (title, desc, icon, index, file) in enumerate(
             [
@@ -186,7 +186,7 @@ class CreateJunctionDialog(AnimatedDialog):
         self.info_label.setWordWrap(False)
         info_row = QHBoxLayout()
         info_icon = QLabel()
-        info_icon.setPixmap(symbol_icon("info").pixmap(18, 18))
+        set_label_icon(info_icon, "info", 18)
         info_icon.setStyleSheet("background: transparent;")
         info_row.addWidget(info_icon)
         info_row.addWidget(self.info_label, 1)
@@ -223,8 +223,8 @@ class CreateJunctionDialog(AnimatedDialog):
         self.structure_target = QLabel("[Ponto de Acesso vazio]")
         self.structure_source = QLabel("[Dados Físicos vazios]")
         for label, title, icon in [
-            (self.structure_target, "PONTO DE ACESSO", "link"),
-            (self.structure_source, "DADOS FÍSICOS", "folder"),
+            (self.structure_target, "Ponto de Acesso", "link"),
+            (self.structure_source, "Dados Físicos", "folder"),
         ]:
             node = Panel()
             node.setObjectName("structureNode")
@@ -232,7 +232,7 @@ class CreateJunctionDialog(AnimatedDialog):
             title_label.setObjectName("muted")
             node.content.addWidget(title_label)
             artwork = QLabel()
-            artwork.setPixmap(symbol_icon(icon, "#3b82f6").pixmap(32, 32))
+            set_label_icon(artwork, icon, 32)
             if label is self.structure_source:
                 self.structure_source_icon = artwork
             node.content.addWidget(artwork)
@@ -242,7 +242,7 @@ class CreateJunctionDialog(AnimatedDialog):
             nodes.addWidget(node, 1)
             if label is self.structure_target:
                 arrow = QLabel()
-                arrow.setPixmap(symbol_icon("arrow", "#60a5fa").pixmap(28, 28))
+                set_label_icon(arrow, "arrow", 28)
                 nodes.addWidget(arrow)
         preview.content.addLayout(nodes)
         preview.content.addStretch()
@@ -265,12 +265,8 @@ class CreateJunctionDialog(AnimatedDialog):
         self.on_type_changed(0)
 
     def update_structure(self):
-        from winlink.ui.icons import symbol_icon
-
         file = not self._is_directory
-        self.structure_source_icon.setPixmap(
-            symbol_icon("file" if file else "folder", "#3b82f6").pixmap(32, 32)
-        )
+        set_label_icon(self.structure_source_icon, "file" if file else "folder", 32)
         self.structure_target.setText(self.target_edit.text() or "[Ponto de Acesso vazio]")
         self.structure_source.setText(self.source_edit.text() or "[Dados Físicos vazios]")
         summaries = {

@@ -3,6 +3,8 @@
 ![Tela principal do WinLink](docs/imagens/tela-principal.png)
 
 ## Em poucas palavras
+> **Palavras-chave / Tags:** `ntfs` • `junction` • `symlink` • `hardlink` • `link de pastas` • `link de arquivos` • `sincronização de pastas e arquivos` • `redirecionamento de pastas` • `windows 11` • `gerenciador de links`
+
 
 O WinLink ajuda você a organizar arquivos e pastas no Windows sem precisar digitar comandos. Ele cria ligações para que um arquivo ou pasta possa ser acessado por outro caminho.
 
@@ -10,10 +12,10 @@ Por exemplo: você pode guardar uma pasta de projetos em outro disco e manter um
 
 ## Baixar e começar
 
-Acesse a [release v0.1.8](https://github.com/steffmartin/win-link/releases/tag/v0.1.8):
+Acesse a [release v1.0.0](https://github.com/steffmartin/win-link/releases/tag/v1.0.0):
 
-- **Instalador:** `WinLink-Setup-0.1.8.exe`, instalação por usuário.
-- **Portátil:** extraia todo o `WinLink-Portable-0.1.8.zip` e execute `WinLink/WinLink.exe`. Mantenha a pasta `_internal` ao lado do executável.
+- **Instalador:** `WinLink-Setup-1.0.0.exe`, instalação por usuário.
+- **Portátil:** extraia todo o `WinLink-Portable-1.0.0.zip` e execute `WinLink/WinLink.exe`. Mantenha a pasta `_internal` ao lado do executável.
 - `SHA256SUMS.txt` contém os hashes dos dois pacotes.
 
 Os pacotes incluem Python e as dependências. O aplicativo foi validado localmente em Windows 11 e não possui assinatura digital. Windows 10, Windows limpo sem Python e o sucesso de symlinks com privilégios apropriados não foram homologados; o mantenedor dispensou essas validações para a release inicial.

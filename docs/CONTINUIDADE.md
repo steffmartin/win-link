@@ -1,6 +1,6 @@
 # Continuidade do WinLink
 
-Documento ativo de manutenção. A v0.1.8 é a versão publicada mais recente, descrita nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a fila de trabalho ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36).
+Documento ativo de manutenção. A v1.0.0 é a versão publicada mais recente, descrita nas [notas de versão](NOTAS-DE-VERSAO.md); a triagem e a fila de trabalho ficam na [issue #36](https://github.com/steffmartin/win-link/issues/36).
 
 ## Base da entrega inicial
 
@@ -12,7 +12,7 @@ Em 04/11/2026, o mantenedor autorizou a release inicial e dispensou o teste manu
 
 ## Entrega da v0.1.8
 
-390 testes Python passaram; Ruff, Black e mypy aprovados. O pacote portátil passou no smoke test e o instalador foi compilado pelo Inno Setup 7. A validação automatizada de instalação/desinstalação não pôde iniciar o instalador temporário devido ao bloqueio do Windows Application Control; não considerar essa etapa homologada. A release v0.1.8 foi publicada com `WinLink-Portable-0.1.8.zip`, `WinLink-Setup-0.1.8.exe` e `SHA256SUMS.txt`.
+390 testes Python passaram; Ruff, Black e mypy aprovados. O pacote portátil passou no smoke test e o instalador foi compilado pelo Inno Setup 7. A validação automatizada de instalação/desinstalação não pôde iniciar o instalador temporário devido ao bloqueio do Windows Application Control; não considerar essa etapa homologada. A release inicial v1.0.0 foi publicada com `WinLink-Portable-0.1.8.zip`, `WinLink-Setup-0.1.8.exe` e `SHA256SUMS.txt`.
 
 ## Descoberta e cache
 

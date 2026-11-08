@@ -56,7 +56,7 @@ class ProgressDialog(AnimatedDialog):
         self.setModal(True)
 
         from winlink.ui.components import button_style, heading
-        from winlink.ui.icons import symbol_icon
+        from winlink.ui.icons import set_label_icon
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 32, 32, 32)
@@ -64,7 +64,7 @@ class ProgressDialog(AnimatedDialog):
         heading(layout, self._title)
         self.result_icon = QLabel()
         self.result_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.result_icon.setPixmap(symbol_icon("clock", "#3b82f6").pixmap(48, 48))
+        set_label_icon(self.result_icon, "clock", 48)
         layout.addWidget(self.result_icon)
 
         # Progress bar
@@ -76,14 +76,14 @@ class ProgressDialog(AnimatedDialog):
 
         # Status label
         self.status_label = QLabel("Iniciando...")
+        self.status_label.setObjectName("progressStatus")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("margin: 10px 0;")
         layout.addWidget(self.status_label)
 
         # Details label
         self.details_label = QLabel()
+        self.details_label.setObjectName("progressDetails")
         self.details_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.details_label.setStyleSheet("margin: 5px 0;")
         self.details_label.setWordWrap(True)
         self.details_label.hide()
         layout.addWidget(self.details_label)
@@ -125,11 +125,16 @@ class ProgressDialog(AnimatedDialog):
             message: Final message
         """
         from winlink.ui.icons import symbol_icon
+        from winlink.ui.theme import ThemeColors
 
+        dark = self.palette().window().color().lightness() < 128
+        colors = ThemeColors.DARK if dark else ThemeColors.LIGHT
+        tone = "success" if success else "warning" if self._was_cancelled else "error"
+        self.result_icon.setProperty("glyph", None)
         self.result_icon.setPixmap(
             symbol_icon(
                 "check" if success else "warning" if self._was_cancelled else "error",
-                "#16a34a" if success else "#d97706" if self._was_cancelled else "#ef4444",
+                colors[tone].name(),
             ).pixmap(56, 56)
         )
         self._finished = True

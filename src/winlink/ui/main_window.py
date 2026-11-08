@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
         """Initialize UI components"""
         self.setWindowTitle("WinLink")
         from winlink.ui.components import ActionRow, button_style
-        from winlink.ui.icons import application_icon, symbol_icon
+        from winlink.ui.icons import application_icon, set_label_icon, symbol_icon
 
         self.setWindowIcon(application_icon())
         geometry_restored = False
@@ -188,11 +188,12 @@ class MainWindow(QMainWindow):
         logo.setFixedSize(32, 32)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(logo)
-        brand = QLabel(
-            'WinLink <span style="font-size:14px;font-weight:400;color:#6b7280">Manager</span>'
-        )
+        brand = QLabel("WinLink")
         brand.setObjectName("brand")
         header.addWidget(brand)
+        brand_descriptor = QLabel("Gerenciador de links")
+        brand_descriptor.setObjectName("brandDescriptor")
+        header.addWidget(brand_descriptor)
         header.addStretch()
         self.about_button = QToolButton()
         self.about_button.setObjectName("headerIcon")
@@ -321,7 +322,7 @@ class MainWindow(QMainWindow):
         empty_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_box.setSpacing(16)
         empty_icon = QLabel()
-        empty_icon.setPixmap(symbol_icon("search", "#9ca3af").pixmap(48, 48))
+        set_label_icon(empty_icon, "search", 48)
         empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_title = QLabel("Nenhum link configurado")
         self.empty_title.setObjectName("sectionTitle")
@@ -484,11 +485,13 @@ class MainWindow(QMainWindow):
             self.open_selected_properties(index)
 
     def refresh_presentation(self):
-        from winlink.ui.icons import refresh_widget_icons, symbol_icon
+        from PyQt6.QtGui import QPalette
+
+        from winlink.ui.icons import palette_color, refresh_widget_icons, symbol_icon
 
         self.setStyleSheet(self.theme_manager.get_stylesheet())
         refresh_widget_icons(self)
-        color = "#d1d5db" if self.theme_manager.current_theme == "dark" else "#4b5563"
+        color = palette_color(QPalette.ColorRole.ButtonText)
         modes = ("dark", "light", "auto")
         mode = self.settings.theme_mode
         names = {"dark": "Escuro", "light": "Claro", "auto": "Seguir sistema"}

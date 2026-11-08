@@ -116,10 +116,10 @@ def test_theme_colors_constants():
 @pytest.mark.parametrize(
     ("theme", "status", "expected"),
     [
-        ("light", JunctionStatus.INACCESSIBLE, "#9b8f06"),
-        ("light", JunctionStatus.BROKEN, "#c42b1a"),
-        ("dark", JunctionStatus.INACCESSIBLE, "#e2d868"),
-        ("dark", JunctionStatus.BROKEN, "#ff8a80"),
+        ("light", JunctionStatus.INACCESSIBLE, "#86560a"),
+        ("light", JunctionStatus.BROKEN, "#b42332"),
+        ("dark", JunctionStatus.INACCESSIBLE, "#f2c56e"),
+        ("dark", JunctionStatus.BROKEN, "#ff9299"),
     ],
 )
 def test_status_colors_match_table_and_properties(app, theme, status, expected):
@@ -142,5 +142,22 @@ def test_status_colors_match_table_and_properties(app, theme, status, expected):
         assert color == junction_status_color(status)
         assert color.name() == expected
         assert PropertiesDialog.get_status_color(None, status) == expected
+    finally:
+        app.setPalette(original_palette)
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_stylesheet_uses_theme_tokens_without_legacy_blue(app, theme_manager, theme):
+    original_palette = app.palette()
+    try:
+        theme_manager.apply_theme(theme)
+        colors = theme_manager.get_theme_colors()
+        stylesheet = theme_manager.get_stylesheet().lower()
+
+        assert colors["primary"].name() in stylesheet
+        assert colors["primary_container"].name() in stylesheet
+        assert colors["warning"].name() in stylesheet
+        assert "#2563eb" not in stylesheet
+        assert "#3b82f6" not in stylesheet
     finally:
         app.setPalette(original_palette)

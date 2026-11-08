@@ -3,7 +3,7 @@
 from functools import lru_cache
 
 from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 
 
 def application_icon() -> QIcon:
@@ -14,9 +14,9 @@ def application_icon() -> QIcon:
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.scale(size / 64, size / 64)
-        painter.setPen(QPen(QColor("#0078D4"), 7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(QPen(QColor("#126E78"), 7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawRoundedRect(QRectF(7, 17, 31, 22), 10, 10)
-        painter.setPen(QPen(QColor("#50B5FF"), 7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(QPen(QColor("#55A9A5"), 7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.drawRoundedRect(QRectF(26, 25, 31, 22), 10, 10)
         painter.end()
         icon.addPixmap(pixmap)
@@ -108,6 +108,23 @@ def status_icon(status, color: str = "#64748b") -> QIcon:
     return symbol_icon(_STATUS_SYMBOLS.get(value, "info"), color)
 
 
+def palette_color(role: QPalette.ColorRole) -> str:
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        return "#126E78"
+    return str(app.palette().color(role).name())
+
+
+def set_label_icon(label, name: str, size: int) -> None:
+    label.setProperty("glyph", name)
+    label.setProperty("glyphSize", size)
+    label.setPixmap(
+        symbol_icon(name, palette_color(QPalette.ColorRole.Highlight)).pixmap(size, size)
+    )
+
+
 def set_button_icon(button, name: str, size: int = 18):
     from PyQt6.QtCore import QSize
 
@@ -117,19 +134,30 @@ def set_button_icon(button, name: str, size: int = 18):
 
 
 def refresh_widget_icons(root):
-    from PyQt6.QtWidgets import QAbstractButton, QListWidget
+    from PyQt6.QtWidgets import QAbstractButton, QLabel, QListWidget
+
+    from winlink.ui.theme import ThemeColors
 
     dark = root.palette().window().color().lightness() < 128
-    color = "#d1d5db" if dark else "#4b5563"
+    palette = root.palette()
+    color = palette.color(QPalette.ColorRole.ButtonText).name()
+    accent = palette.color(QPalette.ColorRole.Highlight).name()
+    on_accent = palette.color(QPalette.ColorRole.HighlightedText).name()
+    error = (ThemeColors.DARK if dark else ThemeColors.LIGHT)["error"].name()
     for button in root.findChildren(QAbstractButton):
         name = button.property("symbol")
         if name:
             tone = (
-                "#ffffff"
+                on_accent
                 if button.property("primary")
-                else ("#f87171" if dark else "#dc2626") if button.property("danger") else color
+                else error if button.property("danger") else color
             )
             button.setIcon(symbol_icon(name, tone))
+    for label in root.findChildren(QLabel):
+        name = label.property("glyph")
+        size = label.property("glyphSize")
+        if name and size:
+            label.setPixmap(symbol_icon(name, accent).pixmap(int(size), int(size)))
     for navigation in root.findChildren(QListWidget, "navigation"):
         for index, name in enumerate(("drive", "plus", "clock", "settings")):
             navigation.item(index).setIcon(symbol_icon(name, color))

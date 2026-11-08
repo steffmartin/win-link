@@ -94,7 +94,7 @@ def test_settings_help_is_available_by_keyboard_without_toggling_option(window, 
     page = window.settings_page
     window.navigate(3)
     buttons = [b for b in page.findChildren(QToolButton) if b.accessibleName().startswith("Ajuda:")]
-    assert len(buttons) == 6
+    assert len(buttons) == 5
     display = Mock()
     monkeypatch.setattr(QToolTip, "showText", display)
     before = (

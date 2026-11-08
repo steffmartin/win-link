@@ -7,7 +7,9 @@ from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtWidgets import QApplication, QCheckBox, QLabel, QScrollArea, QToolButton
 
 from winlink.core.config import AppSettings, save_settings
-from winlink.core.models import OperationType
+from winlink.core.models import Junction, JunctionType, OperationType
+from winlink.ui.components import FieldGrid
+from winlink.ui.dialogs.properties_dialog import PropertiesDialog
 from winlink.ui.main_window import MainWindow
 
 
@@ -129,6 +131,84 @@ def test_list_search_controls_fit_both_window_sizes(window, qtbot):
             assert len({control.geometry().center().y() for control in row.buttons}) <= 2
 
 
+def test_compact_path_columns_use_available_width_without_horizontal_scroll(
+    window, qtbot, tmp_path
+):
+    window.junction_model.set_junctions(
+        [
+            Junction(
+                source=tmp_path / "Dados",
+                target=tmp_path / "Links" / "Projeto",
+                junction_type=JunctionType.JUNCTION,
+            )
+        ]
+    )
+    window.view_mode.setCurrentIndex(1)
+    window.resize(1280, 800)
+    qtbot.wait(30)
+
+    table = window.table_view
+    header = table.horizontalHeader()
+    assert table.horizontalScrollBar().maximum() == 0
+    assert sum(header.sectionSize(column) for column in range(header.count())) == header.width()
+
+
+def test_properties_metadata_and_tags_are_compact_two_column_rows(window, qtbot, tmp_path):
+    junction = Junction(
+        source=tmp_path,
+        target=tmp_path / "link",
+        junction_type=JunctionType.JUNCTION,
+    )
+    dialog = PropertiesDialog(
+        junction,
+        window,
+        window.history_manager,
+        calculate_storage=False,
+    )
+    qtbot.addWidget(dialog)
+    qtbot.wait(20)
+
+    for left, right in [
+        (dialog.type_label, dialog.size_label),
+        (dialog.creator_label, dialog.file_count_label),
+        (dialog.created_at_label, dialog.folder_count_label),
+    ]:
+        assert left.mapTo(dialog, QPoint()).y() == right.mapTo(dialog, QPoint()).y()
+        assert left.mapTo(dialog, QPoint()).x() < right.mapTo(dialog, QPoint()).x()
+    assert dialog.tags_edit.mapTo(dialog, QPoint()).y() == dialog.save_tags_btn.mapTo(
+        dialog, QPoint()
+    ).y()
+
+
+def test_settings_primary_preferences_use_three_responsive_columns(window, qtbot):
+    window.navigate(3)
+    window.resize(1280, 800)
+    qtbot.wait(30)
+    grid = window.settings_page.findChild(FieldGrid)
+    assert grid is not None
+    assert grid._columns == 3
+
+    window.resize(760, 400)
+    qtbot.wait(30)
+    assert grid._columns == 2
+    assert window.pages.currentWidget().horizontalScrollBar().maximum() == 0
+
+
+def test_filter_dialog_uses_short_action_labels(window, qtbot):
+    from PyQt6.QtCore import QTimer
+
+    observed = []
+
+    def inspect_dialog():
+        dialog = QApplication.activeModalWidget()
+        observed.extend((dialog.clear_button.text(), dialog.apply_button.text()))
+        dialog.reject()
+
+    QTimer.singleShot(20, inspect_dialog)
+    window.edit_filters()
+    assert observed == ["Limpar", "Aplicar"]
+
+
 def test_history_row_actions_choose_the_clicked_record(window, qtbot, tmp_path, monkeypatch):
     for i in range(2):
         window.history_manager.add_operation(
@@ -151,6 +231,15 @@ def test_history_row_actions_choose_the_clicked_record(window, qtbot, tmp_path, 
     )
     callback.assert_called_once()
     assert page.table_view.currentIndex().row() == 1
+
+
+def test_history_summary_matches_link_count_style_without_total_prefix(window):
+    window.navigate(2)
+    label = window.history_page.total_label
+    assert not label.text().startswith("Total:")
+    assert " de " in label.text() and " operações" in label.text()
+    assert label.font() == window.list_summary.font()
+    assert not window.history_page.findChild(QLabel, "muted")
 
 
 def test_settings_footer_is_reachable_in_small_window(window, qtbot):

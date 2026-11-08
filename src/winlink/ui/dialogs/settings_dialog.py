@@ -36,9 +36,9 @@ class SettingsDialog(AnimatedDialog):
         from winlink.ui.components import (
             ActionRow,
             Columns,
+            FieldGrid,
             Panel,
             button_style,
-            field,
             heading,
             help_row,
         )
@@ -61,11 +61,9 @@ class SettingsDialog(AnimatedDialog):
         self.theme_combo = QComboBox()
         for label, mode in [("Seguir sistema", "auto"), ("Claro", "light"), ("Escuro", "dark")]:
             self.theme_combo.addItem(label, mode)
-        field(fields, "Tema", self.theme_combo)
         self.link_view_combo = QComboBox()
         self.link_view_combo.addItem("Normal", "normal")
         self.link_view_combo.addItem("Compacta", "compact")
-        field(fields, "Apresentação de Meus Links", self.link_view_combo)
         self.default_type_combo = QComboBox()
         for label, value in [
             ("Pasta - Junção", "junction"),
@@ -75,13 +73,14 @@ class SettingsDialog(AnimatedDialog):
         ]:
             self.default_type_combo.addItem(label, value)
         fields.addWidget(
-            help_row(
-                QLabel("Tipo de link padrão"),
-                "Tipo de link padrão",
-                "Escolhe o tipo pré-selecionado ao iniciar uma criação com formulário vazio. Não altera links existentes.",
+            FieldGrid(
+                [
+                    ("Tema", self.theme_combo),
+                    ("Apresentação de Meus Links", self.link_view_combo),
+                    ("Tipo de link padrão", self.default_type_combo),
+                ]
             )
         )
-        fields.addWidget(self.default_type_combo)
         fields.addSpacing(8)
         self.scan_list = QListWidget()
         self.excluded_list = QListWidget()

@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from winlink.ui.icons import set_button_icon, symbol_icon
+from winlink.ui.icons import set_button_icon, set_label_icon
 
 
 class NavigationDelegate(QStyledItemDelegate):
@@ -63,7 +63,7 @@ def heading(layout, text, subtitle=None, icon=None):
     row.setSpacing(10)
     if icon:
         artwork = QLabel()
-        artwork.setPixmap(symbol_icon(icon, "#3b82f6").pixmap(24, 24))
+        set_label_icon(artwork, icon, 24)
         row.addWidget(artwork)
     label = QLabel(text)
     label.setObjectName("pageTitle")
@@ -177,7 +177,7 @@ class TypeButton(QPushButton):
         row = QHBoxLayout()
         art = QLabel()
         art.setProperty("glyph", icon)
-        art.setPixmap(symbol_icon(icon, "#3b82f6").pixmap(20, 20))
+        set_label_icon(art, icon, 20)
         row.addWidget(art)
         name = QLabel(title)
         name.setObjectName("fieldLabel")
@@ -185,8 +185,7 @@ class TypeButton(QPushButton):
         row.addStretch()
         if indicator:
             indicator_label = QLabel()
-            indicator_label.setProperty("glyph", indicator)
-            indicator_label.setPixmap(symbol_icon(indicator).pixmap(16, 16))
+            set_label_icon(indicator_label, indicator, 16)
             indicator_label.setToolTip(indicator_help or "")
             indicator_label.setAccessibleName(indicator_help or title)
             indicator_label.setAccessibleDescription(indicator_help or "")
@@ -257,7 +256,10 @@ class FieldGrid(QWidget):
             box = QVBoxLayout(container)
             box.setContentsMargins(0, 0, 0, 0)
             box.setSpacing(6)
-            field(box, title, control)
+            if isinstance(title, QWidget):
+                box.addWidget(title)
+            else:
+                field(box, title, control)
             self.fields.append(container)
         self._columns = 0
         self.reflow(1)

@@ -168,7 +168,7 @@ class FilterSelectionDialog(AnimatedDialog):
         self._grid.setVerticalSpacing(8)
         self._content_layout.addLayout(self._grid)
         self._actions = QHBoxLayout()
-        self.clear_button = button_style(QPushButton("Limpar filtros"), "refresh")
+        self.clear_button = button_style(QPushButton("Limpar"), "refresh")
         self.clear_button.clicked.connect(self.clear_selections)
         self._actions.addWidget(self.clear_button)
         self._actions.addStretch()
@@ -177,7 +177,7 @@ class FilterSelectionDialog(AnimatedDialog):
             QDialogButtonBox.StandardButton.Apply | QDialogButtonBox.StandardButton.Cancel
         )
         self.apply_button = buttons.button(QDialogButtonBox.StandardButton.Apply)
-        self.apply_button.setText("Aplicar filtros")
+        self.apply_button.setText("Aplicar")
         self.cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
         self.cancel_button.setText("Cancelar")
         button_style(self.apply_button, "filter", primary=True)

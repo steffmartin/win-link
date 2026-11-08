@@ -30,7 +30,13 @@ with tempfile.TemporaryDirectory(prefix="winlink-ui-") as tmp:
     links.mkdir()
     assert create_junction(data, links / "Projetos")
     assert create_hard_link(data / "arquivo.txt", links / "outro-nome.txt")
-    save_settings(AppSettings(scan_directories=[str(links)], remember_window_size=False))
+    save_settings(
+        AppSettings(
+            scan_directories=[str(links)],
+            scan_excluded_directories=[],
+            remember_window_size=False,
+        )
+    )
     manager = HistoryManager()
     manager.add_operation(OperationType.CREATE_JUNCTION, data, links / "Projetos")
     manager.add_operation(

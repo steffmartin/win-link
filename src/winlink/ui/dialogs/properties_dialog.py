@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -60,26 +60,24 @@ class PropertiesDialog(AnimatedDialog):
     def init_ui(self):
         from PyQt6.QtCore import Qt
 
-        from winlink.ui.components import ActionRow, Panel, button_style, field, heading
-        from winlink.ui.icons import symbol_icon
+        from winlink.ui.components import Panel, button_style, heading
+        from winlink.ui.icons import set_label_icon
 
         self.setWindowTitle("Propriedades do Link")
         self.setModal(True)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
         top = heading(layout, "Propriedades do Link")
         self.close_btn = button_style(QPushButton("Fechar"), "close")
         self.close_btn.clicked.connect(self.accept)
         top.addWidget(self.close_btn)
         panel = Panel()
+        panel.content.setContentsMargins(18, 18, 18, 18)
+        panel.content.setSpacing(10)
         header = QHBoxLayout()
         icon = QLabel()
-        icon.setPixmap(
-            symbol_icon("folder" if self.junction.is_directory else "file", "#3b82f6").pixmap(
-                32, 32
-            )
-        )
+        set_label_icon(icon, "folder" if self.junction.is_directory else "file", 32)
         header.addWidget(icon)
         name = QLabel(self.junction.target.name)
         name.setWordWrap(True)
@@ -92,53 +90,94 @@ class PropertiesDialog(AnimatedDialog):
         self.status_label = QLabel()
         header.addWidget(self.status_label)
         panel.content.addLayout(header)
-        metadata = QFormLayout()
-        metadata.setVerticalSpacing(12)
+        metadata = QGridLayout()
+        metadata.setHorizontalSpacing(18)
+        metadata.setVerticalSpacing(6)
         self.type_label = QLabel()
         self.creator_label = QLabel()
         self.created_at_label = QLabel()
-        metadata.addRow("Tipo:", self.type_label)
-        metadata.addRow("Criador:", self.creator_label)
-        metadata.addRow("Data de criação:", self.created_at_label)
-        panel.content.addLayout(metadata)
-        self.target_label = QPlainTextEdit()
-        self.source_label = QPlainTextEdit()
-        for title, label in [
-            ("Ponto de Acesso", self.target_label),
-            ("Dados Físicos", self.source_label),
-        ]:
-            from PyQt6.QtGui import QTextOption
-
-            label.setReadOnly(True)
-            label.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
-            label.setMinimumWidth(0)
-            label.setObjectName("pathBlock")
-            label.setFixedHeight(label.fontMetrics().lineSpacing() * 2 + 28)
-            field(panel.content, title, label)
-        self.tags_edit = QLineEdit()
-        self.tags_edit.setAccessibleName("Tags do link")
-        field(panel.content, "Tags (separadas por vírgula)", self.tags_edit)
-        self.save_tags_btn = button_style(QPushButton("Salvar tags"), "save")
-        self.save_tags_btn.clicked.connect(self.save_tags)
-        panel.content.addWidget(self.save_tags_btn, 0, Qt.AlignmentFlag.AlignRight)
-        statistics = QFormLayout()
-        statistics.setVerticalSpacing(12)
         self.size_label = QLabel()
         self.file_count_label = QLabel()
         self.folder_count_label = QLabel()
-        statistics.addRow("Tamanho total:", self.size_label)
-        statistics.addRow("Arquivos:", self.file_count_label)
-        statistics.addRow("Pastas:", self.folder_count_label)
-        panel.content.addLayout(statistics)
-        self.source_button = button_style(QPushButton("Abrir dados"), "folder")
-        self.source_button.clicked.connect(self.open_source)
-        self.target_button = button_style(QPushButton("Abrir acesso"), "external")
-        self.target_button.clicked.connect(self.open_target)
-        self.recalculate_btn = button_style(QPushButton("Recalcular"), "refresh")
-        self.recalculate_btn.clicked.connect(self.recalculate)
-        panel.content.addWidget(
-            ActionRow([self.source_button, self.target_button, self.recalculate_btn])
+        metadata_rows = [
+            ("Tipo:", self.type_label, "Tamanho total:", self.size_label),
+            ("Criador:", self.creator_label, "Arquivos:", self.file_count_label),
+            ("Data de criação:", self.created_at_label, "Pastas:", self.folder_count_label),
+        ]
+        for row, (left_title, left_value, right_title, right_value) in enumerate(metadata_rows):
+            metadata.addWidget(QLabel(left_title), row, 0)
+            metadata.addWidget(left_value, row, 1)
+            metadata.addWidget(QLabel(right_title), row, 2)
+            metadata.addWidget(right_value, row, 3)
+        metadata.setColumnStretch(1, 1)
+        metadata.setColumnStretch(3, 1)
+        panel.content.addLayout(metadata)
+        self.target_label = QPlainTextEdit()
+        self.source_label = QPlainTextEdit()
+
+        def _make_open_btn(accessible_name: str, tooltip: str, icon: str):
+            """Create a compact icon-only open button matching the header style."""
+            from PyQt6.QtWidgets import QToolButton
+
+            from winlink.ui.icons import set_button_icon
+
+            btn = QToolButton()
+            btn.setObjectName("headerIcon")
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            btn.setAccessibleName(accessible_name)
+            btn.setToolTip(tooltip)
+            set_button_icon(btn, icon)
+            return btn
+
+        self.target_button = _make_open_btn(
+            "Abrir Ponto de Acesso", "Abrir Ponto de Acesso no Explorer", "external"
         )
+        self.target_button.clicked.connect(self.open_target)
+
+        self.source_button = _make_open_btn(
+            "Abrir Dados Físicos",
+            "Abrir Dados Físicos no Explorer",
+            "folder" if self.junction.is_directory else "file",
+        )
+        self.source_button.clicked.connect(self.open_source)
+
+        for title, text_widget, open_btn in [
+            ("Ponto de Acesso", self.target_label, self.target_button),
+            ("Dados Físicos", self.source_label, self.source_button),
+        ]:
+            from PyQt6.QtGui import QTextOption
+
+            text_widget.setReadOnly(True)
+            text_widget.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
+            text_widget.setMinimumWidth(0)
+            text_widget.setObjectName("pathBlock")
+            text_widget.setFixedHeight(text_widget.fontMetrics().lineSpacing() * 2 + 28)
+            field_label = QLabel(title)
+            field_label.setObjectName("fieldLabel")
+            field_label.setBuddy(text_widget)
+            panel.content.addWidget(field_label)
+            path_row = QHBoxLayout()
+            path_row.setSpacing(6)
+            path_row.addWidget(text_widget, 1)
+            path_row.addWidget(open_btn)
+            panel.content.addLayout(path_row)
+
+        self.tags_edit = QLineEdit()
+        self.tags_edit.setAccessibleName("Tags do link")
+        tags_label = QLabel("Tags (separadas por vírgula)")
+        tags_label.setObjectName("fieldLabel")
+        tags_label.setBuddy(self.tags_edit)
+        panel.content.addWidget(tags_label)
+        self.save_tags_btn = button_style(QPushButton("Salvar tags"), "save")
+        self.save_tags_btn.clicked.connect(self.save_tags)
+        tags_row = QHBoxLayout()
+        tags_row.setSpacing(8)
+        tags_row.addWidget(self.tags_edit, 1)
+        tags_row.addWidget(self.save_tags_btn)
+        panel.content.addLayout(tags_row)
+        # Botão Recalcular desativado — comentado para fácil recuperação futura
+        # self.recalculate_btn = button_style(QPushButton("Recalcular"), "refresh")
+        # self.recalculate_btn.clicked.connect(self.recalculate)
         heading(panel.content, "Histórico deste link")
         self.history_label = QLabel()
         self.history_label.setObjectName("muted")

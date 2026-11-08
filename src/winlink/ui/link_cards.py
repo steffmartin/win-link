@@ -16,13 +16,13 @@ class LinkTableHeader(QHeaderView):
             return
         minimum = self.minimumSectionSize()
         fixed = sum(self.sectionSize(column) for column in range(2, self.count()))
-        previous = max(2 * minimum, event.oldSize().width() - fixed)
-        available = max(2 * minimum, event.size().width() - fixed)
-        delta = available - previous
-        if not delta:
+        available = self.width() - fixed
+        if available < 2 * minimum:
             return
         current = self.sectionSize(0) + self.sectionSize(1)
-        total = max(2 * minimum, current + delta) if event.oldSize().isValid() else available
+        if current == available:
+            return
+        total = available
         first = max(
             minimum, min(total - minimum, (total + self.sectionSize(0) - self.sectionSize(1)) // 2)
         )
@@ -81,8 +81,11 @@ class LinkCardDelegate(QStyledItemDelegate):
         rect = option.rect.adjusted(0, 6, -2, -6)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
         dark = colors.window().color().lightness() < 128
-        painter.setBrush(QColor("#1f2937" if dark else "#f9fafb"))
-        painter.setPen(QPen(QColor("#3b82f6") if selected else colors.mid().color(), 1))
+        from winlink.ui.theme import ThemeColors
+
+        theme = ThemeColors.DARK if dark else ThemeColors.LIGHT
+        painter.setBrush(colors.base().color())
+        painter.setPen(QPen(theme["primary"] if selected else colors.mid().color(), 1))
         painter.drawRoundedRect(rect, 8, 8)
         foreground = colors.text().color()
         painter.setPen(foreground)
@@ -93,11 +96,11 @@ class LinkCardDelegate(QStyledItemDelegate):
         dark = colors.window().color().lightness() < 128
         tile = QRect(rect.left() + 16, rect.top() + 26, 48, 48)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#172554" if dark else "#dbeafe"))
+        painter.setBrush(theme["primary_container"])
         painter.drawRoundedRect(tile, 12, 12)
-        symbol_icon(
-            "folder" if junction.is_directory else "file", "#60a5fa" if dark else "#2563eb"
-        ).paint(painter, tile.adjusted(12, 12, -12, -12))
+        symbol_icon("folder" if junction.is_directory else "file", theme["primary"].name()).paint(
+            painter, tile.adjusted(12, 12, -12, -12)
+        )
         painter.setPen(foreground)
         left = rect.left() + 80
         width = max(60, rect.width() - 300)
@@ -168,11 +171,11 @@ class LinkCardDelegate(QStyledItemDelegate):
                     tag, Qt.TextElideMode.ElideRight, max(1, pill.width() - 12)
                 )
                 painter.drawText(pill.adjusted(6, 0, -6, 0), Qt.AlignmentFlag.AlignVCenter, text)
-        symbol_icon("more", "#9ca3af").paint(
+        symbol_icon("more", theme["text_secondary"].name()).paint(
             painter, QRect(rect.right() - 32, rect.top() + 40, 20, 20)
         )
         if option.state & QStyle.StateFlag.State_HasFocus:
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(QPen(QColor("#3b82f6"), 2))
+            painter.setPen(QPen(theme["primary"], 2))
             painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 8, 8)
         painter.restore()

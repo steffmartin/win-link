@@ -71,10 +71,10 @@ class PreviewDialog(AnimatedDialog):
         self.preview_text.setPlainText("Calculando prévia...")
         layout.addWidget(self.preview_text)
         info_row = QHBoxLayout()
-        from winlink.ui.icons import symbol_icon
+        from winlink.ui.icons import set_label_icon
 
         info_icon = QLabel()
-        info_icon.setPixmap(symbol_icon("info").pixmap(18, 18))
+        set_label_icon(info_icon, "info", 18)
         info_icon.setStyleSheet("background: transparent;")
         info_row.addWidget(info_icon)
         info_text = QLabel("Confira os dois caminhos antes de confirmar.")
@@ -84,14 +84,14 @@ class PreviewDialog(AnimatedDialog):
 
         # Space info
         self.space_label = QLabel()
-        self.space_label.setStyleSheet("margin: 10px 0;")
+        self.space_label.setObjectName("spaceLabel")
         self.space_label.hide()
         layout.addWidget(self.space_label)
 
         # Warning label
         self.warning_label = QLabel()
         self.warning_label.setWordWrap(True)
-        self.warning_label.setStyleSheet("color: #9B8F06; margin: 10px 0;")
+        self.warning_label.setObjectName("warningText")
         self.warning_label.hide()
         layout.addWidget(self.warning_label)
 
