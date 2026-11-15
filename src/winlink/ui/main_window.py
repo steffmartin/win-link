@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from winlink import __version__
 from winlink.core.config import get_settings
 from winlink.core.history import HistoryManager
 from winlink.core.models import (
@@ -1580,7 +1581,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         heading(layout, "Sobre WinLink", icon="link")
         text = QLabel(
-            "WinLink Manager · Versão 0.1.9\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
+            f"WinLink Manager · Versão {__version__}\n\nGerenciador de junctions, links simbólicos e hard links para Windows.\n\nCtrl+N: criar\nCtrl+H: histórico\nCtrl+,: configurações\nCtrl+F: buscar\nF5: atualizar\nCtrl+Q: sair\n\nLicença MIT · Copyright (c) 2026 Steff Martin."
         )
         text.setWordWrap(True)
         layout.addWidget(text)

@@ -133,7 +133,9 @@ class JunctionTableModel(QAbstractTableModel):
         elif column == 5:  # Tags
             return ", ".join(junction.tags)
         elif column == 6:  # Status
-            return f"Status: {junction.status.value}"
+            return f"Status: {junction.status.value}" + (
+                f"\n{junction.status_detail}" if junction.status_detail else ""
+            )
         return ""
 
     def _get_foreground_color(self, junction: Junction, column: int) -> QColor | None:

@@ -47,6 +47,7 @@ class Junction(BaseModel):
     target: Path = Field(description="Path of the junction/symlink")
     junction_type: JunctionType = Field(description="Type of junction")
     status: JunctionStatus = Field(default=JunctionStatus.ACTIVE, description="Current status")
+    status_detail: str = Field(default="", description="Explanation of the last status check")
     creator: Creator = Field(default=Creator.EXISTING, description="Who created it")
     created_at: datetime | None = Field(default=None, description="When it was created")
     size_bytes: int | None = Field(default=None, description="Total size in bytes")

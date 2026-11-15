@@ -11,6 +11,7 @@ from winlink.core.models import Junction, JunctionType, OperationType
 from winlink.ui.components import FieldGrid
 from winlink.ui.dialogs.properties_dialog import PropertiesDialog
 from winlink.ui.main_window import MainWindow
+from winlink.ui.update_controller import UpdateDialog
 
 
 @pytest.fixture
@@ -46,6 +47,30 @@ def test_four_pages_respect_requested_window_size(window, qtbot, size):
             assert not hasattr(history_page, "result_combo")
         if page == 2 and size[0] >= 1100:
             assert window.history_page.table_view.horizontalScrollBar().maximum() == 0
+
+
+@pytest.mark.parametrize("theme", ["light", "dark", "auto"])
+@pytest.mark.parametrize("size", [(1280, 800), (760, 400)])
+def test_update_dialog_controls_remain_reachable(window, qtbot, theme, size):
+    from winlink.core.updater import RELEASE_ROOT, UpdateInfo
+
+    window.theme_manager.apply_theme(theme)
+    window.resize(*size)
+    info = UpdateInfo("1.2.0", "v1.2.0", RELEASE_ROOT, "installer", "checksum")
+    dialog = UpdateDialog(info, window, window.settings.history_file.parent)
+    dialog.show()
+    qtbot.wait(20)
+    area = dialog.findChild(QScrollArea)
+    assert area is not None
+    assert dialog.width() <= dialog.screen().availableGeometry().width()
+    assert dialog.height() <= dialog.screen().availableGeometry().height()
+    for button in (dialog.install, dialog.ignore, dialog.later):
+        area.ensureWidgetVisible(button)
+        qtbot.wait(5)
+        point = button.mapTo(area.viewport(), QPoint())
+        assert area.viewport().rect().contains(point)
+        assert area.viewport().rect().contains(point + button.rect().bottomRight())
+    dialog.reject()
 
 
 def test_filter_dialog_reflows_columns_without_horizontal_scrolling(window, qtbot):
@@ -175,9 +200,10 @@ def test_properties_metadata_and_tags_are_compact_two_column_rows(window, qtbot,
     ]:
         assert left.mapTo(dialog, QPoint()).y() == right.mapTo(dialog, QPoint()).y()
         assert left.mapTo(dialog, QPoint()).x() < right.mapTo(dialog, QPoint()).x()
-    assert dialog.tags_edit.mapTo(dialog, QPoint()).y() == dialog.save_tags_btn.mapTo(
-        dialog, QPoint()
-    ).y()
+    assert (
+        dialog.tags_edit.mapTo(dialog, QPoint()).y()
+        == dialog.save_tags_btn.mapTo(dialog, QPoint()).y()
+    )
 
 
 def test_settings_primary_preferences_use_three_responsive_columns(window, qtbot):

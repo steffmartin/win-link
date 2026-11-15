@@ -22,6 +22,8 @@ Configurações antigas sem uma lista de exclusões recebem os padrões, a pasta
 
 Em **Criar Novo**, escolha Junction, Symlink (Dir), Symlink (File) ou Hardlink. O ícone no canto de cada cartão abre a ajuda sobre aquele tipo. **1. Ponto de Acesso** é o caminho do link; **2. Dados Físicos** é onde os dados ficam. Por exemplo: Ponto de Acesso em `C:\Links\Projetos`, Dados Físicos em `D:\Dados\Projetos`. Hard links são nomes equivalentes do mesmo arquivo, sem um nome principal; substituir o arquivo por outro pode romper essa relação. A preferência de tipo padrão vale para um formulário vazio.
 
+Alguns editores salvam um arquivo novo e substituem o original. Nesse caso, os dois nomes de um hard link podem continuar existindo com conteúdos diferentes e deixar de aparecer na descoberta como hard links. Confira os dois arquivos antes de apagar qualquer um ou recriar o link; o WinLink não sincroniza arquivos separados automaticamente.
+
 Diretórios podem usar um novo local dos dados. Se o caminho do link já contiver uma pasta normal, a prévia explica a migração. Arquivos exigem dados existentes e um novo nome livre; hard links exigem o mesmo volume. Symlinks podem exigir Modo de Desenvolvedor ou privilégios apropriados. Nenhuma opção faz elevação automática.
 
 Revise caminhos completos, espaço, processos e avisos na **Prévia**. A confirmação é obrigatória. Feche manualmente processos informados e recalcule a prévia. Operações são executadas em background. **Cancelar** solicita interrupção cooperativa; aguarde a preservação dos dados antes de fechar. Após sucesso, o progresso apresenta a conclusão sem outro diálogo de sucesso, e os campos são limpos, com o tipo padrão restaurado. Falha ou cancelamento mantém os campos para conferência.
@@ -29,6 +31,12 @@ Revise caminhos completos, espaço, processos e avisos na **Prévia**. A confirm
 ## Propriedades e reversão
 
 Propriedades mostra caminhos, criador, data, estatísticas e histórico relacionado. **Recalcular** atualiza as estatísticas; **Abrir pasta** usa o Explorer. **Reverter** abre o mesmo fluxo protegido do menu e histórico.
+
+Quando um link aparece como inacessível, Propriedades informa qual verificação falhou. Conseguir abrir uma pasta pelo Explorer não garante permissão para listar seu conteúdo ou ler os dados. Se uma pasta estiver excluída da descoberta, sua listagem não é verificada.
+
+## Atualizações
+
+Na inicialização, o WinLink verifica a release estável mais recente no GitHub. Quando houver uma versão nova, é possível abrir suas notas, deixar para depois ou ignorar aquela versão. Na edição instalada, **Instalar** baixa o instalador, confere seu SHA-256, encerra o WinLink, instala e reabre o aplicativo. Uma falha no download ou na verificação mantém o aplicativo aberto. Na edição portátil, use a página da versão para baixar o novo pacote completo.
 
 Para diretórios, escolha remover só o link (deixa pasta vazia), mover de volta ou duplicar. **Manter Dados Físicos como backup** preserva o local dos dados. Arquivos removem somente o nome selecionado após verificar a identidade; os demais nomes e dados permanecem. Um caminho inacessível não dispensa a verificação de identidade.
 

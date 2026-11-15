@@ -6,7 +6,7 @@ Aplicativo Python/PyQt6 empacotado por PyInstaller (`winlink.spec`) e instalador
 
 - Instalador por usuário, sem elevação obrigatória, em `%LOCALAPPDATA%\Programs\WinLink`.
 - Portátil em `dist/WinLink`: distribuir a pasta inteira, incluindo `_internal`, não somente o executável.
-- Instalador em `dist/WinLink-Setup-1.0.0.exe`; inclui runtime Python e dependências.
+- Instalador em `dist/WinLink-Setup-1.1.0.exe`; inclui runtime Python e dependências.
 - Dados padrão em `%APPDATA%\WinLink`: configuração, histórico, cache e logs JSON/arquivo.
 - Sem serviço, banco de dados ou monitoramento automático como dependência da aplicação atual.
 
@@ -30,21 +30,23 @@ O spec restringe descoberta de DLLs ao Python do build e ao Windows para evitar 
 
 Configuração/cache/log padrão são removidos na desinstalação. O desinstalador pergunta sobre manter histórico; em modo silencioso o preserva, salvo `/DELETEHISTORY`. Não percorre dados migrados/junctions nem apaga caminhos personalizados de log/histórico. Configurações e histórico são do usuário; preservar compatibilidade na implementação da UI.
 
+O atualizador consulta a release estável do repositório, verifica o SHA-256 do instalador usando o `SHA256SUMS.txt` publicado na mesma release e inicia um helper independente após a confirmação do usuário. O helper aguarda o encerramento, instala no diretório existente e reinicia o aplicativo. A escolha de ignorar uma versão fica em `update.json`, removido na desinstalação. O instalador cria um marcador que distingue a edição instalada da portátil; na portátil o download é manual. O helper copiado permanece no diretório temporário do Windows após o uso. Como os pacotes não são assinados, o checksum detecta corrupção, mas não substitui uma assinatura de código.
+
 Leitura/junctions não exigem elevação geral do aplicativo. Symlinks dependem das permissões do Windows/Modo de Desenvolvedor; não prometer solicitação automática de elevação por operação. O pacote não é assinado digitalmente.
 
 ## Limites aceitos para a release inicial
 
 Em 04/11/2026, o mantenedor dispensou o teste manual de sucesso de symlinks com privilégios apropriados e autorizou a release inicial. Windows limpo sem Python e Windows 10 também foram dispensados e permanecem não homologados. PATH isolado no host não substitui outra instalação do Windows. Acompanhar em [continuidade](CONTINUIDADE.md).
 
-## Preparação da v1.0.0 e publicação
+## Preparação da v1.1.0 e publicação
 
-Os artefatos v1.0.0 foram reconstruídos e validados após a revisão manual. Preparar o commit aprovado, criar a tag `v1.0.0` nesse commit e deixar a release como rascunho até a autorização explícita para publicar. Anexar `dist/WinLink-Portable-1.0.0.zip` com a pasta inteira `WinLink/`, `dist/WinLink-Setup-1.0.0.exe` e `dist/SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. Preservar as tags e os assets publicados de versões anteriores. Usar as [notas de versão](NOTAS-DE-VERSAO.md).
+Preparar o commit aprovado e criar a tag `v1.1.0` nesse commit. Anexar `dist/WinLink-Portable-1.1.0.zip` com a pasta inteira `WinLink/`, `dist/WinLink-Setup-1.1.0.exe` e `dist/SHA256SUMS.txt`. Não enviar o instalador de validação, caches ou diretórios intermediários. Preservar as tags e os assets publicados de versões anteriores. Usar as [notas de versão](NOTAS-DE-VERSAO.md).
 
 Na raiz do repositório, após o build e a validação, gerar o ZIP portátil e os checksums:
 
 ```powershell
-Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-1.0.0.zip -CompressionLevel Optimal -Force
-$packages = @('.\dist\WinLink-Portable-1.0.0.zip', '.\dist\WinLink-Setup-1.0.0.exe')
+Compress-Archive -Path .\dist\WinLink -DestinationPath .\dist\WinLink-Portable-1.1.0.zip -CompressionLevel Optimal -Force
+$packages = @('.\dist\WinLink-Portable-1.1.0.zip', '.\dist\WinLink-Setup-1.1.0.exe')
 $checksums = foreach ($package in $packages) {
     $hash = Get-FileHash $package -Algorithm SHA256
     '{0}  {1}' -f $hash.Hash.ToLowerInvariant(), (Split-Path $package -Leaf)

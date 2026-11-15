@@ -1,6 +1,7 @@
 """Operations for creating and managing junctions and links"""
 
 import os
+import stat
 from pathlib import Path
 
 import win32api
@@ -209,26 +210,25 @@ def verify_junction_integrity(junction: Junction) -> bool:
     Returns:
         True if junction is intact, False otherwise
     """
+    junction.status_detail = ""
     try:
         if junction.junction_type == JunctionType.HARDLINK:
+            source_stat = junction.source.stat()
+            target_stat = junction.target.stat()
             intact = (
-                junction.source.is_file()
-                and junction.target.is_file()
+                stat.S_ISREG(source_stat.st_mode)
+                and stat.S_ISREG(target_stat.st_mode)
                 and junction.source.samefile(junction.target)
             )
             junction.status = JunctionStatus.ACTIVE if intact else JunctionStatus.BROKEN
+            if not intact:
+                junction.status_detail = "Os caminhos não identificam mais o mesmo arquivo."
             return intact
         # Check if target exists
-        if not junction.target.exists():
-            logger.warning(f"Junction target does not exist: {junction.target}")
-            junction.status = JunctionStatus.BROKEN
-            return False
+        junction.target.lstat()
 
         # Check if source exists
-        if not junction.source.exists():
-            logger.warning(f"Junction source does not exist: {junction.source}")
-            junction.status = JunctionStatus.BROKEN
-            return False
+        junction.source.stat()
 
         # Check if target is still a reparse point
         attrs = win32api.GetFileAttributes(str(junction.target))
@@ -244,9 +244,17 @@ def verify_junction_integrity(junction: Junction) -> bool:
         junction.status = JunctionStatus.ACTIVE
         return True
 
+    except FileNotFoundError as e:
+        junction.status_detail = "Um dos caminhos não foi encontrado."
+        logger.warning(f"Link path not found {junction.target}: {e}")
+        junction.status = JunctionStatus.BROKEN
+        return False
     except Exception as e:
         logger.error(f"Error verifying junction {junction.target}: {e}")
-        junction.status = JunctionStatus.BROKEN
+        junction.status_detail = (
+            "Não foi possível verificar a identidade do link; confira o acesso."
+        )
+        junction.status = JunctionStatus.INACCESSIBLE
         return False
 
 

@@ -31,7 +31,7 @@ Aplicativo desktop em Python/PyQt6 para descobrir, criar e desfazer links do sis
 | Junction | Redireciona uma pasta para outro diretório local | Não usa destino de rede |
 | Symlink de diretório | Cria uma ligação simbólica para uma pasta | Depende das permissões do Windows |
 | Symlink de arquivo | Cria uma ligação simbólica para um arquivo | Depende das permissões do Windows |
-| Hard link | Dá outro nome ao mesmo arquivo | Exige o mesmo volume |
+| Hard link | Dá outro nome ao mesmo arquivo | Exige o mesmo volume; salvar por substituição pode separar os nomes |
 
 Inclui busca, filtros, ordenação, cartões e visão compacta, propriedades, histórico exportável, temas claro/escuro/sistema e preferências persistentes. Operações têm prévia, confirmação e cancelamento cooperativo. A reversão verifica a identidade do link; diretórios oferecem opções de restauração e backup. Os dados ficam, por padrão, em `%APPDATA%\WinLink`.
 

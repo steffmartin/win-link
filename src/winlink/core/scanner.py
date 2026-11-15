@@ -83,8 +83,8 @@ def get_reparse_target(path: Path) -> Path | None:
     try:
         handle = win32file.CreateFileW(
             str(path),
-            win32file.GENERIC_READ,
-            win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE,
+            0,
+            win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE | win32file.FILE_SHARE_DELETE,
             None,
             win32file.OPEN_EXISTING,
             win32file.FILE_FLAG_BACKUP_SEMANTICS | win32file.FILE_FLAG_OPEN_REPARSE_POINT,
@@ -175,8 +175,8 @@ def get_junction_type(path: Path) -> JunctionType | None:
     try:
         handle = win32file.CreateFileW(
             str(path),
-            win32file.GENERIC_READ,
-            win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE,
+            0,
+            win32file.FILE_SHARE_READ | win32file.FILE_SHARE_WRITE | win32file.FILE_SHARE_DELETE,
             None,
             win32file.OPEN_EXISTING,
             win32file.FILE_FLAG_BACKUP_SEMANTICS | win32file.FILE_FLAG_OPEN_REPARSE_POINT,
@@ -270,13 +270,34 @@ def check_junction_status(junction: Junction, *, probe_directory: bool = True) -
     Returns:
         JunctionStatus
     """
-    try:
-        junction.target.stat()
-        junction.source.stat()
-    except FileNotFoundError:
-        return JunctionStatus.BROKEN
-    except OSError:
-        return JunctionStatus.INACCESSIBLE
+    junction.status_detail = ""
+    # lstat checks the directory entry itself; stat follows it to the data.
+    checks = (
+        (junction.target.lstat, "o Ponto de Acesso"),
+        (junction.source.stat, "os Dados Físicos"),
+        (junction.target.stat, "os dados pelo Ponto de Acesso"),
+    )
+    for check, description in checks:
+        try:
+            check()
+        except FileNotFoundError:
+            junction.status_detail = f"Não foi possível encontrar {description}."
+            return JunctionStatus.BROKEN
+        except OSError:
+            junction.status_detail = f"Não foi possível verificar {description}; confira o acesso."
+            return JunctionStatus.INACCESSIBLE
+
+    if junction.junction_type == JunctionType.HARDLINK:
+        try:
+            if not junction.source.samefile(junction.target):
+                junction.status_detail = "Os caminhos não identificam mais o mesmo arquivo."
+                return JunctionStatus.BROKEN
+        except FileNotFoundError:
+            junction.status_detail = "Um dos nomes do arquivo não foi encontrado."
+            return JunctionStatus.BROKEN
+        except OSError:
+            junction.status_detail = "Não foi possível comparar a identidade dos arquivos."
+            return JunctionStatus.INACCESSIBLE
 
     # Check if accessible
     try:
@@ -288,8 +309,19 @@ def check_junction_status(junction: Junction, *, probe_directory: bool = True) -
         else:
             with junction.target.open("rb") as stream:
                 stream.read(1)
-    except (PermissionError, OSError):
+    except OSError:
+        junction.status_detail = (
+            "Não foi possível listar a pasta pelo Ponto de Acesso. Abrir a pasta no Explorer "
+            "não garante permissão para listar seu conteúdo."
+            if junction.is_directory
+            else "Não foi possível ler o arquivo pelo Ponto de Acesso."
+        )
         return JunctionStatus.INACCESSIBLE
+
+    if junction.is_directory and not probe_directory:
+        junction.status_detail = (
+            "A listagem da pasta não foi verificada por estar excluída da descoberta."
+        )
 
     return JunctionStatus.ACTIVE
 

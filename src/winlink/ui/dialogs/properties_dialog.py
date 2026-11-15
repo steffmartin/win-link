@@ -90,6 +90,9 @@ class PropertiesDialog(AnimatedDialog):
         self.status_label = QLabel()
         header.addWidget(self.status_label)
         panel.content.addLayout(header)
+        self.status_detail_label = QLabel()
+        self.status_detail_label.setWordWrap(True)
+        panel.content.addWidget(self.status_detail_label)
         metadata = QGridLayout()
         metadata.setHorizontalSpacing(18)
         metadata.setVerticalSpacing(6)
@@ -227,6 +230,8 @@ class PropertiesDialog(AnimatedDialog):
         )
         self.status_label.setText(self.get_status_display(self.junction.status))
         self.status_label.setStyleSheet(f"color: {status_color.name()}; font-weight: bold;")
+        self.status_detail_label.setText(self.junction.status_detail)
+        self.status_detail_label.setVisible(bool(self.junction.status_detail))
 
         # Creator
         creator_text = self.get_creator_display(self.junction.creator)

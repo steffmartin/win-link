@@ -45,6 +45,8 @@ def smoke(executable, name):
 
 
 results = {"portable": smoke(ROOT / "dist" / "WinLink" / "WinLink.exe", "portable")}
+assert (ROOT / "dist" / "WinLink" / "WinLinkUpdateHelper.exe").is_file()
+assert not (ROOT / "dist" / "WinLink" / "winlink-installed.marker").exists()
 if len(sys.argv) > 1:
     compiler = Path(sys.argv[1]).resolve()
     subprocess.run(
@@ -86,7 +88,9 @@ if len(sys.argv) > 1:
             timeout=90,
         )
         results["installed"] = smoke(INSTALL / "WinLink.exe", "installed")
-        for name in ("config.json", "cache.json", "history.json", "winlink.log"):
+        assert (INSTALL / "WinLinkUpdateHelper.exe").is_file()
+        assert (INSTALL / "winlink-installed.marker").is_file()
+        for name in ("config.json", "cache.json", "history.json", "winlink.log", "update.json"):
             (DATA / name).write_text("{}", encoding="utf-8")
         arguments = [
             str(INSTALL / "unins000.exe"),
@@ -107,6 +111,7 @@ if len(sys.argv) > 1:
         assert not (DATA / "config.json").exists()
         assert not (DATA / "cache.json").exists()
         assert not (DATA / "winlink.log").exists()
+        assert not (DATA / "update.json").exists()
         assert (DATA / "history.json").exists() != delete_history
         assert link.is_junction() and (link / "preserve.txt").read_text() == "preserve"
     link.rmdir()

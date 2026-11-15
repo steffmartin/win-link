@@ -235,7 +235,10 @@ def build_preview(
         preview_lines.append(f"✓ Criar hard link: {target} -> {source}")
         preview_lines.append("")
         preview_lines.append("Ambos caminhos apontarão para os mesmos dados no disco.")
-        preview_lines.append("Alterações em um caminho serão refletidas no outro.")
+        preview_lines.append(
+            "Edições no mesmo arquivo são compartilhadas. Alguns editores substituem o arquivo "
+            "ao salvar; nesse caso os nomes deixam de compartilhar os dados."
+        )
         preview_lines.append("Hard links funcionam apenas no mesmo volume.")
 
         return "\n".join(preview_lines), valid

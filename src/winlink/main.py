@@ -7,6 +7,7 @@ import sys
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
+from winlink import __version__
 from winlink.core.config import get_settings, settings_path
 from winlink.ui.main_window import MainWindow
 from winlink.utils.logger import setup_logger
@@ -82,7 +83,7 @@ def main():
     # Create Qt application
     app = QApplication(sys.argv)
     app.setApplicationName("WinLink")
-    app.setApplicationVersion("0.1.9")
+    app.setApplicationVersion(__version__)
 
     instance_server = None
     if "--smoke-test" not in sys.argv:
@@ -95,6 +96,12 @@ def main():
     # Create and show main window
     window = MainWindow()
     window.show()
+
+    if smoke_output is None:
+        from winlink.ui.update_controller import UpdateController
+
+        window.update_controller = UpdateController(window)
+        window.update_controller.start()
 
     if instance_server is not None:
 

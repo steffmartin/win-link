@@ -1,4 +1,4 @@
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #ifndef InstallerAppId
 #define InstallerAppId "WinLink-D58F7460-EDC0-4563-98B7-2FB51900B813"
 #endif
@@ -6,7 +6,7 @@
 #define UserDataDir "{userappdata}\WinLink"
 #endif
 #ifndef OutputBase
-#define OutputBase "WinLink-Setup-1.0.0"
+#define OutputBase "WinLink-Setup-1.1.0"
 #endif
 [Setup]
 LicenseFile=..\LICENSE
@@ -44,6 +44,7 @@ english.DeleteHistory=Also delete the operation history? Links and their files w
 Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked
 [Files]
 Source: "..\dist\WinLink\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "winlink-installed.marker"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\WinLink"; Filename: "{app}\WinLink.exe"
 Name: "{userdesktop}\WinLink"; Filename: "{app}\WinLink.exe"; Tasks: desktopicon
@@ -59,6 +60,8 @@ begin
     DeleteFile(DataDir + 'config.json');
     DeleteFile(DataDir + 'cache.json');
     DeleteFile(DataDir + 'cache.tmp');
+    DeleteFile(DataDir + 'update.json');
+    DeleteFile(DataDir + 'update.json.tmp');
     DeleteFile(DataDir + 'winlink.log');
     DeleteFile(DataDir + 'winlink.log.1');
     DeleteFile(DataDir + 'winlink.log.2');
