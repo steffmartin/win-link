@@ -1,6 +1,7 @@
 # WinLink 1.1.0 — 15/11/2026
 
 - Verificação de versões em segundo plano, notas da release, opção de ignorar uma versão e instalação automática da edição instalada, com download verificado por SHA-256 e reinício pelo helper. A edição portátil abre a página para download manual.
+- Os botões do aviso de atualização ficam alinhados na mesma linha.
 - O estado de links distingue falhas de acesso da ausência de caminhos e explica a etapa que não pôde ser verificada nas Propriedades ([#15](https://github.com/steffmartin/win-link/issues/15)).
 - A prévia de hard links explica que editores podem substituir um arquivo ao salvar e separar seus nomes; a verificação também compara a identidade dos arquivos ([#16](https://github.com/steffmartin/win-link/issues/16)).
 
