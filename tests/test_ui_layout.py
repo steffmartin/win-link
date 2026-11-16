@@ -64,6 +64,12 @@ def test_update_dialog_controls_remain_reachable(window, qtbot, theme, size):
     assert area is not None
     assert dialog.width() <= dialog.screen().availableGeometry().width()
     assert dialog.height() <= dialog.screen().availableGeometry().height()
+    buttons = (dialog.later, dialog.ignore, dialog.install)
+    centers = [button.mapTo(dialog, button.rect().center()) for button in buttons]
+    assert max(point.y() for point in centers) - min(point.y() for point in centers) <= 3
+    assert [point.x() for point in centers] == sorted(point.x() for point in centers)
+    assert dialog.later.nextInFocusChain() is dialog.ignore
+    assert dialog.ignore.nextInFocusChain() is dialog.install
     for button in (dialog.install, dialog.ignore, dialog.later):
         area.ensureWidgetVisible(button)
         qtbot.wait(5)

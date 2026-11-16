@@ -4,7 +4,14 @@ import threading
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QLabel, QProgressBar, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from winlink import __version__
 from winlink.core import updater
@@ -68,10 +75,15 @@ class UpdateDialog(AnimatedDialog):
         self.ignore.clicked.connect(self._ignore)
         self.later = button_style(QPushButton("Agora não"))
         self.later.clicked.connect(self.reject)
-        # A vertical stack remains reachable in a small window and at high DPI.
-        layout.addWidget(self.install)
-        layout.addWidget(self.ignore)
-        layout.addWidget(self.later)
+        actions = QHBoxLayout()
+        actions.addStretch()
+        actions.addWidget(self.later)
+        actions.addWidget(self.ignore)
+        actions.addWidget(self.install)
+        layout.addLayout(actions)
+        self.setTabOrder(notes, self.later)
+        self.setTabOrder(self.later, self.ignore)
+        self.setTabOrder(self.ignore, self.install)
         if root is None or not info.installer_url or not info.checksum_url:
             self.install.setEnabled(False)
             self.status.setText(
